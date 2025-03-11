@@ -17,6 +17,10 @@ easy-check
 ├── internal
 │   ├── checker
 │   │   └── checker.go   # 网络检测逻辑
+│   │   └── config.go    # 配置加载逻辑
+│   │   └── pinger.go    # Ping 接口定义
+│   │   └── pinger_linux.go # Linux 平台的 Ping 实现
+│   │   └── pinger_windows.go # Windows 平台的 Ping 实现
 │   └── logger
 │       └── logger.go    # 日志记录功能
 ├── configs
@@ -25,6 +29,9 @@ easy-check
 │   ├── install.sh       # 安装脚本
 │   └── uninstall.sh     # 卸载脚本
 ├── go.mod               # Go模块配置
+├── go.sum               # Go模块依赖
+├── Makefile             # Makefile 文件
+├── .gitignore           # Git 忽略文件
 └── README.md            # 项目文档
 ```
 
@@ -39,7 +46,12 @@ easy-check
 `config.yaml` 文件包含以下字段：
 
 - `hosts`: 要 ping 的主机列表
+- `ping`:
+  - `count`: ping 的次数
+  - `timeout`: ping 的超时时间，单位为秒
 - `interval`: 检测间隔时间（单位：秒）
+- `log`:
+  - `file`: 日志文件路径
 
 ## 日志
 
