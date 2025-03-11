@@ -1,0 +1,12 @@
+hosts:
+  - "www.baidu.com"
+  - "www.qq.com"
+
+ping:
+  count: 5 # ping的次数
+  timeout: 2 # ping的超时时间，单位为秒
+
+interval: 60 # 检测间隔时间，单位为秒
+
+log:
+  file: "logs/check-log.txt" # 日志文件名
