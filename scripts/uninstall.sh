@@ -16,10 +16,4 @@ if [ -f ~/.config/autostart/easy-check.desktop ]; then
   echo "Removed easy-check autostart entry."
 fi
 
-# Remove Windows Task Scheduler entry (for Windows)
-if schtasks /query | findstr /C:"easy-check" >nul; then
-  schtasks /delete /tn "easy-check" /f
-  echo "Removed easy-check from Windows Task Scheduler."
-fi
-
 echo "Uninstallation complete."
