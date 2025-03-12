@@ -29,5 +29,6 @@ package: build
 	cp -r bin easy-check/
 	cp -r configs easy-check/
 	cp -r scripts easy-check/
+	cp README.md easy-check/
 	zip -r easy-check.zip easy-check
 	rm -rf easy-check
