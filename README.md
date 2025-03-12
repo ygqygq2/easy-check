@@ -38,8 +38,8 @@ easy-check
 ## 使用方法
 
 1. **配置**: 编辑 `configs/config.yaml` 文件，添加要检测的主机列表和检测间隔时间。
-2. **安装**: 运行 `scripts/install.sh` 脚本以设置开机自启动。
-3. **启动**: 运行 `cmd/main.go` 启动应用程序。
+2. **安装**: 使用管理员用户运行 `scripts/install.sh` 脚本以设置开机自启动。
+3. **启动**: 运行 `bin/easy-check` 启动应用程序。
 
 ## 配置说明
 
