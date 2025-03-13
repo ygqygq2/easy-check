@@ -14,20 +14,45 @@ import (
 
 func main() {
 	// 切换到项目根目录
+	changeToProjectRoot()
+
+	// 加载配置
+	config := loadConfig()
+
+	// 初始化日志记录器
+	logger := initLogger(config.Log.File)
+	defer logger.Close()
+
+	logger.Log("Starting easy-check...")
+	logger.Log("Configuration loaded successfully")
+
+	// 初始化 pinger 和 checker
+	pinger := checker.NewPinger()
+	chk := checker.NewChecker(config.Hosts, config.Interval, config.Ping.Count, config.Ping.Timeout, pinger, logger)
+
+	// 执行初始 ping 检查
+	logger.Log("Performing initial ping check")
+	chk.PingHosts()
+
+	// 启动定期 ping 检查
+	startPeriodicPingChecks(chk, config.Interval, logger)
+}
+
+func changeToProjectRoot() {
 	projectRoot := filepath.Dir(filepath.Dir(os.Args[0]))
 	err := os.Chdir(projectRoot)
 	if err != nil {
 		log.Fatalf("Error changing directory to project root: %v", err)
 	}
 
-	// 打印当前工作目录
 	cwd, err := os.Getwd()
 	if err != nil {
 		log.Fatalf("Error getting current working directory: %v", err)
 	}
 	log.Printf("Current working directory: %s", cwd)
+}
 
-	// Load configuration
+func loadConfig() *checker.Config {
 	configPath := filepath.Join("configs", "config.yaml")
 	config, err := checker.LoadConfig(configPath)
 	if err != nil {
@@ -38,46 +63,30 @@ func main() {
 		log.Fatalf("Log file path is empty in the configuration")
 	}
 
-	// Ensure the log file directory exists
-	logDir := filepath.Dir(config.Log.File)
-	err = os.MkdirAll(logDir, 0755)
+	return config
+}
+
+func initLogger(logFilePath string) *logger.Logger {
+	logDir := filepath.Dir(logFilePath)
+	err := os.MkdirAll(logDir, 0755)
 	if err != nil {
 		log.Fatalf("Error creating log directory: %v", err)
 	}
 
-	// Initialize logger
-	logFile, err := os.OpenFile(config.Log.File, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0666)
-	if err != nil {
-		log.Fatalf("Error opening log file: %v", err)
-	}
-	defer logFile.Close()
-
-	logger, err := logger.NewLogger(config.Log.File)
+	logger, err := logger.NewLogger(logFilePath)
 	if err != nil {
 		log.Fatalf("Error initializing logger: %v", err)
 	}
 
-	logger.Log("Starting easy-check...")
+	return logger
+}
 
-	logger.Log("Configuration loaded successfully")
-
-	// Initialize pinger
-	pinger := checker.NewPinger()
-
-	// Initialize checker
-	chk := checker.NewChecker(config.Hosts, config.Interval, config.Ping.Count, config.Ping.Timeout, pinger, logger)
-
-	// Perform an initial ping check
-	logger.Log("Performing initial ping check")
-	chk.PingHosts()
-
-	// Start periodic ping checks
-	ticker := time.NewTicker(time.Duration(config.Interval) * time.Second)
+func startPeriodicPingChecks(chk *checker.Checker, interval int, logger *logger.Logger) {
+	ticker := time.NewTicker(time.Duration(interval) * time.Second)
 	defer ticker.Stop()
 
 	logger.Log("Starting periodic ping checks")
 
-	// 仅在 Windows 平台上捕获终端信号
 	if isWindows() {
 		sigChan := make(chan os.Signal, 1)
 		signal.Notify(sigChan, syscall.SIGINT, syscall.SIGTERM)
@@ -101,13 +110,11 @@ func main() {
 			}
 		}()
 	} else {
-		// 非 Windows 平台上继续执行定时任务
 		for range ticker.C {
 			chk.PingHosts()
 		}
 	}
 
-	// 阻塞主线程，直到接收到退出信号
 	select {}
 }
 
