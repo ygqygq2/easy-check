@@ -3,6 +3,8 @@ package checker
 import (
 	"easy-check/internal/logger"
 	"fmt"
+	"regexp"
+	"strings"
 	"sync"
 	"time"
 )
@@ -37,19 +39,36 @@ func (c *Checker) PingHosts() {
 			output, err := c.Pinger.Ping(host, c.Count, c.Timeout)
 			if err != nil {
 				c.Logger.Log(fmt.Sprintf("Ping to %s failed: %v", host, err))
-			} else {
-				c.Logger.Log(output)
+				c.Logger.Console(fmt.Sprintf("Ping to %s failed: %v", host, err))
+				return
 			}
 
-			successCount := c.Count
-			if err != nil {
-				successCount = 0
+			lines := strings.Split(output, "\n")
+			successCount := 0
+			var sampleLatency string
+
+			// 使用正则表达式匹配 IP 地址和延迟时间
+			re := regexp.MustCompile(`time[=<]\d+ms|时间[=<]\d+ms`)
+
+			for _, line := range lines {
+				if strings.Contains(line, "TTL=") || strings.Contains(line, "ttl=") {
+					c.Logger.Log(line)
+					successCount++
+					if sampleLatency == "" {
+						// 提取延迟信息
+						match := re.FindString(line)
+						if match != "" {
+							sampleLatency = match
+						}
+					}
+				}
 			}
+
 			successRate := float64(successCount) / float64(c.Count)
 			if successRate < 0.8 {
 				c.Logger.Console(fmt.Sprintf("Ping to %s failed: success rate %.2f%%", host, successRate*100))
 			} else {
-				c.Logger.Console(fmt.Sprintf("Ping to %s succeeded: success rate %.2f%%", host, successRate*100))
+				c.Logger.Console(fmt.Sprintf("Ping to %s succeeded: success rate %.2f%%, latency %s", host, successRate*100, sampleLatency))
 			}
 		}(host)
 	}
