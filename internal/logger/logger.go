@@ -18,9 +18,13 @@ func NewLogger(filePath string) (*Logger, error) {
 	return &Logger{file: file}, nil
 }
 
-func (l *Logger) Log(message string) error {
+func (l *Logger) formatMessage(message string) string {
 	timestamp := time.Now().Format(time.RFC3339)
-	logMessage := timestamp + " - " + message + "\n"
+	return timestamp + " - " + message + "\n"
+}
+
+func (l *Logger) Log(message string) error {
+	logMessage := l.formatMessage(message)
 
 	// 写入日志文件
 	_, err := l.file.WriteString(logMessage)
@@ -28,10 +32,14 @@ func (l *Logger) Log(message string) error {
 		return err
 	}
 
+	return nil
+}
+
+func (l *Logger) Console(message string) {
+	logMessage := l.formatMessage(message)
+
 	// 打印到控制台
 	fmt.Print(logMessage)
-
-	return nil
 }
 
 func (l *Logger) Close() error {

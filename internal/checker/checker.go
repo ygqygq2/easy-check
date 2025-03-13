@@ -34,11 +34,22 @@ func (c *Checker) PingHosts() {
 		wg.Add(1)
 		go func(host string) {
 			defer wg.Done()
-			err := c.Pinger.Ping(host, c.Count, c.Timeout)
+			output, err := c.Pinger.Ping(host, c.Count, c.Timeout)
 			if err != nil {
 				c.Logger.Log(fmt.Sprintf("Ping to %s failed: %v", host, err))
 			} else {
-				c.Logger.Log(fmt.Sprintf("Ping to %s succeeded", host))
+				c.Logger.Log(output)
+			}
+
+			successCount := c.Count
+			if err != nil {
+				successCount = 0
+			}
+			successRate := float64(successCount) / float64(c.Count)
+			if successRate < 0.8 {
+				c.Logger.Console(fmt.Sprintf("Ping to %s failed: success rate %.2f%%", host, successRate*100))
+			} else {
+				c.Logger.Console(fmt.Sprintf("Ping to %s succeeded: success rate %.2f%%", host, successRate*100))
 			}
 		}(host)
 	}

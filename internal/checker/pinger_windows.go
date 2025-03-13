@@ -10,9 +10,10 @@ import (
 
 type WindowsPinger struct{}
 
-func (p *WindowsPinger) Ping(host string, count int, timeout int) error {
+func (p *WindowsPinger) Ping(host string, count int, timeout int) (string, error) {
 	cmd := exec.Command("ping", "-n", fmt.Sprintf("%d", count), "-w", fmt.Sprintf("%d", timeout*1000), host)
-	return cmd.Run()
+	output, err := cmd.CombinedOutput()
+	return string(output), err
 }
 
 func NewPinger() Pinger {
