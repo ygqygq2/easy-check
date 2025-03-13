@@ -3,9 +3,12 @@ package main
 import (
 	"easy-check/internal/checker"
 	"easy-check/internal/logger"
+	"fmt"
 	"log"
 	"os"
+	"os/signal"
 	"path/filepath"
+	"syscall"
 	"time"
 )
 
@@ -74,7 +77,40 @@ func main() {
 
 	logger.Log("Starting periodic ping checks")
 
-	for range ticker.C {
-		chk.PingHosts()
+	// 仅在 Windows 平台上捕获终端信号
+	if isWindows() {
+		sigChan := make(chan os.Signal, 1)
+		signal.Notify(sigChan, syscall.SIGINT, syscall.SIGTERM)
+
+		go func() {
+			for {
+				select {
+				case <-ticker.C:
+					chk.PingHosts()
+				case sig := <-sigChan:
+					fmt.Printf("\nReceived signal: %v. Are you sure you want to exit? (y/n): ", sig)
+					var response string
+					fmt.Scanln(&response)
+					if response == "y" || response == "Y" {
+						logger.Log("Shutting down easy-check...")
+						os.Exit(0)
+					} else {
+						fmt.Println("Continuing...")
+					}
+				}
+			}
+		}()
+	} else {
+		// 非 Windows 平台上继续执行定时任务
+		for range ticker.C {
+			chk.PingHosts()
+		}
 	}
+
+	// 阻塞主线程，直到接收到退出信号
+	select {}
+}
+
+func isWindows() bool {
+	return os.PathSeparator == '\\' && os.PathListSeparator == ';'
 }
