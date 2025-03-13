@@ -56,6 +56,7 @@ func (c *Checker) pingHost(host string) {
 
 	successRate := float64(successCount) / float64(c.Count)
 	if successRate < 0.8 {
+		c.Logger.Log(fmt.Sprintf("Ping to %s failed: timeout", host))
 		c.Logger.Console(fmt.Sprintf("Ping to %s failed: success rate %.2f%%", host, successRate*100))
 	} else {
 		c.Logger.Console(fmt.Sprintf("Ping to %s succeeded: success rate %.2f%%, latency %s", host, successRate*100, sampleLatency))

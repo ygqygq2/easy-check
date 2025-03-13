@@ -8,33 +8,6 @@ easy-check 是一个用于定期检测网络连接的工具。它可以在 Linux
 - 将检测结果和时间戳记录到日志文件
 - 支持 Linux 和 Windows 系统的开机自启动
 
-## 项目结构
-
-```
-easy-check
-├── cmd
-│   └── main.go          # 应用程序入口点
-├── internal
-│   ├── checker
-│   │   └── checker.go   # 网络检测逻辑
-│   │   └── config.go    # 配置加载逻辑
-│   │   └── pinger.go    # Ping 接口定义
-│   │   └── pinger_linux.go # Linux 平台的 Ping 实现
-│   │   └── pinger_windows.go # Windows 平台的 Ping 实现
-│   └── logger
-│       └── logger.go    # 日志记录功能
-├── configs
-│   └── config.yaml      # 配置文件
-├── scripts
-│   ├── install.sh       # 安装脚本
-│   └── uninstall.sh     # 卸载脚本
-├── go.mod               # Go模块配置
-├── go.sum               # Go模块依赖
-├── Makefile             # Makefile 文件
-├── .gitignore           # Git 忽略文件
-└── README.md            # 项目文档
-```
-
 ## 使用方法
 
 1. **配置**: 编辑 `configs/config.yaml` 文件，添加要检测的主机列表和检测间隔时间。

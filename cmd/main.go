@@ -49,7 +49,7 @@ func changeToProjectRoot() {
 	if err != nil {
 		log.Fatalf("Error getting current working directory: %v", err)
 	}
-	log.Printf("Current working directory: %s", cwd)
+	log.Printf("Current working directory: %s\n", cwd)
 }
 
 func loadConfig() *checker.Config {
@@ -81,6 +81,14 @@ func initLogger(logFilePath string) *logger.Logger {
 	return logger
 }
 
+func getExecutablePath() string {
+	cwd, err := os.Getwd()
+	if err != nil {
+		log.Fatalf("Error getting current working directory: %v", err)
+	}
+	return filepath.Join(cwd, "bin", "easy-check.exe")
+}
+
 func startPeriodicPingChecks(chk *checker.Checker, interval int, logger *logger.Logger) {
 	ticker := time.NewTicker(time.Duration(interval) * time.Second)
 	defer ticker.Stop()
@@ -88,34 +96,43 @@ func startPeriodicPingChecks(chk *checker.Checker, interval int, logger *logger.
 	logger.Log("Starting periodic ping checks")
 
 	if isWindows() {
+		// 创建一个停止通道，用于通知程序退出
+		stopChan := make(chan struct{})
+		// 创建一个信号通道
 		sigChan := make(chan os.Signal, 1)
 		signal.Notify(sigChan, syscall.SIGINT, syscall.SIGTERM)
 
+		// 处理 ping 检查的 goroutine
 		go func() {
 			for {
 				select {
 				case <-ticker.C:
 					chk.PingHosts()
-				case sig := <-sigChan:
-					fmt.Printf("\nReceived signal: %v. Are you sure you want to exit? (y/n): ", sig)
-					var response string
-					fmt.Scanln(&response)
-					if response == "y" || response == "Y" {
-						logger.Log("Shutting down easy-check...")
-						os.Exit(0)
-					} else {
-						fmt.Println("Continuing...")
-					}
+				case <-stopChan:
+					return
 				}
 			}
 		}()
+
+		// 处理信号的 goroutine
+		go func() {
+			for {
+				sig := <-sigChan
+				exePath := getExecutablePath()
+				fmt.Printf("\nReceived signal: %v. Executable path: %s\n", sig, exePath)
+				fmt.Println("Waiting for some seconds before exit...")
+
+				time.Sleep(5 * time.Second)
+			}
+		}()
+
+		// 主线程保持运行
+		select {}
 	} else {
 		for range ticker.C {
 			chk.PingHosts()
 		}
 	}
-
-	select {}
 }
 
 func isWindows() bool {
