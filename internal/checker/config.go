@@ -8,7 +8,7 @@ import (
 )
 
 type Config struct {
-	Hosts    []string   `yaml:"hosts"`
+	Hosts    []Host     `yaml:"hosts"`
 	Ping     PingConfig `yaml:"ping"`
 	Interval int        `yaml:"interval"`
 	Log      LogConfig  `yaml:"log"`
@@ -20,7 +20,13 @@ type PingConfig struct {
 }
 
 type LogConfig struct {
-	File string `yaml:"file"`
+	File         string `yaml:"file"`
+	MaxSize      int    `yaml:"max_size"`
+	MaxAge       int    `yaml:"max_age"`
+	MaxBackups   int    `yaml:"max_backups"`
+	Compress     bool   `yaml:"compress"`
+	ConsoleLevel string `yaml:"console_level"`
+	FileLevel    string `yaml:"file_level"`
 }
 
 func LoadConfig(configPath string) (*Config, error) {

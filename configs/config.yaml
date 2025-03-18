@@ -1,13 +1,22 @@
 hosts:
-  - "www.baidu.com" # 百度
-  - "www.qq.com"
-  - 114.114.114.114
+  - host: "www.baidu.com"
+    description: "百度"
+  - host: "www.qq.com"
+    description: "腾讯"
+  - host: "114.114.114.114"
+    description: "公共 DNS"
 
 ping:
   count: 5 # ping的次数
   timeout: 2 # ping的超时时间，单位为秒
 
-interval: 60 # 检测间隔时间，单位为秒
+interval: 10 # 检测间隔时间，单位为秒
 
 log:
   file: "logs/check-log.txt" # 日志文件名
+  max_size: 10 # 单个日志文件的最大大小（MB）
+  max_age: 7 # 保留旧日志文件的最大天数
+  max_backups: 100 # 保留旧日志文件的最大数量
+  compress: false # 是否压缩旧日志文件
+  console_level: "error" # 控制台日志级别
+  file_level: "info" # 日志文件日志级别

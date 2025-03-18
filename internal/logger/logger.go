@@ -4,44 +4,98 @@ import (
 	"fmt"
 	"os"
 	"time"
+
+	"github.com/sirupsen/logrus"
+	"gopkg.in/natefinch/lumberjack.v2"
 )
 
 type Logger struct {
-	file *os.File
+    *logrus.Logger
+    consoleLogger *logrus.Logger
 }
 
-func NewLogger(filePath string) (*Logger, error) {
-	file, err := os.OpenFile(filePath, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0666)
-	if err != nil {
-		return nil, err
-	}
-	return &Logger{file: file}, nil
+type Config struct {
+    File         string
+    MaxSize      int
+    MaxAge       int
+    MaxBackups   int
+    Compress     bool
+    ConsoleLevel string
+    FileLevel    string
 }
 
-func (l *Logger) formatMessage(message string) string {
-	timestamp := time.Now().Format(time.RFC3339)
-	return timestamp + " - " + message + "\n"
+type CustomFormatter struct {
+    TimestampFormat string
 }
 
-func (l *Logger) Log(message string) error {
-	logMessage := l.formatMessage(message)
-
-	// 写入日志文件
-	_, err := l.file.WriteString(logMessage)
-	if err != nil {
-		return err
-	}
-
-	return nil
+func (f *CustomFormatter) Format(entry *logrus.Entry) ([]byte, error) {
+    timestamp := entry.Time.Format(f.TimestampFormat)
+    msg := fmt.Sprintf("%s [%s] %s\n", timestamp, entry.Level.String(), entry.Message)
+    return []byte(msg), nil
 }
 
-func (l *Logger) Console(message string) {
-	logMessage := l.formatMessage(message)
+func NewLogger(config Config) *Logger {
+    log := logrus.New()
+    consoleLogger := logrus.New()
 
-	// 打印到控制台
-	fmt.Print(logMessage)
+    // 设置日志输出到文件并进行轮转
+    log.SetOutput(&lumberjack.Logger{
+        Filename:   config.File,
+        MaxSize:    config.MaxSize,    // MB
+        MaxAge:     config.MaxAge,     // days
+        MaxBackups: config.MaxBackups, // number of backups
+        Compress:   config.Compress,   // compress old logs
+    })
+
+    // 设置自定义日志格式
+    formatter := &CustomFormatter{
+        TimestampFormat: time.RFC3339,
+    }
+    log.SetFormatter(formatter)
+    consoleLogger.SetFormatter(formatter)
+
+    // 设置日志级别
+    fileLevel, err := logrus.ParseLevel(config.FileLevel)
+    if err != nil {
+        fileLevel = logrus.InfoLevel
+    }
+    log.SetLevel(fileLevel)
+
+    consoleLevel, err := logrus.ParseLevel(config.ConsoleLevel)
+    if err != nil {
+        consoleLevel = logrus.ErrorLevel
+    }
+    consoleLogger.SetLevel(consoleLevel)
+
+    // 设置控制台输出
+    consoleLogger.SetOutput(os.Stdout)
+
+    return &Logger{log, consoleLogger}
+}
+
+func (l *Logger) Log(message string, level ...string) {
+    logLevel := logrus.InfoLevel
+    if len(level) > 0 {
+        parsedLevel, err := logrus.ParseLevel(level[0])
+        if err == nil {
+            logLevel = parsedLevel
+        }
+    }
+    l.Logger.Log(logLevel, message)
+}
+
+func (l *Logger) Console(message string, level ...string) {
+    logLevel := logrus.ErrorLevel
+    if len(level) > 0 {
+        parsedLevel, err := logrus.ParseLevel(level[0])
+        if err == nil {
+            logLevel = parsedLevel
+        }
+    }
+    l.consoleLogger.Log(logLevel, message)
 }
 
 func (l *Logger) Close() error {
-	return l.file.Close()
+    // logrus 没有显式的关闭方法，这里可以留空
+    return nil
 }
