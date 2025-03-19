@@ -17,7 +17,8 @@ func main() {
     changeToProjectRoot()
 
     // 加载配置
-    config := loadConfig()
+    configPath := filepath.Join("configs", "config.yaml")
+    config := loadConfig(configPath)
 
     // 初始化日志记录器
     logConfig := logger.Config{
@@ -61,8 +62,7 @@ func changeToProjectRoot() {
     log.Printf("Current working directory: %s\n", cwd)
 }
 
-func loadConfig() *checker.Config {
-    configPath := filepath.Join("configs", "config.yaml")
+func loadConfig(configPath string) *checker.Config {
     config, err := checker.LoadConfig(configPath)
     if err != nil {
         log.Fatalf("Error loading configuration: %v", err)

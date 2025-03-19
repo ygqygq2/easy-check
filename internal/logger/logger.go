@@ -12,6 +12,8 @@ import (
 type Logger struct {
     *logrus.Logger
     consoleLogger *logrus.Logger
+    fileLevel     logrus.Level
+    consoleLevel  logrus.Level
 }
 
 type Config struct {
@@ -54,13 +56,14 @@ func NewLogger(config Config) *Logger {
     log.SetFormatter(formatter)
     consoleLogger.SetFormatter(formatter)
 
-    // 设置日志级别
+    // 设置文件日志级别
     fileLevel, err := logrus.ParseLevel(config.FileLevel)
     if err != nil {
         fileLevel = logrus.InfoLevel
     }
     log.SetLevel(fileLevel)
 
+    // 设置控制台日志级别
     consoleLevel, err := logrus.ParseLevel(config.ConsoleLevel)
     if err != nil {
         consoleLevel = logrus.ErrorLevel
@@ -70,11 +73,11 @@ func NewLogger(config Config) *Logger {
     // 设置控制台输出
     consoleLogger.SetOutput(os.Stdout)
 
-    return &Logger{log, consoleLogger}
+    return &Logger{log, consoleLogger, fileLevel, consoleLevel}
 }
 
 func (l *Logger) Log(message string, level ...string) {
-    logLevel := logrus.InfoLevel
+    logLevel := l.fileLevel
     if len(level) > 0 {
         parsedLevel, err := logrus.ParseLevel(level[0])
         if err == nil {
@@ -85,7 +88,7 @@ func (l *Logger) Log(message string, level ...string) {
 }
 
 func (l *Logger) Console(message string, level ...string) {
-    logLevel := logrus.ErrorLevel
+    logLevel := l.consoleLevel
     if len(level) > 0 {
         parsedLevel, err := logrus.ParseLevel(level[0])
         if err == nil {

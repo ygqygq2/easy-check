@@ -14,7 +14,7 @@ interval: 10 # 检测间隔时间，单位为秒
 
 log:
   file: "logs/check-log.txt" # 日志文件名
-  max_size: 10 # 单个日志文件的最大大小（MB）
+  max_size: 1 # 单个日志文件的最大大小（MB）
   max_age: 7 # 保留旧日志文件的最大天数
   max_backups: 100 # 保留旧日志文件的最大数量
   compress: false # 是否压缩旧日志文件
