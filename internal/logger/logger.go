@@ -31,7 +31,7 @@ type CustomFormatter struct {
 }
 
 func (f *CustomFormatter) Format(entry *logrus.Entry) ([]byte, error) {
-    timestamp := entry.Time.Format(f.TimestampFormat)
+    timestamp := entry.Time.Local().Format(f.TimestampFormat)
     msg := fmt.Sprintf("%s [%s] %s\n", timestamp, entry.Level.String(), entry.Message)
     return []byte(msg), nil
 }
