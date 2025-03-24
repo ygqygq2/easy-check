@@ -3,7 +3,6 @@ package logger
 import (
 	"fmt"
 	"os"
-	"time"
 
 	"github.com/sirupsen/logrus"
 	"gopkg.in/natefinch/lumberjack.v2"
@@ -31,6 +30,7 @@ type CustomFormatter struct {
 }
 
 func (f *CustomFormatter) Format(entry *logrus.Entry) ([]byte, error) {
+    // 使用自定义时间戳格式
     timestamp := entry.Time.Local().Format(f.TimestampFormat)
     msg := fmt.Sprintf("%s [%s] %s\n", timestamp, entry.Level.String(), entry.Message)
     return []byte(msg), nil
@@ -51,7 +51,7 @@ func NewLogger(config Config) *Logger {
 
     // 设置自定义日志格式
     formatter := &CustomFormatter{
-        TimestampFormat: time.RFC3339,
+        TimestampFormat: "2006-01-02 15:04:05", // 自定义时间戳格式
     }
     log.SetFormatter(formatter)
     consoleLogger.SetFormatter(formatter)
