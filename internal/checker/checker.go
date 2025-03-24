@@ -1,7 +1,9 @@
 package checker
 
 import (
+    "easy-check/internal/config"
 	"easy-check/internal/logger"
+	"easy-check/internal/notifier"
 	"fmt"
 	"regexp"
 	"strings"
@@ -9,28 +11,25 @@ import (
 	"time"
 )
 
-type Host struct {
-    Host        string
-    Description string
-}
-
 type Checker struct {
-    Hosts    []Host
+    Hosts    []config.Host
     Interval time.Duration
     Count    int
     Timeout  int
     Pinger   Pinger
     Logger   *logger.Logger
+    Notifier notifier.Notifier
 }
 
-func NewChecker(hosts []Host, interval int, count int, timeout int, pinger Pinger, logger *logger.Logger) *Checker {
+func NewChecker(config *config.Config, pinger Pinger, logger *logger.Logger, notifier notifier.Notifier) *Checker {
     return &Checker{
-        Hosts:    hosts,
-        Interval: time.Duration(interval) * time.Second,
-        Count:    count,
-        Timeout:  timeout,
+        Hosts:    config.Hosts,
+        Interval: time.Duration(config.Interval) * time.Second,
+        Count:    config.Ping.Count,
+        Timeout:  config.Ping.Timeout,
         Pinger:   pinger,
         Logger:   logger,
+        Notifier: notifier,
     }
 }
 
@@ -39,7 +38,7 @@ func (c *Checker) PingHosts() {
 
     for _, host := range c.Hosts {
         wg.Add(1)
-        go func(host Host) {
+        go func(host config.Host) {
             defer wg.Done()
             c.pingHost(host)
         }(host)
@@ -48,7 +47,7 @@ func (c *Checker) PingHosts() {
     wg.Wait()
 }
 
-func (c *Checker) pingHost(host Host) {
+func (c *Checker) pingHost(host config.Host) {
     output, err := c.Pinger.Ping(host.Host, c.Count, c.Timeout)
     if err != nil {
         c.Logger.Log(fmt.Sprintf("Ping to [%s] %s failed: %v", host.Description, host.Host, err), "error")
@@ -63,6 +62,10 @@ func (c *Checker) pingHost(host Host) {
     if successRate < 0.8 {
         c.Logger.Log(fmt.Sprintf("Ping to [%s] %s failed: success rate %.2f%%", host.Description, host.Host, successRate*100), "error")
         c.Logger.Console(fmt.Sprintf("Ping to [%s] %s failed: success rate %.2f%%", host.Description, host.Host, successRate*100))
+        // 发送通知
+        if c.Notifier != nil {
+            c.Notifier.SendNotification(host.Host, host.Description)
+        }
     } else {
         c.Logger.Log(fmt.Sprintf("Ping to [%s] %s succeeded: success rate %.2f%%, latency %s", host.Description, host.Host, successRate*100, sampleLatency))
     }

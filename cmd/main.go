@@ -2,7 +2,9 @@ package main
 
 import (
 	"easy-check/internal/checker"
+	"easy-check/internal/config"
 	"easy-check/internal/logger"
+	"easy-check/internal/notifier"
 	"fmt"
 	"log"
 	"os"
@@ -36,9 +38,22 @@ func main() {
     logger.Log("Starting easy-check...")
     logger.Log("Configuration loaded successfully")
 
+    // 初始化 Notifier
+    var notifierInstance notifier.Notifier
+    if config.Alert.Feishu.Enable && config.Alert.Feishu.MsgType == "text" {
+        feishuNotifier, err := notifier.NewFeishuNotifier(&config.Alert.Feishu)
+        if err != nil {
+            logger.Log(fmt.Sprintf("Failed to initialize FeishuNotifier: %v", err))
+            return
+        }
+        notifierInstance = feishuNotifier
+    } else {
+        logger.Log("No valid notifier configuration found")
+    }
+
     // 初始化 pinger 和 checker
     pinger := checker.NewPinger()
-    chk := checker.NewChecker(config.Hosts, config.Interval, config.Ping.Count, config.Ping.Timeout, pinger, logger)
+    chk := checker.NewChecker(config, pinger, logger, notifierInstance)
 
     // 执行初始 ping 检查
     logger.Log("Performing initial ping check")
@@ -62,8 +77,8 @@ func changeToProjectRoot() {
     log.Printf("Current working directory: %s\n", cwd)
 }
 
-func loadConfig(configPath string) *checker.Config {
-    config, err := checker.LoadConfig(configPath)
+func loadConfig(configPath string) *config.Config {
+    config, err := config.LoadConfig(configPath)
     if err != nil {
         log.Fatalf("Error loading configuration: %v", err)
     }
