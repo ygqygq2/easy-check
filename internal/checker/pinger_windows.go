@@ -14,7 +14,7 @@ import (
 type WindowsPinger struct{}
 
 func (p *WindowsPinger) Ping(host string, count int, timeout int) (string, error) {
-	cmd := exec.Command("ping", "-n", fmt.Sprintf("%d", count), "-w", fmt.Sprintf("%d", timeout*1000), host)
+	cmd := exec.Command("ping", "-4", "-n", fmt.Sprintf("%d", count), "-w", fmt.Sprintf("%d", timeout*1000), host)
 	output, err := cmd.CombinedOutput()
 
 	// 将 GBK 编码转换为 UTF-8
