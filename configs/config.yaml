@@ -10,7 +10,7 @@ ping:
   count: 5 # ping的次数
   timeout: 2 # ping的超时时间，单位为秒
 
-interval: 60 # 检测间隔时间，单位为秒
+interval: 20 # 检测间隔时间，单位为秒
 
 log:
   file: "logs/check-log.txt" # 日志文件名
@@ -18,13 +18,13 @@ log:
   max_age: 7 # 保留旧日志文件的最大天数
   max_backups: 100 # 保留旧日志文件的最大数量
   compress: false # 是否压缩旧日志文件
-  console_level: "info" # 控制台日志级别
+  console_level: "debug" # 控制台日志级别
   file_level: "info" # 日志文件日志级别
 
 alert:
-  # 可用的模板变量：{{.Time}}、{{.AlertList}}、{{.AlertCount}}、{{.Host}}、{{.Description}}
+  # 可用的模板变量：{{.Time}}、{{.Host}}、{{.Description}}、{{.AlertList}}、{{.AlertCount}}、
   aggregate_alerts: true # 是否启用聚合告警
-  aggregate_window: 60 # 聚合告警的时间窗口，单位为秒
+  aggregate_window: 20 # 聚合告警的时间窗口，单位为秒
   aggregate_line_template: "主机：{{.Host}}，描述：{{.Description}}" # 聚合告警的行模板
   feishu:
     enable: true # 是否启用飞书告警

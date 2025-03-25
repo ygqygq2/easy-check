@@ -22,7 +22,7 @@ type AlertAggregator struct {
 	alerts         []*AlertItem
 	aggregateTimer *time.Timer
 	window         time.Duration
-	notifier       Notifier
+	notifiers      []Notifier
 	logger         *logger.Logger
 	mu             sync.Mutex
 	active         bool
@@ -38,14 +38,14 @@ type TemplateData struct {
 }
 
 // NewAlertAggregator 创建一个新的告警聚合器
-func NewAlertAggregator(window time.Duration, notifier Notifier, logger *logger.Logger, config *config.Config) *AlertAggregator {
+func NewAlertAggregator(window time.Duration, notifiers []Notifier, logger *logger.Logger, config *config.Config) *AlertAggregator {
 	agg := &AlertAggregator{
-		alerts:   make([]*AlertItem, 0),
-		window:   window,
-		notifier: notifier,
-		logger:   logger,
-		active:   true,
-		config:   config,
+		alerts:    make([]*AlertItem, 0),
+		window:    window,
+		notifiers: notifiers,
+		logger:    logger,
+		active:    true,
+		config:    config,
 	}
 
 	// 启动聚合定时器
@@ -76,54 +76,54 @@ func (a *AlertAggregator) AddAlert(host, description string) {
 
 // sendAggregatedAlerts 发送聚合的告警
 func (a *AlertAggregator) sendAggregatedAlerts() {
-	a.mu.Lock()
+    a.mu.Lock()
 
-	if len(a.alerts) == 0 {
-		a.mu.Unlock()
-		return
-	}
+    if len(a.alerts) == 0 {
+        a.mu.Unlock()
+        return
+    }
 
-	// 复制告警数组以便在解锁后使用
-	alerts := make([]*AlertItem, len(a.alerts))
-	copy(alerts, a.alerts)
-	alertCount := len(alerts)
+    // 复制告警数组以便在解锁后使用
+    alerts := make([]*AlertItem, len(a.alerts))
+    copy(alerts, a.alerts)
+    alertCount := len(alerts)
 
-	// 清空告警队列
-	a.alerts = make([]*AlertItem, 0)
+    // 清空告警队列
+    a.alerts = make([]*AlertItem, 0)
 
-	// 在处理告警之前解锁
-	a.mu.Unlock()
+    // 在处理告警之前解锁
+    a.mu.Unlock()
 
-	// 构建聚合告警列表
-	alertList := a.formatAlertList(alerts)
+    // 构建聚合告警列表
+    alertList := a.formatAlertList(alerts)
 
-	// 获取标题
-	title := "聚合告警"
-	if a.config != nil && a.config.Alert.Feishu.Title != "" {
-		title = a.config.Alert.Feishu.Title
-	}
+    // 获取标题
+    title := "聚合告警"
+    if a.config != nil && a.config.Alert.Feishu.Title != "" {
+        title = a.config.Alert.Feishu.Title
+    }
 
-	// 尝试使用适当的方法发送告警
-	var err error
-	if feishuNotifier, ok := a.notifier.(*FeishuNotifier); ok {
-		// 如果是飞书通知器，使用专门的聚合方法
-		err = feishuNotifier.SendAggregatedNotification(title, alertCount, alertList, alerts)
-	} else {
-		// 对于其他通知器，使用通用接口方法
-		message := fmt.Sprintf("检测到 %d 个主机异常:\n\n%s", alertCount, alertList)
-		err = a.notifier.SendNotification(title, message)
-	}
+    // 构建告警内容
+    message := a.applyTemplate(a.config.Alert.Feishu.Content, map[string]string{
+        "Time":       time.Now().Format("2006-01-02 15:04:05"),
+        "AlertCount": fmt.Sprintf("%d", alertCount),
+        "AlertList":  alertList,
+    })
 
-	if err != nil {
-		a.logger.Log(fmt.Sprintf("Error sending aggregated alerts: %v", err), "error")
-	} else {
-		a.logger.Log(fmt.Sprintf("Successfully sent aggregated alerts for %d hosts", alertCount), "info")
-	}
+    // 发送告警
+    for _, notifier := range a.notifiers {
+        err := notifier.SendNotification(title, message)
+        if err != nil {
+            a.logger.Log(fmt.Sprintf("Error sending aggregated alerts: %v", err), "error")
+        } else {
+            a.logger.Log(fmt.Sprintf("Successfully sent aggregated alerts for %d hosts", alertCount), "info")
+        }
+    }
 
-	// 重置计时器
-	a.mu.Lock()
-	a.resetTimer()
-	a.mu.Unlock()
+    // 重置计时器
+    a.mu.Lock()
+    a.resetTimer()
+    a.mu.Unlock()
 }
 
 // formatAlertList 根据配置的行模板格式化告警列表

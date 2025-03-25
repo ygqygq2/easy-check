@@ -3,7 +3,6 @@ package notifier
 import (
 	"easy-check/internal/config"
 	"easy-check/internal/logger"
-	"fmt"
 	"time"
 )
 
@@ -14,16 +13,16 @@ type Notifier interface {
 
 // AggregatingNotifier 是一个装饰器，为任何通知器添加聚合功能
 type AggregatingNotifier struct {
-	baseNotifier Notifier
-	aggregator   *AlertAggregator
+	notifiers  []Notifier
+	aggregator *AlertAggregator
 }
 
 // NewAggregatingNotifier 创建一个新的聚合通知器
-func NewAggregatingNotifier(baseNotifier Notifier, config *config.Config, logger *logger.Logger) *AggregatingNotifier {
+func NewAggregatingNotifier(notifiers []Notifier, config *config.Config, logger *logger.Logger) *AggregatingNotifier {
 	window := time.Duration(config.Alert.AggregateWindow) * time.Second
 	return &AggregatingNotifier{
-		baseNotifier: baseNotifier,
-		aggregator:   NewAlertAggregator(window, baseNotifier, logger, config),
+		notifiers:  notifiers,
+		aggregator: NewAlertAggregator(window, notifiers, logger, config),
 	}
 }
 
@@ -36,10 +35,14 @@ func (n *AggregatingNotifier) SendNotification(host, description string) error {
 
 // SendDirectNotification 直接发送通知，不经过聚合
 func (n *AggregatingNotifier) SendDirectNotification(title, content string) error {
-	if n.baseNotifier != nil {
-		return n.baseNotifier.SendNotification(title, content)
+	var err error
+	for _, notifier := range n.notifiers {
+		err = notifier.SendNotification(title, content)
+		if err != nil {
+			return err
+		}
 	}
-	return fmt.Errorf("no base notifier available")
+	return nil
 }
 
 // Close 关闭聚合器
