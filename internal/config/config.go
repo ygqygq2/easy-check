@@ -34,6 +34,9 @@ type Config struct {
 
 type FeishuConfig struct {
     Enable   bool   `yaml:"enable"`
+    AggregateAlerts bool `yaml:"aggregate_alerts"`
+    AggregateWindow int  `yaml:"aggregate_window"`
+    AggregateLineTemplate string `yaml:"aggregate_line_template"`
     Webhook  string `yaml:"webhook"`
     MsgType  string `yaml:"msg_type"`
     Title    string `yaml:"title"`

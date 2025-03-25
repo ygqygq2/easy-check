@@ -57,7 +57,25 @@ func main() {
 			globalLogger.Log(fmt.Sprintf("Failed to initialize FeishuNotifier: %v", err), "error")
 			return
 		}
-		notifierInstance = feishuNotifier
+		// 如果开启了告警聚合
+		if cfg.Alert.Feishu.AggregateAlerts {
+			window := time.Duration(cfg.Alert.Feishu.AggregateWindow) * time.Second
+			if window == 0 {
+				window = 60 * time.Second // 默认60秒
+			}
+			globalLogger.Log(fmt.Sprintf("Alert aggregation enabled with %d second window", cfg.Alert.Feishu.AggregateWindow), "info")
+			aggregatingNotifier := notifier.NewAggregatingNotifier(feishuNotifier, window, globalLogger, &cfg.Alert.Feishu)
+			notifierInstance = aggregatingNotifier
+
+			// 在程序退出时关闭聚合器
+			defer func() {
+				if aggregator, ok := notifierInstance.(*notifier.AggregatingNotifier); ok {
+					aggregator.Close()
+				}
+			}()
+		} else {
+			notifierInstance = feishuNotifier
+		}
 	} else {
 		globalLogger.Log("No valid notifier configuration found", "warn")
 	}
@@ -130,7 +148,7 @@ func changeToProjectRoot() error {
 	}
 
 	cwd, err := os.Getwd()
-	if (err != nil) {
+	if err != nil {
 		return fmt.Errorf("error getting current working directory: %v", err)
 	}
 	fmt.Printf("Current working directory: %s\n", cwd)
@@ -147,21 +165,21 @@ func startPeriodicPingChecks(chk *checker.Checker, cfg *config.Config, logger *l
 
 	// 处理 ping 检查的 goroutine
 	go func() {
-			defer ticker.Stop() // 移到 goroutine 内部，这样只有在 goroutine 结束时才会停止 ticker
-			for {
-					select {
-					case <-ticker.C:
-							logger.Log("Executing scheduled ping check", "debug")
-							chk.PingHosts()
-					case newInterval := <-tickerControlChan:
-							// 收到新的间隔时间，更新定时器
-							ticker.Stop()
-							ticker = time.NewTicker(newInterval)
-							logger.Log(fmt.Sprintf("Updated ping check interval to %v", newInterval), "info")
-					case <-stopChan:
-							return
-					}
+		defer ticker.Stop() // 移到 goroutine 内部，这样只有在 goroutine 结束时才会停止 ticker
+		for {
+			select {
+			case <-ticker.C:
+				logger.Log("Executing scheduled ping check", "debug")
+				chk.PingHosts()
+			case newInterval := <-tickerControlChan:
+				// 收到新的间隔时间，更新定时器
+				ticker.Stop()
+				ticker = time.NewTicker(newInterval)
+				logger.Log(fmt.Sprintf("Updated ping check interval to %v", newInterval), "info")
+			case <-stopChan:
+				return
 			}
+		}
 	}()
 
 	return stopChan
