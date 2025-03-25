@@ -32,3 +32,6 @@ package: build
 	cp README.md easy-check/
 	zip -r easy-check.zip easy-check
 	rm -rf easy-check
+
+format:
+	goimports -w .

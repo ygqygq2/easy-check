@@ -63,22 +63,43 @@ func NewFeishuNotifier(config *config.FeishuConfig, logger *logger.Logger) (*Fei
 	}, nil
 }
 
-func (n *FeishuNotifier) SendNotification(host, description string) error {
-	title := n.Title
-	message := n.Content
-	message = replaceTemplateVariables(message, host, description)
+// SendNotification 发送单条告警通知
+func (n *FeishuNotifier) SendNotification(title, content string) error {
+	// 处理普通告警的模板
+	message := processTemplate(n.Content, map[string]string{
+		"Time":        time.Now().Format("2006-01-02 15:04:05"),
+		"Host":        title, // 为了兼容之前的逻辑，使用title作为Host
+		"Description": content,
+	})
 
+	// 通过通用方法发送消息
+	return n.sendMessage(n.Title, message, fmt.Sprintf("host %s", title))
+}
+
+// SendAggregatedNotification 发送聚合告警通知
+func (n *FeishuNotifier) SendAggregatedNotification(title string, alertCount int, alertList string, alerts []*AlertItem) error {
+	// 处理聚合告警的模板
+	message := processTemplate(n.Content, map[string]string{
+		"Time":       time.Now().Format("2006-01-02 15:04:05"),
+		"AlertCount": fmt.Sprintf("%d", alertCount),
+		"AlertList":  alertList,
+	})
+
+	// 通过通用方法发送消息
+	return n.sendMessage(title, message, fmt.Sprintf("%d hosts", alertCount))
+}
+
+// sendMessage 内部方法，处理实际的消息发送逻辑
+func (n *FeishuNotifier) sendMessage(title, content, logContext string) error {
 	// 根据消息类型选择不同的发送器
 	var sender FeishuMessageSender
 	switch n.MsgType {
 	case "text":
 		sender = &TextMessageSender{}
 	case "post":
-		// sender = &PostMessageSender{} // 待实现
 		n.Logger.Log("Post message type is not implemented yet", "warn")
 		return fmt.Errorf("post message type not implemented yet")
 	case "interactive":
-		// sender = &InteractiveMessageSender{} // 待实现
 		n.Logger.Log("Interactive message type is not implemented yet", "warn")
 		return fmt.Errorf("interactive message type not implemented yet")
 	default:
@@ -87,7 +108,7 @@ func (n *FeishuNotifier) SendNotification(host, description string) error {
 	}
 
 	// 准备消息
-	data, err := sender.PrepareMessage(title, message)
+	data, err := sender.PrepareMessage(title, content)
 	if err != nil {
 		n.Logger.Log(fmt.Sprintf("Failed to prepare message: %v", err), "error")
 		return err
@@ -107,7 +128,7 @@ func (n *FeishuNotifier) SendNotification(host, description string) error {
 		return fmt.Errorf("failed to send notification, status code: %d", resp.StatusCode)
 	}
 
-	n.Logger.Log(fmt.Sprintf("Successfully sent notification for host %s", host), "info")
+	n.Logger.Log(fmt.Sprintf("Successfully sent notification for %s", logContext), "info")
 	return nil
 }
 
@@ -127,64 +148,11 @@ func (s *TextMessageSender) PrepareMessage(title string, content string) ([]byte
 	return json.Marshal(msg)
 }
 
-func replaceTemplateVariables(template, host, description string) string {
-	// 当前时间
-	time := time.Now().Format("2006-01-02 15:04:05")
-	template = strings.ReplaceAll(template, "{{.Time}}", time)
-	template = strings.ReplaceAll(template, "{{.Host}}", host)
-	template = strings.ReplaceAll(template, "{{.Description}}", description)
-	return template
-}
-
-// 添加一个新的方法用于处理聚合消息
-func (n *FeishuNotifier) SendAggregatedNotification(title string, alertCount int, alertList string, alerts []*AlertItem) error {
-	message := n.Content
-
-	// 替换通用变量
-	time := time.Now().Format("2006-01-02 15:04:05")
-	message = strings.ReplaceAll(message, "{{.Time}}", time)
-
-	// 替换聚合特定变量
-	message = strings.ReplaceAll(message, "{{.AlertCount}}", fmt.Sprintf("%d", alertCount))
-	message = strings.ReplaceAll(message, "{{.AlertList}}", alertList)
-
-	// 根据消息类型选择不同的发送器
-	var sender FeishuMessageSender
-	switch n.MsgType {
-	case "text":
-		sender = &TextMessageSender{}
-	case "post":
-		n.Logger.Log("Post message type is not implemented yet", "warn")
-		return fmt.Errorf("post message type not implemented yet")
-	case "interactive":
-		n.Logger.Log("Interactive message type is not implemented yet", "warn")
-		return fmt.Errorf("interactive message type not implemented yet")
-	default:
-		n.Logger.Log(fmt.Sprintf("Unsupported message type: %s", n.MsgType), "error")
-		return fmt.Errorf("unsupported message type: %s", n.MsgType)
+// processTemplate 统一的模板处理函数
+func processTemplate(template string, variables map[string]string) string {
+	result := template
+	for key, value := range variables {
+		result = strings.ReplaceAll(result, "{{."+key+"}}", value)
 	}
-
-	// 准备消息
-	data, err := sender.PrepareMessage(title, message)
-	if err != nil {
-		n.Logger.Log(fmt.Sprintf("Failed to prepare message: %v", err), "error")
-		return err
-	}
-
-	// 发送消息
-	n.Logger.Log("Sending aggregated notification", "debug")
-	resp, err := http.Post(n.WebhookURL, "application/json", bytes.NewBuffer(data))
-	if err != nil {
-		n.Logger.Log(fmt.Sprintf("Failed to send notification: %v", err), "error")
-		return err
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		n.Logger.Log(fmt.Sprintf("Failed to send notification, status code: %d", resp.StatusCode), "error")
-		return fmt.Errorf("failed to send notification, status code: %d", resp.StatusCode)
-	}
-
-	n.Logger.Log(fmt.Sprintf("Successfully sent aggregated notification for %d hosts", alertCount), "info")
-	return nil
+	return result
 }

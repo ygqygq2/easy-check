@@ -5,7 +5,6 @@ import (
 	"easy-check/internal/config"
 	"easy-check/internal/logger"
 	"fmt"
-	"strings"
 	"sync"
 	"text/template"
 	"time"
@@ -27,7 +26,7 @@ type AlertAggregator struct {
 	logger         *logger.Logger
 	mu             sync.Mutex
 	active         bool
-	config         *config.FeishuConfig // 添加配置引用
+	config         *config.Config // 修改为通用配置类型
 }
 
 // TemplateData 保存传递给模板的数据
@@ -39,7 +38,7 @@ type TemplateData struct {
 }
 
 // NewAlertAggregator 创建一个新的告警聚合器
-func NewAlertAggregator(window time.Duration, notifier Notifier, logger *logger.Logger, config *config.FeishuConfig) *AlertAggregator {
+func NewAlertAggregator(window time.Duration, notifier Notifier, logger *logger.Logger, config *config.Config) *AlertAggregator {
 	agg := &AlertAggregator{
 		alerts:   make([]*AlertItem, 0),
 		window:   window,
@@ -100,25 +99,25 @@ func (a *AlertAggregator) sendAggregatedAlerts() {
 
 	// 获取标题
 	title := "聚合告警"
-	if a.config != nil && a.config.Title != "" {
-		title = a.config.Title
+	if a.config != nil && a.config.Alert.Feishu.Title != "" {
+		title = a.config.Alert.Feishu.Title
 	}
 
-	// 尝试使用 FeishuNotifier 发送聚合告警
+	// 尝试使用适当的方法发送告警
+	var err error
 	if feishuNotifier, ok := a.notifier.(*FeishuNotifier); ok {
-		err := feishuNotifier.SendAggregatedNotification(title, alertCount, alertList, alerts)
-		if err != nil {
-			a.logger.Log(fmt.Sprintf("Error sending aggregated alerts with FeishuNotifier: %v", err), "error")
-		}
+		// 如果是飞书通知器，使用专门的聚合方法
+		err = feishuNotifier.SendAggregatedNotification(title, alertCount, alertList, alerts)
 	} else {
-		// 回退到通用通知器
+		// 对于其他通知器，使用通用接口方法
 		message := fmt.Sprintf("检测到 %d 个主机异常:\n\n%s", alertCount, alertList)
-		err := a.notifier.SendNotification(title, message)
-		if err != nil {
-			a.logger.Log(fmt.Sprintf("Error sending aggregated alerts: %v", err), "error")
-		} else {
-			a.logger.Log(fmt.Sprintf("Successfully sent aggregated alerts for %d hosts", alertCount), "info")
-		}
+		err = a.notifier.SendNotification(title, message)
+	}
+
+	if err != nil {
+		a.logger.Log(fmt.Sprintf("Error sending aggregated alerts: %v", err), "error")
+	} else {
+		a.logger.Log(fmt.Sprintf("Successfully sent aggregated alerts for %d hosts", alertCount), "info")
 	}
 
 	// 重置计时器
@@ -131,9 +130,9 @@ func (a *AlertAggregator) sendAggregatedAlerts() {
 func (a *AlertAggregator) formatAlertList(alerts []*AlertItem) string {
 	var buffer bytes.Buffer
 
-	if a.config != nil && a.config.AggregateLineTemplate != "" {
+	if a.config != nil && a.config.Alert.AggregateLineTemplate != "" {
 		// 使用配置的行模板
-		lineTemplate := a.config.AggregateLineTemplate
+		lineTemplate := a.config.Alert.AggregateLineTemplate
 		tmpl, err := template.New("line").Parse(lineTemplate)
 		if err != nil {
 			a.logger.Log(fmt.Sprintf("Error parsing line template: %v", err), "error")

@@ -22,15 +22,15 @@ log:
   file_level: "info" # 日志文件日志级别
 
 alert:
+  # 可用的模板变量：{{.Time}}、{{.AlertList}}、{{.AlertCount}}、{{.Host}}、{{.Description}}
+  aggregate_alerts: true # 是否启用聚合告警
+  aggregate_window: 60 # 聚合告警的时间窗口，单位为秒
+  aggregate_line_template: "主机：{{.Host}}，描述：{{.Description}}" # 聚合告警的行模板
   feishu:
     enable: true # 是否启用飞书告警
-    aggregate_alerts: true # 是否启用聚合告警
-    aggregate_window: 60 # 聚合告警的时间窗口，单位为秒
-    aggregate_line_template: "主机：{{.Host}}，描述：{{.Description}}" # 聚合告警的行模板
     webhook: "https://open.feishu.cn/open-apis/bot/v2/hook/xxxxxxxxxxxxxxxxxxxx" # 飞书机器人的 webhook 地址
     msg_type: "text" # 飞书告警的类型，可选值：text、post、interactive
     title: "💔【easy-check】：检测告警" # 飞书告警的标题
-    # 可用的模板变量：{{.Time}}、{{.AlertList}}、{{.AlertCount}}、{{.Host}}、{{.Description}}
     content: |
       🧭【告警时间】：{{.Time}}
       📝【告警详情】：以下 {{.AlertCount}} 个主机不可达：

@@ -58,13 +58,13 @@ func main() {
 			return
 		}
 		// 如果开启了告警聚合
-		if cfg.Alert.Feishu.AggregateAlerts {
-			window := time.Duration(cfg.Alert.Feishu.AggregateWindow) * time.Second
+		if cfg.Alert.AggregateAlerts {
+			window := time.Duration(cfg.Alert.AggregateWindow) * time.Second
 			if window == 0 {
 				window = 60 * time.Second // 默认60秒
 			}
-			globalLogger.Log(fmt.Sprintf("Alert aggregation enabled with %d second window", cfg.Alert.Feishu.AggregateWindow), "info")
-			aggregatingNotifier := notifier.NewAggregatingNotifier(feishuNotifier, window, globalLogger, &cfg.Alert.Feishu)
+			globalLogger.Log(fmt.Sprintf("Alert aggregation enabled with %d second window", cfg.Alert.AggregateWindow), "info")
+			aggregatingNotifier := notifier.NewAggregatingNotifier(feishuNotifier, cfg, globalLogger)
 			notifierInstance = aggregatingNotifier
 
 			// 在程序退出时关闭聚合器
