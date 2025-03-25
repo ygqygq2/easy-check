@@ -18,7 +18,7 @@ log:
   max_age: 7 # 保留旧日志文件的最大天数
   max_backups: 100 # 保留旧日志文件的最大数量
   compress: false # 是否压缩旧日志文件
-  console_level: "error" # 控制台日志级别
+  console_level: "info" # 控制台日志级别
   file_level: "info" # 日志文件日志级别
 
 alert:
@@ -26,5 +26,7 @@ alert:
     enable: true # 是否启用飞书告警
     webhook: "https://open.feishu.cn/open-apis/bot/v2/hook/xxxxxxxxxxxxxxxxxxxx" # 飞书机器人的 webhook 地址
     msg_type: "text" # 飞书告警的类型，可选值：text、post、interactive
-    title: "Ping 检测告警" # 飞书告警的标题
-    content: "检测到以下主机不可达：{{.Host}}，描述：{{.Description}}" # 飞书告警的内容，支持模板变量
+    title: "💔【easy-check】：检测告警" # 飞书告警的标题
+    content: |
+      🧭【告警时间】：{{.Time}}
+      📝【告警详情】：以下主机不可达：{{.Host}}，描述：{{.Description}}

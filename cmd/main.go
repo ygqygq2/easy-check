@@ -52,7 +52,7 @@ func main() {
 	// 初始化 Notifier
 	var notifierInstance notifier.Notifier
 	if cfg.Alert.Feishu.Enable && cfg.Alert.Feishu.MsgType == "text" {
-		feishuNotifier, err := notifier.NewFeishuNotifier(&cfg.Alert.Feishu)
+		feishuNotifier, err := notifier.NewFeishuNotifier(&cfg.Alert.Feishu, globalLogger)
 		if err != nil {
 			globalLogger.Log(fmt.Sprintf("Failed to initialize FeishuNotifier: %v", err), "error")
 			return
@@ -108,10 +108,11 @@ func main() {
 	chk.PingHosts()
 
 	// 最后启动定期 ping 检查，并传入控制通道
-	startPeriodicPingChecks(chk, cfg, globalLogger, tickerControlChan)
+	stopChan := startPeriodicPingChecks(chk, cfg, globalLogger, tickerControlChan)
 
 	// 等待退出信号
 	waitForExitSignal(globalLogger)
+	close(stopChan)
 }
 
 func waitForExitSignal(logger *logger.Logger) {
@@ -136,32 +137,34 @@ func changeToProjectRoot() error {
 	return nil
 }
 
-func startPeriodicPingChecks(chk *checker.Checker, cfg *config.Config, logger *logger.Logger, tickerControlChan chan time.Duration) {
+func startPeriodicPingChecks(chk *checker.Checker, cfg *config.Config, logger *logger.Logger, tickerControlChan chan time.Duration) chan struct{} {
 	ticker := time.NewTicker(time.Duration(cfg.Interval) * time.Second)
-	defer ticker.Stop()
 
-	logger.Log("Starting periodic ping checks", "debug")
+	logger.Log("Starting periodic ping checks", "info") // 将日志级别从 debug 改为 info
 
 	// 创建一个停止通道，用于通知程序退出
 	stopChan := make(chan struct{})
 
 	// 处理 ping 检查的 goroutine
 	go func() {
-		for {
-			select {
-			case <-ticker.C:
-				logger.Log("Executing scheduled ping check", "debug")
-				chk.PingHosts()
-			case newInterval := <-tickerControlChan:
-				// 收到新的间隔时间，更新定时器
-				ticker.Stop()
-				ticker = time.NewTicker(newInterval)
-				logger.Log(fmt.Sprintf("Updated ping check interval to %v", newInterval), "info")
-			case <-stopChan:
-				return
+			defer ticker.Stop() // 移到 goroutine 内部，这样只有在 goroutine 结束时才会停止 ticker
+			for {
+					select {
+					case <-ticker.C:
+							logger.Log("Executing scheduled ping check", "debug")
+							chk.PingHosts()
+					case newInterval := <-tickerControlChan:
+							// 收到新的间隔时间，更新定时器
+							ticker.Stop()
+							ticker = time.NewTicker(newInterval)
+							logger.Log(fmt.Sprintf("Updated ping check interval to %v", newInterval), "info")
+					case <-stopChan:
+							return
+					}
 			}
-		}
 	}()
+
+	return stopChan
 }
 
 func getExecutablePath() string {
