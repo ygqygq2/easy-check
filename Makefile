@@ -8,15 +8,15 @@ build: build-linux build-windows
 
 # 编译 Linux 可执行文件
 build-linux:
-	GOOS=linux GOARCH=amd64 go build -o bin/easy-check cmd/main.go
+	GOOS=linux GOARCH=amd64 go1.23.7 build -o bin/easy-check cmd/main.go
 
 # 编译 Windows 可执行文件
 build-windows:
-	GOOS=windows GOARCH=amd64 go build -o bin/easy-check.exe cmd/main.go
+	GOOS=windows GOARCH=amd64 go1.23.7 build -o bin/easy-check.exe cmd/main.go
 
 # 测试目标
 test:
-	go test ./...
+	go1.23.7 test ./...
 
 # 清理目标
 clean:
