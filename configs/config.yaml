@@ -5,6 +5,7 @@ hosts:
     description: "腾讯"
   - host: "114.114.114.114"
     description: "公共 DNS"
+    fail_alert: false # 是否启用失败告警，未设置时默认为 true
 
 ping:
   count: 5 # ping的次数

@@ -67,6 +67,14 @@ func (a *AlertAggregator) AddAlert(host, description string) {
 		return
 	}
 
+	// 检查配置中是否禁用了该主机的告警
+	for _, h := range a.config.Hosts {
+		if h.Host == host && !h.FailAlert {
+			a.logger.Log(fmt.Sprintf("Alert for host %s ignored due to fail_alert=false", host), "debug")
+			return
+		}
+	}
+
 	alert := &AlertItem{
 		Host:        host,
 		Description: description,

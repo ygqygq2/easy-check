@@ -77,6 +77,13 @@ func Initialize() (*config.Config, notifier.Notifier, error) {
 		}
 	}
 
+	for i := range cfg.Hosts {
+		if cfg.Hosts[i].FailAlert == false {
+			continue
+		}
+		cfg.Hosts[i].FailAlert = true // 默认值为 true
+	}
+
 	return cfg, notifierInstance, nil
 }
 

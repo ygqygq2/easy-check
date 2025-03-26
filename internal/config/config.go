@@ -9,6 +9,7 @@ import (
 type Host struct {
 	Host        string `yaml:"host"`
 	Description string `yaml:"description"`
+	FailAlert   bool   `yaml:"fail_alert"`
 }
 
 type Config struct {
