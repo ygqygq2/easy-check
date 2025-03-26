@@ -5,7 +5,7 @@ hosts:
     description: "腾讯"
   - host: "114.114.114.114"
     description: "公共 DNS"
-    fail_alert: false # 是否启用失败告警，未设置时默认为 true
+    fail_alert: true # 是否启用失败告警，默认值可在 alert.fail_alert 设置，为 true 即失败时发送告警
 
 ping:
   count: 5 # ping的次数
@@ -19,10 +19,11 @@ log:
   max_age: 7 # 保留旧日志文件的最大天数
   max_backups: 100 # 保留旧日志文件的最大数量
   compress: false # 是否压缩旧日志文件
-  console_level: "error" # 控制台日志级别
+  console_level: "debug" # 控制台日志级别
   file_level: "info" # 日志文件日志级别
 
 alert:
+  fail_alert: true # 是否全局启用失败告警，为 true 时，即失败时发送告警
   # 可用的模板变量：{{.Date}}、{{.Time}}、{{.FailTime}}、{{.Host}}、{{.Description}}、{{.AlertList}}、{{.AlertCount}}、
   # {{.Date}}：当前日期，格式为 2006-01-02
   # {{.Time}}：当前时间，格式为 15:04:05
@@ -32,7 +33,7 @@ alert:
   # {{.AlertList}}：所有检测失败的告警列表，聚合告警时使用
   # {{.AlertCount}}：检测失败的告警数量，聚合告警时使用
   aggregate_alerts: true # 是否启用聚合告警
-  aggregate_window: 60 # 聚合告警的时间窗口，单位为秒
+  aggregate_window: 120 # 聚合告警的时间窗口，单位为秒
   aggregate_line_template: "- 时间：{{.FailTime}} | 主机：{{.Host}} | 描述：{{.Description}}" # 聚合告警的行模板
   feishu:
     enable: true # 是否启用飞书告警

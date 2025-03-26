@@ -29,6 +29,7 @@ type Config struct {
 		FileLevel    string `yaml:"file_level"`
 	} `yaml:"log"`
 	Alert struct {
+		FailAlert             bool         `yaml:"fail_alert"`
 		AggregateAlerts       bool         `yaml:"aggregate_alerts"`
 		AggregateWindow       int          `yaml:"aggregate_window"`
 		AggregateLineTemplate string       `yaml:"aggregate_line_template"`
