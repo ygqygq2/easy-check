@@ -54,7 +54,10 @@ func (c *Checker) pingHost(host config.Host) {
 		// 发送通知
 		c.Logger.Log(fmt.Sprintf("Ping command to [%s] %s failed, sending notification", host.Description, host.Host), "debug")
 		if c.Notifier != nil {
-			c.Notifier.SendNotification(host.Host, host.Description)
+			err := c.Notifier.SendNotification(host.Host, host.Description)
+			if err != nil {
+				c.Logger.Log(fmt.Sprintf("Failed to send notification: %v", err), "error")
+			}
 		}
 		return
 	}

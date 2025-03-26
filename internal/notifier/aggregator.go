@@ -31,6 +31,7 @@ type AlertAggregator struct {
 
 // TemplateData 保存传递给模板的数据
 type TemplateData struct {
+	Date       string
 	Time       string
 	AlertCount int
 	AlertList  string
@@ -60,6 +61,7 @@ func (a *AlertAggregator) AddAlert(host, description string) {
 	defer a.mu.Unlock()
 
 	// 如果不活跃，直接返回
+	a.logger.Log(fmt.Sprintf("AddAlert called, active: %v", a.active), "debug")
 	if !a.active {
 		return
 	}
@@ -76,104 +78,64 @@ func (a *AlertAggregator) AddAlert(host, description string) {
 
 // sendAggregatedAlerts 发送聚合的告警
 func (a *AlertAggregator) sendAggregatedAlerts() {
-    a.mu.Lock()
+	a.mu.Lock()
 
-    if len(a.alerts) == 0 {
-        a.mu.Unlock()
-        return
-    }
+	if len(a.alerts) == 0 {
+		a.mu.Unlock()
+		return
+	}
 
-    // 复制告警数组以便在解锁后使用
-    alerts := make([]*AlertItem, len(a.alerts))
-    copy(alerts, a.alerts)
-    alertCount := len(alerts)
+	// 复制告警数组以便在解锁后使用
+	alerts := make([]*AlertItem, len(a.alerts))
+	copy(alerts, a.alerts)
+	alertCount := len(alerts)
 
-    // 清空告警队列
-    a.alerts = make([]*AlertItem, 0)
+	// 清空告警队列
+	a.alerts = make([]*AlertItem, 0)
 
-    // 在处理告警之前解锁
-    a.mu.Unlock()
+	// 在处理告警之前解锁
+	a.mu.Unlock()
 
-    // 构建聚合告警列表
-    alertList := a.formatAlertList(alerts)
+	// 构建聚合告警列表
+	alertList := a.aggFormatAlertList(alerts)
 
-    // 获取标题
-    title := "聚合告警"
-    if a.config != nil && a.config.Alert.Feishu.Title != "" {
-        title = a.config.Alert.Feishu.Title
-    }
+	// 获取标题
+	title := "聚合告警"
+	if a.config != nil && a.config.Alert.Feishu.Title != "" {
+		title = a.config.Alert.Feishu.Title
+	}
 
-    // 构建告警内容
-    message := a.applyTemplate(a.config.Alert.Feishu.Content, map[string]string{
-        "Time":       time.Now().Format("2006-01-02 15:04:05"),
-        "AlertCount": fmt.Sprintf("%d", alertCount),
-        "AlertList":  alertList,
-    })
+	// 构建告警内容
+	message := a.applyTemplate(a.config.Alert.Feishu.Content, map[string]string{
+		"Date":       time.Now().Format("2006-01-02"),
+		"Time":       time.Now().Format("15:04:05"),
+		"AlertCount": fmt.Sprintf("%d", alertCount),
+		"AlertList":  alertList,
+	})
 
-    // 发送告警
-    for _, notifier := range a.notifiers {
-        err := notifier.SendNotification(title, message)
-        if err != nil {
-            a.logger.Log(fmt.Sprintf("Error sending aggregated alerts: %v", err), "error")
-        } else {
-            a.logger.Log(fmt.Sprintf("Successfully sent aggregated alerts for %d hosts", alertCount), "info")
-        }
-    }
-
-    // 重置计时器
-    a.mu.Lock()
-    a.resetTimer()
-    a.mu.Unlock()
-}
-
-// formatAlertList 根据配置的行模板格式化告警列表
-func (a *AlertAggregator) formatAlertList(alerts []*AlertItem) string {
-	var buffer bytes.Buffer
-
-	if a.config != nil && a.config.Alert.AggregateLineTemplate != "" {
-		// 使用配置的行模板
-		lineTemplate := a.config.Alert.AggregateLineTemplate
-		tmpl, err := template.New("line").Parse(lineTemplate)
+	// 发送告警
+	for _, notifier := range a.notifiers {
+		err := notifier.SendNotification(title, message)
 		if err != nil {
-			a.logger.Log(fmt.Sprintf("Error parsing line template: %v", err), "error")
-			// 使用默认格式
-			for _, alert := range alerts {
-				timeStr := alert.Timestamp.Format("15:04:05")
-				buffer.WriteString(fmt.Sprintf("- [%s] %s: %s\n", timeStr, alert.Host, alert.Description))
-			}
-			return buffer.String()
-		}
-
-		for _, alert := range alerts {
-			data := struct {
-				Host        string
-				Description string
-				Time        string
-			}{
-				Host:        alert.Host,
-				Description: alert.Description,
-				Time:        alert.Timestamp.Format("15:04:05"),
-			}
-
-			var lineBuffer bytes.Buffer
-			if err := tmpl.Execute(&lineBuffer, data); err != nil {
-				a.logger.Log(fmt.Sprintf("Error applying line template: %v", err), "error")
-				buffer.WriteString(fmt.Sprintf("- [%s] %s: %s\n", data.Time, data.Host, data.Description))
-			} else {
-				buffer.WriteString("- ")
-				buffer.WriteString(lineBuffer.String())
-				buffer.WriteString("\n")
-			}
-		}
-	} else {
-		// 使用默认格式
-		for _, alert := range alerts {
-			timeStr := alert.Timestamp.Format("15:04:05")
-			buffer.WriteString(fmt.Sprintf("- [%s] %s: %s\n", timeStr, alert.Host, alert.Description))
+			a.logger.Log(fmt.Sprintf("Error sending aggregated alerts: %v", err), "error")
+		} else {
+			a.logger.Log(fmt.Sprintf("Successfully sent aggregated alerts for %d hosts", alertCount), "info")
 		}
 	}
 
-	return buffer.String()
+	// 重置计时器
+	a.mu.Lock()
+	a.resetTimer()
+	a.mu.Unlock()
+}
+
+// aggFormatAlertList 根据配置的行模板格式化告警列表
+func (a *AlertAggregator) aggFormatAlertList(alerts []*AlertItem) string {
+	if a.config != nil && a.config.Alert.AggregateLineTemplate != "" {
+		return formatAlertList(alerts, a.config.Alert.AggregateLineTemplate)
+	}
+	// 如果没有配置模板，使用默认格式
+	return formatAlertList(alerts, "")
 }
 
 // applyTemplate 应用模板到数据
@@ -214,6 +176,7 @@ func (a *AlertAggregator) Close() {
 	defer a.mu.Unlock()
 
 	// 标记为非活跃
+	a.logger.Log("Closing AlertAggregator, setting active to false", "debug")
 	a.active = false
 
 	// 停止定时器

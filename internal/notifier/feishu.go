@@ -16,14 +16,22 @@ type FeishuNotifier struct {
 	Logger     *logger.Logger
 }
 
-// 不同消息类型的接口
-type FeishuMessageSender interface {
-	PrepareMessage(content string) ([]byte, error)
+// FeishuResponse 飞书 API 响应结构
+type FeishuResponse struct {
+	Code int         `json:"code"`
+	Msg  string      `json:"msg"`
+	Data interface{} `json:"data"`
 }
 
-// 文本消息发送器
+// FeishuMessageSender 消息发送器接口
+type FeishuMessageSender interface {
+	PrepareMessage(title, content string) ([]byte, error)
+}
+
+// TextMessageSender 文本消息发送器
 type TextMessageSender struct{}
 
+// FeishuTextMessage 飞书文本消息结构
 type FeishuTextMessage struct {
 	MsgType string `json:"msg_type"`
 	Content struct {
@@ -61,44 +69,56 @@ func NewFeishuNotifier(config *config.FeishuConfig, logger *logger.Logger) (*Fei
 func (n *FeishuNotifier) SendNotification(title, content string) error {
 	n.Logger.Log(fmt.Sprintf("Sending notification to webhook: %s", n.WebhookURL), "debug")
 
+	// 根据消息类型选择消息发送器
+	var messageSender FeishuMessageSender
+	switch n.MsgType {
+	case "text":
+		messageSender = &TextMessageSender{}
+	default:
+		return fmt.Errorf("unsupported message type: %s", n.MsgType)
+	}
+
 	// 准备消息内容
-	messageSender := &TextMessageSender{}
 	data, err := messageSender.PrepareMessage(title, content)
 	if err != nil {
-		n.Logger.Log("Failed to prepare message content", "error")
+		n.Logger.Log(fmt.Sprintf("Failed to prepare message content: %v", err), "error")
 		return fmt.Errorf("failed to prepare message content: %w", err)
 	}
 
 	// 打印准备好的数据
 	n.Logger.Log(fmt.Sprintf("Prepared message data: %s", string(data)), "debug")
 
+	// 发送 HTTP 请求
 	resp, err := http.Post(n.WebhookURL, "application/json", bytes.NewBuffer(data))
 	if err != nil {
-		n.Logger.Log("Failed to send notification", "error")
+		n.Logger.Log(fmt.Sprintf("Failed to send notification: %v", err), "error")
 		return fmt.Errorf("failed to send notification: %w", err)
 	}
 	defer resp.Body.Close()
 
-	// 打印响应状态码
-	n.Logger.Log(fmt.Sprintf("Response status code: %d", resp.StatusCode), "debug")
+	// 解析响应内容
+	var feishuResp FeishuResponse
+	if err := json.NewDecoder(resp.Body).Decode(&feishuResp); err != nil {
+		n.Logger.Log(fmt.Sprintf("Failed to parse response: %v", err), "error")
+		return fmt.Errorf("failed to parse response: %w", err)
+	}
 
-	if resp.StatusCode != http.StatusOK {
-		n.Logger.Log(fmt.Sprintf("Failed to send notification, status code: %d", resp.StatusCode), "error")
-		return fmt.Errorf("failed to send notification, status code: %d", resp.StatusCode)
+	// 检查响应码
+	if feishuResp.Code != 0 {
+		errMsg := fmt.Sprintf("API error: code=%d, message=%s", feishuResp.Code, feishuResp.Msg)
+		n.Logger.Log(errMsg, "error")
+		return fmt.Errorf("send notification failed: %s", errMsg)
 	}
 
 	n.Logger.Log("Successfully sent notification", "info")
 	return nil
 }
 
-// TextMessageSender 实现 PrepareMessage 方法
-func (s *TextMessageSender) PrepareMessage(title string, content string) ([]byte, error) {
+// PrepareMessage 准备文本消息内容
+func (s *TextMessageSender) PrepareMessage(title, content string) ([]byte, error) {
 	msg := FeishuTextMessage{
 		MsgType: "text",
 	}
-
-	// 合并 title 和 content
 	msg.Content.Text = fmt.Sprintf("%s\n%s", title, content)
-
 	return json.Marshal(msg)
 }
