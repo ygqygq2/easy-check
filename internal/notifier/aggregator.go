@@ -5,6 +5,7 @@ import (
 	"easy-check/internal/config"
 	"easy-check/internal/logger"
 	"fmt"
+	"strings"
 	"sync"
 	"text/template"
 	"time"
@@ -110,7 +111,7 @@ func (a *AlertAggregator) sendAggregatedAlerts() {
 		"Date":       time.Now().Format("2006-01-02"),
 		"Time":       time.Now().Format("15:04:05"),
 		"AlertCount": fmt.Sprintf("%d", alertCount),
-		"AlertList":  alertList,
+		"AlertList":  strings.TrimSpace(alertList),
 	})
 
 	// 发送告警

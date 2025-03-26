@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"fmt"
 	"text/template"
-	"time"
 )
 
 // 通用的模板处理函数
@@ -53,6 +52,7 @@ func formatAlertList(alerts []*AlertItem, templateStr string) string {
 					buffer.WriteString(fmt.Sprintf("- [%s] %s: %s\n", data.FailTime, data.Host, data.Description))
 				} else {
 					buffer.WriteString(lineBuffer.String())
+          buffer.WriteString("\n")
 				}
 			}
 			return buffer.String()
@@ -66,22 +66,4 @@ func formatAlertList(alerts []*AlertItem, templateStr string) string {
 	}
 
 	return buffer.String()
-}
-
-// 通用的告警内容生成函数
-func generateContent(templateStr string, alerts []*AlertItem) (string, error) {
-	alertCount := len(alerts)
-	alertList := formatAlertList(alerts, templateStr)
-
-	message, err := processTemplate(templateStr, map[string]string{
-		"Date":       time.Now().Format("2006-01-02"),
-		"Time":       time.Now().Format("15:04:05"),
-		"AlertCount": fmt.Sprintf("%d", alertCount),
-		"AlertList":  alertList,
-	})
-	if err != nil {
-		return "", err
-	}
-
-	return message, nil
 }
