@@ -77,13 +77,6 @@ func Initialize() (*config.Config, notifier.Notifier, error) {
 		}
 	}
 
-	for i := range cfg.Hosts {
-		// 如果主机未显式配置 fail_alert（零值），则使用全局默认值
-		if !cfg.Hosts[i].FailAlert && cfg.Hosts[i].FailAlert == false {
-			cfg.Hosts[i].FailAlert = cfg.Alert.FailAlert
-		}
-	}
-
 	return cfg, notifierInstance, nil
 }
 

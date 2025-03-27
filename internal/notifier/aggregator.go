@@ -69,9 +69,18 @@ func (a *AlertAggregator) AddAlert(host, description string) {
 
 	// 检查配置中是否禁用了该主机的告警
 	for _, h := range a.config.Hosts {
-		if h.Host == host && !h.FailAlert {
-			a.logger.Log(fmt.Sprintf("Alert for host %s ignored due to fail_alert=false", host), "debug")
-			return
+		if h.Host == host {
+			// 动态判断 FailAlert 是否为 nil
+			failAlert := a.config.Alert.FailAlert // 默认值
+			if h.FailAlert != nil {
+				failAlert = *h.FailAlert // 使用主机配置的值
+			}
+
+			if !failAlert {
+				a.logger.Log(fmt.Sprintf("Alert for host %s ignored due to fail_alert=false", host), "debug")
+				return
+			}
+			break
 		}
 	}
 

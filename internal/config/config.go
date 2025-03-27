@@ -1,6 +1,7 @@
 package config
 
 import (
+	"fmt"
 	"os"
 
 	"gopkg.in/yaml.v2"
@@ -9,7 +10,7 @@ import (
 type Host struct {
 	Host        string `yaml:"host"`
 	Description string `yaml:"description"`
-	FailAlert   bool   `yaml:"fail_alert"`
+	FailAlert   *bool   `yaml:"fail_alert"`
 }
 
 type Config struct {
@@ -46,16 +47,15 @@ type FeishuConfig struct {
 }
 
 func LoadConfig(configPath string) (*Config, error) {
-	data, err := os.ReadFile(configPath)
-	if err != nil {
-		return nil, err
-	}
+  data, err := os.ReadFile(configPath)
+  if err != nil {
+      return nil, fmt.Errorf("failed to read config file: %v", err)
+  }
 
-	var config Config
-	err = yaml.Unmarshal(data, &config)
-	if err != nil {
-		return nil, err
-	}
+  var config Config
+  if err := yaml.Unmarshal(data, &config); err != nil {
+      return nil, fmt.Errorf("failed to parse config file: %v", err)
+  }
 
-	return &config, nil
+  return &config, nil
 }
