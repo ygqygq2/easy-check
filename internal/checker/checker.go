@@ -69,7 +69,7 @@ func (c *Checker) pingHost(host config.Host) {
 	if successRate < 0.8 {
 		c.Logger.Log(fmt.Sprintf("Ping to [%s] %s failed: success rate %.2f%%", host.Description, host.Host, successRate*100), "error")
 		// 发送通知
-		c.Logger.Log(fmt.Sprintf("Ping to %s failed, attempting to send notification", host), "debug")
+		c.Logger.Log(fmt.Sprintf("Ping to %s failed, attempting to send notification", host.Host), "debug")
 		if c.Notifier != nil {
 			c.Notifier.SendNotification(host.Host, host.Description)
 		}
