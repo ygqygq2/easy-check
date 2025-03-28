@@ -12,7 +12,14 @@ import (
 	"time"
 )
 
+var version string // 通过 ldflags 注入
+
 func main() {
+	if version == "" {
+		version = "dev" // 默认值
+	}
+	fmt.Printf("easy-check version: %s\n", version)
+
 	// 初始化配置和通知器
 	cfg, notifierInstance, err := initializer.Initialize()
 	if err != nil {

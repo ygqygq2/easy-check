@@ -1,5 +1,9 @@
 .PHONY: all build build-linux build-windows test clean package
 
+# 获取 Git 版本号
+GIT_TAG := $(shell git describe --tags --exact-match 2>/dev/null || echo "")
+GIT_VERSION := $(if $(GIT_TAG),$(GIT_TAG),$(shell git describe --tags --always --dirty))
+
 # 默认目标
 all: build
 
@@ -8,11 +12,11 @@ build: build-linux build-windows
 
 # 编译 Linux 可执行文件
 build-linux:
-	GOOS=linux GOARCH=amd64 go build -o bin/easy-check cmd/main.go
+	GOOS=linux GOARCH=amd64 go build -ldflags "-X main.version=$(GIT_VERSION)" -o bin/easy-check cmd/main.go
 
 # 编译 Windows 可执行文件
 build-windows:
-	GOOS=windows GOARCH=amd64 go build -o bin/easy-check.exe cmd/main.go
+	GOOS=windows GOARCH=amd64 go build -ldflags "-X main.version=$(GIT_VERSION)" -o bin/easy-check.exe cmd/main.go
 
 # 测试目标
 test:
