@@ -5,7 +5,6 @@ import (
 	"easy-check/internal/logger"
 	"easy-check/internal/notifier"
 	"fmt"
-	"regexp"
 	"strings"
 	"sync"
 	"time"
@@ -63,7 +62,9 @@ func (c *Checker) pingHost(host config.Host) {
 	}
 
 	lines := strings.Split(output, "\n")
-	successCount, sampleLatency := c.parsePingOutput(lines)
+
+	// 使用平台特定的解析方法
+	successCount, sampleLatency := c.Pinger.ParsePingOutput(lines, c.Count)
 
 	successRate := float64(successCount) / float64(c.Count)
 	if successRate < 0.8 {
@@ -74,29 +75,6 @@ func (c *Checker) pingHost(host config.Host) {
 			c.Notifier.SendNotification(host.Host, host.Description)
 		}
 	} else {
-		c.Logger.Log(fmt.Sprintf("Ping to [%s] %s succeeded: success rate %.2f%%, latency %s", host.Description, host.Host, successRate*100, sampleLatency), "info") // 显式指定info级别
+		c.Logger.Log(fmt.Sprintf("Ping to [%s] %s succeeded: success rate %.2f%%, latency %s", host.Description, host.Host, successRate*100, sampleLatency), "info")
 	}
-}
-
-func (c *Checker) parsePingOutput(lines []string) (int, string) {
-	successCount := 0
-	var sampleLatency string
-
-	// 更新正则表达式以匹配 Linux 和 Windows 的 ping 输出
-	re := regexp.MustCompile(`time[=<]\d+(\.\d+)? ms|时间[=<]\d+(\.\d+)? ms`)
-
-	for _, line := range lines {
-		if strings.Contains(line, "TTL=") || strings.Contains(line, "ttl=") || strings.Contains(line, "time=") {
-			c.Logger.Log(line, "info")
-			successCount++
-			if sampleLatency == "" {
-				match := re.FindString(line)
-				if match != "" {
-					sampleLatency = match
-				}
-			}
-		}
-	}
-
-	return successCount, sampleLatency
 }
