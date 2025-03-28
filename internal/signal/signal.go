@@ -7,6 +7,7 @@ import (
 	"os/signal"
 	"sync"
 	"syscall"
+	"time"
 )
 
 var (
@@ -37,13 +38,26 @@ func RegisterExitListener() <-chan os.Signal {
 
 // 信号分发器，将收到的信号分发给所有监听者
 func signalDispatcher() {
-	sig := <-exitChan
+	for {
+		sig := <-exitChan
 
-	listenerLock.Lock()
-	defer listenerLock.Unlock()
+		listenerLock.Lock()
+		for _, listener := range listeners {
+			select {
+			case listener <- sig:
+				// 信号已发送
+			default:
+				// 如果监听者没有准备好接收，不要阻塞
+			}
+		}
+		listenerLock.Unlock()
 
-	for _, listener := range listeners {
-		listener <- sig
+		// 对于强制退出的信号，可以在分发后直接退出程序
+		if sig == syscall.SIGINT || sig == syscall.SIGTERM {
+			// 给一点时间让其他 goroutine 处理信号
+			time.Sleep(time.Second)
+			os.Exit(0)
+		}
 	}
 }
 

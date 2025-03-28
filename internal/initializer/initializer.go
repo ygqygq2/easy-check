@@ -4,7 +4,6 @@ import (
 	"easy-check/internal/config"
 	"easy-check/internal/logger"
 	"easy-check/internal/notifier"
-	"easy-check/internal/signal"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -62,13 +61,6 @@ func Initialize() (*config.Config, notifier.Notifier, error) {
 		GlobalLogger.Log(fmt.Sprintf("Alert aggregation enabled with %d second window", cfg.Alert.AggregateWindow), "info")
 		aggregatingNotifier := notifier.NewAggregatingNotifier(notifiers, cfg, GlobalLogger)
 		notifierInstance = aggregatingNotifier
-
-		// 将关闭逻辑移到程序退出时
-		go func() {
-			sigChan := signal.RegisterExitListener()
-			<-sigChan
-			aggregatingNotifier.Close()
-		}()
 	} else {
 		if len(notifiers) > 0 {
 			notifierInstance = notifiers[0]

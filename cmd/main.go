@@ -8,6 +8,7 @@ import (
 	"easy-check/internal/scheduler"
 	"easy-check/internal/signal"
 	"fmt"
+	"os"
 	"path/filepath"
 	"time"
 )
@@ -75,6 +76,14 @@ func main() {
 	stopChan := scheduler.StartPeriodicPingChecks(chk, cfg, initializer.GlobalLogger, tickerControlChan)
 
 	// 等待退出信号
-	signal.WaitForExitSignal(initializer.GlobalLogger)
+	exitChan := signal.RegisterExitListener()
+	<-exitChan
+
+	// 清理资源
 	close(stopChan)
+	if notifierInstance != nil {
+		notifierInstance.Close()
+	}
+	initializer.GlobalLogger.Log("Application shutting down", "info")
+	os.Exit(0)
 }

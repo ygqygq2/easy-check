@@ -122,3 +122,9 @@ func (s *TextMessageSender) PrepareMessage(title, content string) ([]byte, error
 	msg.Content.Text = fmt.Sprintf("%s\n%s", title, content)
 	return json.Marshal(msg)
 }
+
+func (n *FeishuNotifier) Close() error {
+  n.Logger.Log("Closing FeishuNotifier", "info")
+  // 如果有需要清理的资源，可以在这里处理
+  return nil
+}

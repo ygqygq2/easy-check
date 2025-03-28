@@ -12,6 +12,7 @@ import (
 // Notifier 接口定义了通知器的基本行为
 type Notifier interface {
 	SendNotification(title, content string) error
+  Close() error
 }
 
 // AggregatingNotifier 是一个装饰器，为任何通知器添加聚合功能
@@ -81,6 +82,7 @@ func (n *AggregatingNotifier) applyTemplate(templateStr string, data interface{}
 }
 
 // Close 关闭聚合器
-func (n *AggregatingNotifier) Close() {
-	n.aggregator.Close()
+func (n *AggregatingNotifier) Close() error {
+  n.aggregator.Close()
+  return nil
 }
