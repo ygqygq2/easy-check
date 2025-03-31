@@ -6,7 +6,7 @@ package checker
 import (
 	"bytes"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"os/exec"
 	"regexp"
 	"strings"
@@ -24,7 +24,7 @@ func (p *WindowsPinger) Ping(host string, count int, timeout int) (string, error
 
 	// 尝试将GBK编码转换为UTF-8
 	reader := transform.NewReader(bytes.NewReader(output), simplifiedchinese.GBK.NewDecoder())
-	utf8Output, _ := ioutil.ReadAll(reader)
+	utf8Output, _ := io.ReadAll(reader)
 	return string(utf8Output), err
 }
 
