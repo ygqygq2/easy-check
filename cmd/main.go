@@ -22,58 +22,63 @@ func main() {
 	fmt.Printf("easy-check version: %s\n", version)
 
 	// 初始化配置和通知器
-	cfg, notifierInstance, err := initializer.Initialize()
+	appCtx, err := initializer.Initialize()
 	if err != nil {
-		initializer.GlobalLogger.Fatal(fmt.Sprintf("Initialization error: %v", err), "fatal")
+		fmt.Printf("Failed to initialize application: %v\n", err)
+		os.Exit(1)
 	}
+	defer appCtx.Logger.Close()
+
+	// 运行主逻辑
+	run(appCtx)
 
 	// 创建一个通道用于控制定时器
 	tickerControlChan := make(chan time.Duration)
 
 	// 首先启动配置文件监听
-	go config.WatchConfigFile(filepath.Join("configs", "config.yaml"), initializer.GlobalLogger, func(newConfig *config.Config) {
+	go config.WatchConfigFile(filepath.Join("configs", "config.yaml"), appCtx.Logger, func(newConfig *config.Config) {
 		// 更新配置
-		oldInterval := cfg.Interval
+		oldInterval := appCtx.Config.Interval
 
 		// 保存旧的日志配置
-		oldLogConfig := cfg.Log
+		oldLogConfig := appCtx.Config.Log
 
 		// 更新整个配置
-		cfg = newConfig
-		initializer.GlobalLogger.Log("Configuration reloaded successfully", "info")
+		appCtx.Config = newConfig
+		appCtx.Logger.Log("Configuration reloaded successfully", "info")
 
 		// 如果日志配置发生变化，更新日志器
-		if oldLogConfig != cfg.Log {
+		if oldLogConfig != appCtx.Config.Log {
 			logConfig := logger.Config{
-				File:         cfg.Log.File,
-				MaxSize:      cfg.Log.MaxSize,
-				MaxAge:       cfg.Log.MaxAge,
-				MaxBackups:   cfg.Log.MaxBackups,
-				Compress:     cfg.Log.Compress,
-				ConsoleLevel: cfg.Log.ConsoleLevel,
-				FileLevel:    cfg.Log.FileLevel,
+				File:         appCtx.Config.Log.File,
+				MaxSize:      appCtx.Config.Log.MaxSize,
+				MaxAge:       appCtx.Config.Log.MaxAge,
+				MaxBackups:   appCtx.Config.Log.MaxBackups,
+				Compress:     appCtx.Config.Log.Compress,
+				ConsoleLevel: appCtx.Config.Log.ConsoleLevel,
+				FileLevel:    appCtx.Config.Log.FileLevel,
 			}
-			initializer.GlobalLogger.UpdateConfig(logConfig)
-			initializer.GlobalLogger.Log("Logger configuration updated", "info")
+			appCtx.Logger.UpdateConfig(logConfig)
+			appCtx.Logger.Log("Logger configuration updated", "info")
 		}
 
 		// 如果间隔时间发生变化，通知定时器更新
-		if oldInterval != cfg.Interval {
-			initializer.GlobalLogger.Log(fmt.Sprintf("Interval changed from %d to %d seconds", oldInterval, cfg.Interval), "info")
-			tickerControlChan <- time.Duration(cfg.Interval) * time.Second
+		if oldInterval != appCtx.Config.Interval {
+			appCtx.Logger.Log(fmt.Sprintf("Interval changed from %d to %d seconds", oldInterval, appCtx.Config.Interval), "info")
+			tickerControlChan <- time.Duration(appCtx.Config.Interval) * time.Second
 		}
 	})
 
 	// 然后初始化 pinger 和 checker
 	pinger := checker.NewPinger()
-	chk := checker.NewChecker(cfg, pinger, initializer.GlobalLogger, notifierInstance)
+	chk := checker.NewChecker(appCtx.Config, pinger, appCtx.Logger, appCtx.Notifier)
 
 	// 执行初始 ping 检查
-	initializer.GlobalLogger.Log("Performing initial ping check", "info")
+	appCtx.Logger.Log("Performing initial ping check", "info")
 	chk.PingHosts()
 
 	// 最后启动定期 ping 检查，并传入控制通道
-	stopChan := scheduler.StartPeriodicPingChecks(chk, cfg, initializer.GlobalLogger, tickerControlChan)
+	stopChan := scheduler.StartPeriodicPingChecks(chk, appCtx.Config, appCtx.Logger, tickerControlChan)
 
 	// 等待退出信号
 	exitChan := signal.RegisterExitListener()
@@ -81,9 +86,13 @@ func main() {
 
 	// 清理资源
 	close(stopChan)
-	if notifierInstance != nil {
-		notifierInstance.Close()
+	if appCtx.Notifier != nil {
+		appCtx.Notifier.Close()
 	}
-	initializer.GlobalLogger.Log("Application shutting down", "info")
+	appCtx.Logger.Log("Application shutting down", "info")
 	os.Exit(0)
+}
+
+func run(appCtx *initializer.AppContext) {
+	appCtx.Logger.Log("Application started successfully", "info")
 }
