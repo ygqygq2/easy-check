@@ -19,7 +19,7 @@ type WindowsPinger struct{}
 
 func (p *WindowsPinger) Ping(host string, count int, timeout int) (string, error) {
 	// Windows ping命令参数不同
-	cmd := exec.Command("ping", "-n", fmt.Sprintf("%d", count), "-w", fmt.Sprintf("%d", timeout*1000), host)
+	cmd := exec.Command("ping", "-4", "-n", fmt.Sprintf("%d", count), "-w", fmt.Sprintf("%d", timeout*1000), host)
 	output, err := cmd.CombinedOutput()
 
 	// 尝试将GBK编码转换为UTF-8
