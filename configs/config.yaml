@@ -40,6 +40,10 @@ alert:
     webhook: "https://open.feishu.cn/open-apis/bot/v2/hook/xxxxxxxxxxxxxxxxxxxx" # 飞书机器人的 webhook 地址
     msg_type: "text" # 飞书告警的类型，可选值：text、post、interactive
     title: "💔【easy-check】：检测告警" # 飞书告警的标题
+    # content: |
+    #   🧭【告警时间】：{{.Date}} {{.Time}}
+    #   📝【告警详情】：以下主机不可达：
+    #   - 时间：{{.FailTime}} | 主机：{{.Host}} | 描述：{{.Description}}
     content: |
       🧭【告警时间】：{{.Date}} {{.Time}}
       📝【告警详情】：以下 {{.AlertCount}} 个主机不可达：

@@ -11,7 +11,7 @@ import (
 func StartPeriodicPingChecks(chk *checker.Checker, cfg *config.Config, logger *logger.Logger, tickerControlChan chan time.Duration) chan struct{} {
     ticker := time.NewTicker(time.Duration(cfg.Interval) * time.Second)
 
-    logger.Log("Starting periodic ping checks", "info") // 将日志级别从 debug 改为 info
+    logger.Log("Starting periodic ping checks", "info")
 
     // 创建一个停止通道，用于通知程序退出
     stopChan := make(chan struct{})
