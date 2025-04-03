@@ -5,7 +5,6 @@ import (
 	"easy-check/internal/config"
 	"easy-check/internal/logger"
 	"fmt"
-	"strings"
 	"sync"
 	"text/template"
 	"time"
@@ -27,7 +26,7 @@ type AlertAggregator struct {
 	logger         *logger.Logger
 	mu             sync.Mutex
 	active         bool
-	config         *config.Config // 修改为通用配置类型
+	config         *config.Config
 }
 
 // TemplateData 保存传递给模板的数据
@@ -57,7 +56,7 @@ func NewAlertAggregator(window time.Duration, notifiers []Notifier, logger *logg
 }
 
 // AddAlert 添加一条告警到聚合队列
-func (a *AlertAggregator) AddAlert(host, description string) {
+func (a *AlertAggregator) AddAlert(host string, description string) {
 	a.mu.Lock()
 	defer a.mu.Unlock()
 
@@ -65,23 +64,6 @@ func (a *AlertAggregator) AddAlert(host, description string) {
 	a.logger.Log(fmt.Sprintf("AddAlert called, active: %v", a.active), "debug")
 	if !a.active {
 		return
-	}
-
-	// 检查配置中是否禁用了该主机的告警
-	for _, h := range a.config.Hosts {
-		if h.Host == host {
-			// 动态判断 FailAlert 是否为 nil
-			failAlert := a.config.Alert.FailAlert // 默认值
-			if h.FailAlert != nil {
-				failAlert = *h.FailAlert // 使用主机配置的值
-			}
-
-			if !failAlert {
-				a.logger.Log(fmt.Sprintf("Alert for host %s ignored due to fail_alert=false", host), "debug")
-				return
-			}
-			break
-		}
 	}
 
 	alert := &AlertItem{
@@ -106,7 +88,6 @@ func (a *AlertAggregator) sendAggregatedAlerts() {
 	// 复制告警数组以便在解锁后使用
 	alerts := make([]*AlertItem, len(a.alerts))
 	copy(alerts, a.alerts)
-	alertCount := len(alerts)
 
 	// 清空告警队列
 	a.alerts = make([]*AlertItem, 0)
@@ -114,30 +95,13 @@ func (a *AlertAggregator) sendAggregatedAlerts() {
 	// 在处理告警之前解锁
 	a.mu.Unlock()
 
-	// 构建聚合告警列表
-	alertList := a.aggFormatAlertList(alerts)
-
-	// 获取标题
-	title := "聚合告警"
-	if a.config != nil && a.config.Alert.Feishu.Title != "" {
-		title = a.config.Alert.Feishu.Title
-	}
-
-	// 构建告警内容
-	message := a.applyTemplate(a.config.Alert.Feishu.Content, map[string]string{
-		"Date":       time.Now().Format("2006-01-02"),
-		"Time":       time.Now().Format("15:04:05"),
-		"AlertCount": fmt.Sprintf("%d", alertCount),
-		"AlertList":  strings.TrimSpace(alertList),
-	})
-
-	// 发送告警
+	// 遍历通知器，调用每个通知器的 SendAggregatedNotification 方法
 	for _, notifier := range a.notifiers {
-		err := notifier.SendNotification(title, message)
+		err := notifier.SendAggregatedNotification(alerts)
 		if err != nil {
 			a.logger.Log(fmt.Sprintf("Error sending aggregated alerts: %v", err), "error")
 		} else {
-			a.logger.Log(fmt.Sprintf("Successfully sent aggregated alerts for %d hosts", alertCount), "info")
+			a.logger.Log(fmt.Sprintf("Successfully sent aggregated alerts for %d hosts", len(alerts)), "info")
 		}
 	}
 

@@ -1,88 +1,128 @@
 package notifier
 
 import (
-	"bytes"
 	"easy-check/internal/config"
 	"easy-check/internal/logger"
+	"easy-check/internal/queue"
 	"fmt"
-	"text/template"
 	"time"
 )
 
 // Notifier 接口定义了通知器的基本行为
 type Notifier interface {
-	SendNotification(title, content string) error
-  Close() error
+	// 发送单个主机的告警通知
+	SendNotification(host config.Host) error
+	// 发送聚合告警
+	SendAggregatedNotification(alerts []*AlertItem) error
+	// 关闭通知器
+	Close() error
 }
 
-// AggregatingNotifier 是一个装饰器，为任何通知器添加聚合功能
-type AggregatingNotifier struct {
-	notifiers  []Notifier
-	aggregator *AlertAggregator
-	config     *config.Config
+// MultiNotifier 将消息发送到多个启用的通知器
+type MultiNotifier struct {
+	notifiers []Notifier
+	logger    *logger.Logger
 }
 
-// NewAggregatingNotifier 创建一个新的聚合通知器
-func NewAggregatingNotifier(notifiers []Notifier, config *config.Config, logger *logger.Logger) *AggregatingNotifier {
-	window := time.Duration(config.Alert.AggregateWindow) * time.Second
-	return &AggregatingNotifier{
-		notifiers:  notifiers,
-		aggregator: NewAlertAggregator(window, notifiers, logger, config),
-		config:     config,
-	}
-}
-
-// SendNotification 实现 Notifier 接口，根据配置判断是否开启聚合告警
-func (n *AggregatingNotifier) SendNotification(host, description string) error {
-  // 开启聚合告警
-	if n.config.Alert.AggregateAlerts {
-		// 添加到聚合队列
-		n.aggregator.AddAlert(host, description)
-	} else {
-		// 直接发送通知
-		title := n.config.Alert.Feishu.Title
-		content, err := processTemplate(n.config.Alert.Feishu.Content, map[string]string{
-      "Date":         time.Now().Format("2006-01-02"),
-			"Time":        time.Now().Format("2006-01-02 15:04:05"),
-			"Host":        host,
-			"Description": description,
-		})
-		if err != nil {
-			return fmt.Errorf("failed to process template: %v", err)
+// NewMultiNotifier 创建一个新的 MultiNotifier
+func NewMultiNotifier(allNotifiers []Notifier, logger *logger.Logger) *MultiNotifier {
+	enabledNotifiers := []Notifier{}
+	for _, notifier := range allNotifiers {
+		if notifier != nil { // 确保通知器有效
+			enabledNotifiers = append(enabledNotifiers, notifier)
 		}
-		return n.SendDirectNotification(title, content)
+	}
+	if len(enabledNotifiers) == 0 {
+		logger.Log("No enabled notifiers found", "warn")
+	}
+	return &MultiNotifier{notifiers: enabledNotifiers, logger: logger}
+}
+
+// SendNotification 实现 Notifier 接口，向所有启用的通知器发送消息
+func (m *MultiNotifier) SendNotification(host config.Host) error {
+	var errs []error
+	for _, notifier := range m.notifiers {
+		if err := notifier.SendNotification(host); err != nil {
+			errs = append(errs, err)
+			m.logger.Log(fmt.Sprintf("Failed to send notification: %v", err), "error")
+		}
+	}
+	if len(errs) > 0 {
+		return fmt.Errorf("failed to send notification to some notifiers: %v", errs)
 	}
 	return nil
 }
 
-// SendDirectNotification 直接发送通知，不经过聚合
-func (n *AggregatingNotifier) SendDirectNotification(title, content string) error {
-	var err error
-	for _, notifier := range n.notifiers {
-		err = notifier.SendNotification(title, content)
-		if err != nil {
-			return err
+// SendAggregatedNotification 实现 Notifier 接口，向所有启用的通知器发送聚合消息
+func (m *MultiNotifier) SendAggregatedNotification(alerts []*AlertItem) error {
+	var errs []error
+	for _, notifier := range m.notifiers {
+		if err := notifier.SendAggregatedNotification(alerts); err != nil {
+			errs = append(errs, err)
+			m.logger.Log(fmt.Sprintf("Failed to send aggregated notification: %v", err), "error")
 		}
+	}
+	if len(errs) > 0 {
+		return fmt.Errorf("failed to send aggregated notification to some notifiers: %v", errs)
 	}
 	return nil
 }
 
-// applyTemplate 应用模板到数据
-func (n *AggregatingNotifier) applyTemplate(templateStr string, data interface{}) string {
-	tmpl, err := template.New("content").Parse(templateStr)
-	if err != nil {
-		return fmt.Sprintf("Error parsing template: %v", err)
+// Close 实现 Notifier 接口，关闭所有启用的通知器
+func (m *MultiNotifier) Close() error {
+	var errs []error
+	for _, notifier := range m.notifiers {
+		if err := notifier.Close(); err != nil {
+			errs = append(errs, err)
+		}
 	}
-	var buffer bytes.Buffer
-	err = tmpl.Execute(&buffer, data)
-	if err != nil {
-		return fmt.Sprintf("Error executing template: %v", err)
+	if len(errs) > 0 {
+		return fmt.Errorf("failed to close some notifiers: %v", errs)
 	}
-	return buffer.String()
+	return nil
 }
 
-// Close 关闭聚合器
-func (n *AggregatingNotifier) Close() error {
-  n.aggregator.Close()
-  return nil
+type Notifier struct {
+	queue         *queue.Queue
+	multiNotifier *MultiNotifier
+	logger        *logger.Logger
+}
+
+func NewNotifier(queue *queue.Queue, multiNotifier *MultiNotifier, logger *logger.Logger) *Notifier {
+	return &Notifier{
+		queue:         queue,
+		multiNotifier: multiNotifier,
+		logger:        logger,
+	}
+}
+
+func (n *Notifier) Start() {
+	for {
+		event, ok := n.queue.Pop()
+		if !ok {
+			// 如果队列为空，等待一段时间再尝试
+			time.Sleep(100 * time.Millisecond)
+			continue
+		}
+
+		switch event.Type {
+		case "ALERT":
+			n.logger.Log("Processing alert event", "info")
+			host := config.Host{ // 假设 Host 是一个结构体
+				Name:        event.Host,
+				Description: event.Description,
+			}
+			if err := n.multiNotifier.SendNotification(host); err != nil {
+				n.logger.Log("Failed to send alert notification: "+err.Error(), "error")
+			}
+		case "RECOVERY":
+			n.logger.Log("Processing recovery event", "info")
+			host := config.Host{
+				Name: event.Host,
+			}
+			if err := n.multiNotifier.SendNotification(host); err != nil {
+				n.logger.Log("Failed to send recovery notification: "+err.Error(), "error")
+			}
+		}
+	}
 }

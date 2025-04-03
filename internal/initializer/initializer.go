@@ -52,29 +52,16 @@ func Initialize() (*AppContext, error) {
 	appLogger.Log("Starting easy-check...", "info")
 	appLogger.Log("Configuration loaded successfully", "info")
 
-	// 初始化 Notifier
-	var notifiers []notifier.Notifier
-	if cfg.Alert.Feishu.Enable {
-		feishuNotifier, err := notifier.NewFeishuNotifier(&cfg.Alert.Feishu, appLogger)
-		if err != nil {
-			appLogger.Log(fmt.Sprintf("Failed to initialize FeishuNotifier: %v", err), "error")
-			return nil, err
-		}
-		notifiers = append(notifiers, feishuNotifier)
-	}
+	// 从配置创建所有通知器
+	notifiers := notifier.CreateNotifiers(cfg, appLogger)
 
-	// 如果开启了告警聚合
+	// 创建多通知器
 	var notifierInstance notifier.Notifier
 	if cfg.Alert.AggregateAlerts {
 		appLogger.Log(fmt.Sprintf("Alert aggregation enabled with %d second window", cfg.Alert.AggregateWindow), "info")
-		aggregatingNotifier := notifier.NewAggregatingNotifier(notifiers, cfg, appLogger)
-		notifierInstance = aggregatingNotifier
+		notifierInstance = notifier.NewAlertAggregator(notifiers, cfg, appLogger)
 	} else {
-		if len(notifiers) > 0 {
-			notifierInstance = notifiers[0]
-		} else {
-			appLogger.Log("No valid notifier configuration found", "warn")
-		}
+		notifierInstance = notifier.NewMultiNotifier(notifiers, appLogger)
 	}
 
 	// 创建 AppContext

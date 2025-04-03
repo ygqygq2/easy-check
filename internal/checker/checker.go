@@ -46,18 +46,25 @@ func (c *Checker) PingHosts() {
 	wg.Wait()
 }
 
+func (c *Checker) handlePingFailure(host config.Host, reason string) {
+	// 记录失败日志
+	c.Logger.Log(fmt.Sprintf("Ping to [%s] %s failed: %s", host.Description, host.Host, reason), "error")
+	c.Logger.Log(fmt.Sprintf("Attempting to send notification for [%s] %s", host.Description, host.Host), "debug")
+
+	// 发送通知
+	if c.Notifier != nil {
+		err := c.Notifier.SendNotification(host)
+		if err != nil {
+			c.Logger.Log(fmt.Sprintf("Failed to send notification: %v", err), "error")
+		}
+	}
+}
+
 func (c *Checker) pingHost(host config.Host) {
 	output, err := c.Pinger.Ping(host.Host, c.Count, c.Timeout)
 	if err != nil {
-		c.Logger.Log(fmt.Sprintf("Ping to [%s] %s failed: %v", host.Description, host.Host, err), "error")
-		// 发送通知
-		c.Logger.Log(fmt.Sprintf("Ping command to [%s] %s failed, sending notification", host.Description, host.Host), "debug")
-		if c.Notifier != nil {
-			err := c.Notifier.SendNotification(host.Host, host.Description)
-			if err != nil {
-				c.Logger.Log(fmt.Sprintf("Failed to send notification: %v", err), "error")
-			}
-		}
+		// 调用提取的函数处理 Ping 失败
+		c.handlePingFailure(host, err.Error())
 		return
 	}
 
@@ -68,12 +75,8 @@ func (c *Checker) pingHost(host config.Host) {
 
 	successRate := float64(successCount) / float64(c.Count)
 	if successRate < 0.8 {
-		c.Logger.Log(fmt.Sprintf("Ping to [%s] %s failed: success rate %.2f%%", host.Description, host.Host, successRate*100), "error")
-		// 发送通知
-		c.Logger.Log(fmt.Sprintf("Ping to %s failed, attempting to send notification", host.Host), "debug")
-		if c.Notifier != nil {
-			c.Notifier.SendNotification(host.Host, host.Description)
-		}
+		// 调用提取的函数处理 Ping 成功率过低
+		c.handlePingFailure(host, fmt.Sprintf("success rate %.2f%%", successRate*100))
 	} else {
 		c.Logger.Log(fmt.Sprintf("Ping to [%s] %s succeeded: success rate %.2f%%, latency %s", host.Description, host.Host, successRate*100, sampleLatency), "info")
 	}
