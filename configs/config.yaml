@@ -6,6 +6,8 @@ hosts:
   - host: "114.114.114.114"
     description: "公共 DNS"
     fail_alert: false # 是否启用失败告警，默认值可在 alert.fail_alert 设置，为 true 即失败时发送告警
+  - host: "www.360.cn"
+    description: "360"
 
 ping:
   count: 5 # ping的次数

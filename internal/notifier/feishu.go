@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"time"
 )
 
 // FeishuNotifier 飞书通知器
@@ -89,7 +90,10 @@ func (n *FeishuNotifier) SendNotification(title, content string) error {
 	n.Logger.Log(fmt.Sprintf("Prepared message data: %s", string(data)), "debug")
 
 	// 发送 HTTP 请求
-	resp, err := http.Post(n.WebhookURL, "application/json", bytes.NewBuffer(data))
+	client := &http.Client{
+		Timeout: 10 * time.Second, // 设置超时时间为 10 秒
+	}
+	resp, err := client.Post(n.WebhookURL, "application/json", bytes.NewBuffer(data))
 	if err != nil {
 		n.Logger.Log(fmt.Sprintf("Failed to send notification: %v", err), "error")
 		return fmt.Errorf("failed to send notification: %w", err)
@@ -124,7 +128,7 @@ func (s *TextMessageSender) PrepareMessage(title, content string) ([]byte, error
 }
 
 func (n *FeishuNotifier) Close() error {
-  n.Logger.Log("Closing FeishuNotifier", "info")
-  // 如果有需要清理的资源，可以在这里处理
-  return nil
+	n.Logger.Log("Closing FeishuNotifier", "info")
+	// 如果有需要清理的资源，可以在这里处理
+	return nil
 }
