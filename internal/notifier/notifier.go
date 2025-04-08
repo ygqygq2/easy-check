@@ -43,8 +43,8 @@ func (m *MultiNotifier) SendNotification(host config.Host) error {
 	var errs []error
 	for _, notifier := range m.notifiers {
 		if err := notifier.SendNotification(host); err != nil {
+			m.logger.Log(fmt.Sprintf("Error sending notification: %v", err), "error")
 			errs = append(errs, err)
-			m.logger.Log(fmt.Sprintf("Failed to send notification: %v", err), "error")
 		}
 	}
 	if len(errs) > 0 {
@@ -58,8 +58,8 @@ func (m *MultiNotifier) SendAggregatedNotification(alerts []*AlertItem) error {
 	var errs []error
 	for _, notifier := range m.notifiers {
 		if err := notifier.SendAggregatedNotification(alerts); err != nil {
+			m.logger.Log(fmt.Sprintf("Error sending aggregated notification: %v", err), "error")
 			errs = append(errs, err)
-			m.logger.Log(fmt.Sprintf("Failed to send aggregated notification: %v", err), "error")
 		}
 	}
 	if len(errs) > 0 {
@@ -73,6 +73,7 @@ func (m *MultiNotifier) Close() error {
 	var errs []error
 	for _, notifier := range m.notifiers {
 		if err := notifier.Close(); err != nil {
+			m.logger.Log(fmt.Sprintf("Error closing notifier: %v", err), "error")
 			errs = append(errs, err)
 		}
 	}
@@ -82,21 +83,24 @@ func (m *MultiNotifier) Close() error {
 	return nil
 }
 
-type Notifier struct {
+// NotifierManager 管理通知器的队列和发送逻辑
+type NotifierManager struct {
 	queue         *queue.Queue
 	multiNotifier *MultiNotifier
 	logger        *logger.Logger
 }
 
-func NewNotifier(queue *queue.Queue, multiNotifier *MultiNotifier, logger *logger.Logger) *Notifier {
-	return &Notifier{
+// NewNotifierManager 创建一个新的 NotifierManager
+func NewNotifierManager(queue *queue.Queue, multiNotifier *MultiNotifier, logger *logger.Logger) *NotifierManager {
+	return &NotifierManager{
 		queue:         queue,
 		multiNotifier: multiNotifier,
 		logger:        logger,
 	}
 }
 
-func (n *Notifier) Start() {
+// Start 启动通知器管理器，处理队列中的事件
+func (n *NotifierManager) Start() {
 	for {
 		event, ok := n.queue.Pop()
 		if !ok {
@@ -108,21 +112,24 @@ func (n *Notifier) Start() {
 		switch event.Type {
 		case "ALERT":
 			n.logger.Log("Processing alert event", "info")
-			host := config.Host{ // 假设 Host 是一个结构体
-				Name:        event.Host,
+			host := config.Host{
+				Host:        event.Host,
 				Description: event.Description,
 			}
 			if err := n.multiNotifier.SendNotification(host); err != nil {
-				n.logger.Log("Failed to send alert notification: "+err.Error(), "error")
+				n.logger.Log(fmt.Sprintf("Failed to send alert notification: %v", err), "error")
 			}
 		case "RECOVERY":
 			n.logger.Log("Processing recovery event", "info")
 			host := config.Host{
-				Name: event.Host,
+				Host:        event.Host,
+				Description: event.Description,
 			}
 			if err := n.multiNotifier.SendNotification(host); err != nil {
-				n.logger.Log("Failed to send recovery notification: "+err.Error(), "error")
+				n.logger.Log(fmt.Sprintf("Failed to send recovery notification: %v", err), "error")
 			}
+		default:
+			n.logger.Log(fmt.Sprintf("Unknown event type: %s", event.Type), "warn")
 		}
 	}
 }

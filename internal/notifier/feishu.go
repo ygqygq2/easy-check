@@ -55,7 +55,7 @@ func (f *FeishuNotifier) SendNotification(host config.Host) error {
 	f.Logger.Log(fmt.Sprintf("Sending notification to webhook: %s", f.WebhookURL), "debug")
 
 	// 准备消息内容
-	content, err := f.prepareContent(host)
+	content, err := f.prepareContent(host, time.Now())
 	if err != nil {
 		return fmt.Errorf("failed to prepare content: %v", err)
 	}
@@ -70,49 +70,61 @@ func (f *FeishuNotifier) SendNotification(host config.Host) error {
 	return nil
 }
 
-func NewFeishuNotifier(cfg *config.NotifierConfig, logger *logger.Logger) (*FeishuNotifier, error) {
-	if !cfg.Enable {
-		return nil, fmt.Errorf("feishu notifier is not enabled")
-	}
-
-	// 验证消息类型
-	msgType, ok := cfg.Options["msg_type"].(string)
-	if !ok || (msgType != "text" && msgType != "post" && msgType != "interactive") {
-		return nil, fmt.Errorf("unsupported or missing message type in Feishu notifier options")
-	}
-
-	webhookURL, ok := cfg.Options["webhook"].(string)
+func NewFeishuNotifier(options map[string]interface{}, logger *logger.Logger) (Notifier, error) {
+	webhookURL, ok := options["webhook"].(string)
 	if !ok || webhookURL == "" {
 		return nil, fmt.Errorf("missing webhook URL in Feishu notifier options")
+	}
+
+	msgType, ok := options["msg_type"].(string)
+	if !ok || (msgType != "text" && msgType != "post" && msgType != "interactive") {
+		return nil, fmt.Errorf("unsupported or missing message type in Feishu notifier options")
 	}
 
 	return &FeishuNotifier{
 		WebhookURL: webhookURL,
 		MsgType:    msgType,
 		Logger:     logger,
-		Options:    cfg.Options,
+		Options:    options,
 	}, nil
 }
 
 // prepareContent 准备消息内容
-func (f *FeishuNotifier) prepareContent(host config.Host) (string, error) {
-	// 从 Options 中获取模板内容
-	templateContent, ok := f.Options["content_template"].(string)
+func (f *FeishuNotifier) prepareContent(host config.Host, failTime time.Time) (string, error) {
+	// 从配置中获取模板内容
+	templateContent, ok := f.Options["content"].(string)
 	if !ok || templateContent == "" {
-		return "", fmt.Errorf("missing or invalid content_template in Feishu notifier options")
+		return "", fmt.Errorf("missing or invalid content template in configuration")
 	}
 
 	// 使用模板生成消息内容
-	return processTemplate(templateContent, map[string]string{
+	data := map[string]string{
 		"Date":        time.Now().Format("2006-01-02"),
 		"Time":        time.Now().Format("15:04:05"),
+    "FailTime":    failTime.Format("15:04:05"),
 		"Host":        host.Host,
 		"Description": host.Description,
-	})
+	}
+
+	var buffer bytes.Buffer
+	tmpl, err := template.New("content").Parse(templateContent)
+	if err != nil {
+		f.Logger.Log(fmt.Sprintf("Error parsing content template: %v", err), "error")
+		return "", fmt.Errorf("failed to parse content template: %v", err)
+	}
+
+	if err := tmpl.Execute(&buffer, data); err != nil {
+		f.Logger.Log(fmt.Sprintf("Error applying content template: %v", err), "error")
+		return "", fmt.Errorf("failed to apply content template: %v", err)
+	}
+
+	return buffer.String(), nil
 }
 
 // sendMessage 发送消息
 func (f *FeishuNotifier) sendMessage(content string) error {
+  // 打印发送的消息内容
+	f.Logger.Log(fmt.Sprintf("Sending message: %s", content), "debug")
 	// 构造飞书消息
 	data, err := json.Marshal(FeishuTextMessage{
 		MsgType: "text",

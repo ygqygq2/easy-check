@@ -33,6 +33,7 @@ type LogConfig struct {
 
 // NotifierConfig 通知器配置
 type NotifierConfig struct {
+	Name    string                 `yaml:"name"`
 	Type    string                 `yaml:"type"`
 	Enable  bool                   `yaml:"enable"`
 	Options map[string]interface{} `yaml:",inline"` // 存储特定通知器的配置
@@ -69,9 +70,11 @@ func LoadConfig(configPath string) (*Config, error) {
 		return nil, fmt.Errorf("failed to parse config file: %v", err)
 	}
 
-	// 向后兼容处理：将旧的Feishu配置迁移到新的Notifiers列表中
-	if config.Alert.Notifiers == nil {
-		config.Alert.Notifiers = []NotifierConfig{}
+	// 确保每个通知器都有唯一的名称
+	for i, notifier := range config.Alert.Notifiers {
+		if notifier.Name == "" {
+			config.Alert.Notifiers[i].Name = fmt.Sprintf("%s-%d", notifier.Type, i)
+		}
 	}
 
 	return &config, nil

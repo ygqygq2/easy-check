@@ -23,7 +23,7 @@ func CreateNotifiers(cfg *config.Config, logger *logger.Logger) []Notifier {
 
 	for _, notifierCfg := range cfg.Alert.Notifiers {
 		if !notifierCfg.Enable {
-			logger.Log(fmt.Sprintf("Notifier %s is disabled, skipping", notifierCfg.Type), "debug")
+			logger.Log(fmt.Sprintf("Notifier %s is disabled, skipping", notifierCfg.Name), "debug")
 			continue
 		}
 
@@ -35,12 +35,12 @@ func CreateNotifiers(cfg *config.Config, logger *logger.Logger) []Notifier {
 
 		notifier, err := creator(notifierCfg.Options, logger)
 		if err != nil {
-			logger.Log(fmt.Sprintf("Failed to initialize %s notifier: %v", notifierCfg.Type, err), "error")
+			logger.Log(fmt.Sprintf("Failed to initialize notifier %s: %v", notifierCfg.Name, err), "error")
 			continue
 		}
 
 		notifiers = append(notifiers, notifier)
-		logger.Log(fmt.Sprintf("Successfully initialized %s notifier", notifierCfg.Type), "info")
+		logger.Log(fmt.Sprintf("Successfully initialized notifier %s", notifierCfg.Name), "info")
 	}
 
 	return notifiers

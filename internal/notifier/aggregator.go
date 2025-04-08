@@ -1,12 +1,10 @@
 package notifier
 
 import (
-	"bytes"
 	"easy-check/internal/config"
 	"easy-check/internal/logger"
 	"fmt"
 	"sync"
-	"text/template"
 	"time"
 )
 
@@ -109,36 +107,6 @@ func (a *AlertAggregator) sendAggregatedAlerts() {
 	a.mu.Lock()
 	a.resetTimer()
 	a.mu.Unlock()
-}
-
-// aggFormatAlertList 根据配置的行模板格式化告警列表
-func (a *AlertAggregator) aggFormatAlertList(alerts []*AlertItem) string {
-	if a.config != nil && a.config.Alert.AggregateLineTemplate != "" {
-		return formatAlertList(alerts, a.config.Alert.AggregateLineTemplate)
-	}
-	// 如果没有配置模板，使用默认格式
-	return formatAlertList(alerts, "")
-}
-
-// applyTemplate 应用模板到数据
-func (a *AlertAggregator) applyTemplate(templateStr string, data interface{}) string {
-	tmpl, err := template.New("content").Parse(templateStr)
-	if err != nil {
-		a.logger.Log(fmt.Sprintf("Error parsing content template: %v", err), "error")
-		// 如果模板解析失败，返回简单格式
-		if data, ok := data.(TemplateData); ok {
-			return fmt.Sprintf("检测到 %d 个主机异常:\n\n%s", data.AlertCount, data.AlertList)
-		}
-		return templateStr
-	}
-
-	var buffer bytes.Buffer
-	if err := tmpl.Execute(&buffer, data); err != nil {
-		a.logger.Log(fmt.Sprintf("Error applying content template: %v", err), "error")
-		return templateStr
-	}
-
-	return buffer.String()
 }
 
 // resetTimer 重置聚合定时器
