@@ -28,3 +28,6 @@ go.work
 go.work.sum
 
 *.zip
+
+# db
+db/

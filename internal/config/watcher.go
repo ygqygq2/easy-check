@@ -40,7 +40,7 @@ func WatchConfigFile(configPath string, logger *logger.Logger, onChange func(new
 				// 创建新的定时器
 				debounceTimer = time.AfterFunc(debounceDelay, func() {
 					logger.Log(fmt.Sprintf("Config file changed: %s", event.Name))
-					newConfig, err := LoadConfig(configPath)
+					newConfig, err := LoadConfig(configPath, logger)
 					if err != nil {
 						logger.Log(fmt.Sprintf("Error reloading configuration: %v", err))
 					} else {

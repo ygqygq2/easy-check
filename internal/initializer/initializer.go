@@ -3,6 +3,7 @@ package initializer
 import (
 	"easy-check/internal/checker"
 	"easy-check/internal/config"
+	"easy-check/internal/db"
 	"easy-check/internal/logger"
 	"easy-check/internal/notifier"
 	"fmt"
@@ -17,6 +18,7 @@ type AppContext struct {
 	Logger   *logger.Logger
 	Pinger   checker.Pinger
 	Notifier notifier.Notifier
+	DB       *db.DB
 }
 
 // Initialize 初始化应用程序上下文
@@ -51,12 +53,24 @@ func Initialize() (*AppContext, error) {
 	// 初始化聚合告警逻辑
 	finalNotifier := initializeAlertAggregator(cfg, baseNotifier, appLogger)
 
+	// 初始化数据库
+	dbInstance, err := db.NewDB(&cfg.Db, appLogger)
+	if err != nil {
+		return nil, fmt.Errorf("failed to initialize database: %w", err)
+	}
+	if dbInstance == nil || dbInstance.Instance == nil {
+		appLogger.Log("Database instance is nil", "error")
+		return nil, fmt.Errorf("database instance is nil")
+	}
+	appLogger.Log("Database instance created successfully", "debug")
+
 	// 创建 AppContext
 	appContext := &AppContext{
 		Config:   cfg,
 		Logger:   appLogger,
 		Pinger:   checker.NewPinger(),
 		Notifier: finalNotifier,
+		DB:       dbInstance,
 	}
 
 	appLogger.Log("Application initialized successfully", "info")
@@ -103,7 +117,7 @@ func changeToProjectRoot() error {
 // loadConfig 加载配置文件
 func loadConfig(logger *logger.Logger) (*config.Config, error) {
 	configPath := filepath.Join("configs", "config.yaml")
-	cfg, err := config.LoadConfig(configPath)
+	cfg, err := config.LoadConfig(configPath, logger)
 	if err != nil {
 		logger.Log(fmt.Sprintf("Failed to load configuration: %v", err), "error")
 		return nil, err
@@ -134,7 +148,7 @@ func initLogger(cfg *config.Config, defaultLogger *logger.Logger) *logger.Logger
 func RegisterNotifiers(logger *logger.Logger) {
 	notifier.RegisterNotifier("feishu", notifier.NewFeishuNotifier)
 	// 可以在这里添加其他通知器的注册
-	logger.Log("All notifiers registered successfully", "info")
+	logger.Log("All notifiers registered successfully", "debug")
 }
 
 // createNotifier 创建通知器实例

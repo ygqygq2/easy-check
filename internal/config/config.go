@@ -1,6 +1,7 @@
 package config
 
 import (
+	"easy-check/internal/logger"
 	"fmt"
 	"os"
 
@@ -31,6 +32,11 @@ type LogConfig struct {
 	FileLevel    string `yaml:"file_level"`
 }
 
+// DbConfig 数据库配置
+type DbConfig struct {
+	Path string `yaml:"path"`
+}
+
 // NotifierConfig 通知器配置
 type NotifierConfig struct {
 	Name    string                 `yaml:"name"`
@@ -55,25 +61,26 @@ type Config struct {
 	Interval int         `yaml:"interval"`
 	Ping     PingConfig  `yaml:"ping"`
 	Log      LogConfig   `yaml:"log"`
+	Db       DbConfig    `yaml:"db"`
 	Alert    AlertConfig `yaml:"alert"`
 }
 
 // LoadConfig 从文件加载配置
-func LoadConfig(configPath string) (*Config, error) {
+func LoadConfig(configPath string, logger *logger.Logger) (*Config, error) {
 	data, err := os.ReadFile(configPath)
 	if err != nil {
-		return nil, fmt.Errorf("failed to read config file: %v", err)
+		return nil, logger.LogAndError("Failed to read config file: %v", "error", err)
 	}
 
 	var config Config
 	if err := yaml.Unmarshal(data, &config); err != nil {
-		return nil, fmt.Errorf("failed to parse config file: %v", err)
+		return nil, logger.LogAndError("Failed to parse config file: %v", "error", err)
 	}
 
-	// 确保每个通知器都有唯一的名称
-	for i, notifier := range config.Alert.Notifiers {
-		if notifier.Name == "" {
-			config.Alert.Notifiers[i].Name = fmt.Sprintf("%s-%d", notifier.Type, i)
+	// 为没有指定名称的通知器生成默认名称
+	for i := range config.Alert.Notifiers {
+		if config.Alert.Notifiers[i].Name == "" {
+			config.Alert.Notifiers[i].Name = fmt.Sprintf("%s-%d", config.Alert.Notifiers[i].Type, i)
 		}
 	}
 

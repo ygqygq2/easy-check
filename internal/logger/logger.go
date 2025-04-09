@@ -156,6 +156,13 @@ func (l *Logger) Fatal(message string, level ...string) {
 	os.Exit(1)
 }
 
+// LogAndError 记录日志并返回错误
+func (l *Logger) LogAndError(message string, level string, args ...interface{}) error {
+	formattedMessage := fmt.Sprintf(message, args...) // 格式化消息
+	l.Log(formattedMessage, level)                    // 使用 Logger 的 Log 方法记录日志
+	return fmt.Errorf("%s", formattedMessage)         // 返回格式化后的错误
+}
+
 func (l *Logger) Close() error {
 	// logrus 没有显式的关闭方法，这里可以留空
 	return nil

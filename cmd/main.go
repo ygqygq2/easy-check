@@ -3,6 +3,7 @@ package main
 import (
 	"easy-check/internal/checker"
 	"easy-check/internal/config"
+	"easy-check/internal/db"
 	"easy-check/internal/initializer"
 	"easy-check/internal/logger"
 	"easy-check/internal/scheduler"
@@ -71,8 +72,14 @@ func main() {
 
 	// 然后初始化 pinger 和 checker
 	pinger := checker.NewPinger()
-	chk := checker.NewChecker(appCtx.Config, pinger, appCtx.Logger, appCtx.Notifier)
+	// 创建 AlertStatusManager
+	alertStatusManager, err := db.NewAlertStatusManager(appCtx.DB.Instance, appCtx.Logger)
+	if err != nil {
+		appCtx.Logger.Fatal("Failed to create AlertStatusManager", "error")
+	}
+	appCtx.Logger.Log("AlertStatusManager initialized successfully", "debug")
 
+	chk := checker.NewChecker(appCtx.Config, pinger, appCtx.Logger, appCtx.Notifier, alertStatusManager)
 	// 执行初始 ping 检查
 	appCtx.Logger.Log("Performing initial ping check", "info")
 	chk.PingHosts()

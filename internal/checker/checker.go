@@ -2,6 +2,7 @@ package checker
 
 import (
 	"easy-check/internal/config"
+	"easy-check/internal/db"
 	"easy-check/internal/logger"
 	"easy-check/internal/notifier"
 	"fmt"
@@ -18,9 +19,10 @@ type Checker struct {
 	Pinger   Pinger
 	Logger   *logger.Logger
 	Notifier notifier.Notifier
+	DB       *db.AlertStatusManager
 }
 
-func NewChecker(config *config.Config, pinger Pinger, logger *logger.Logger, notifier notifier.Notifier) *Checker {
+func NewChecker(config *config.Config, pinger Pinger, logger *logger.Logger, notifier notifier.Notifier, db *db.AlertStatusManager) *Checker {
 	return &Checker{
 		Hosts:    config.Hosts,
 		Interval: time.Duration(config.Interval) * time.Second,
@@ -29,6 +31,7 @@ func NewChecker(config *config.Config, pinger Pinger, logger *logger.Logger, not
 		Pinger:   pinger,
 		Logger:   logger,
 		Notifier: notifier,
+		DB:       db,
 	}
 }
 
@@ -49,14 +52,20 @@ func (c *Checker) PingHosts() {
 func (c *Checker) handlePingFailure(host config.Host, reason string) {
 	// 记录失败日志
 	c.Logger.Log(fmt.Sprintf("Ping to [%s] %s failed: %s", host.Description, host.Host, reason), "error")
-	c.Logger.Log(fmt.Sprintf("Attempting to send notification for [%s] %s", host.Description, host.Host), "debug")
 
-	// 发送通知
-	if c.Notifier != nil {
-		err := c.Notifier.SendNotification(host)
-		if err != nil {
-			c.Logger.Log(fmt.Sprintf("Failed to send notification: %v", err), "error")
-		}
+	// 构造 AlertStatus 结构体
+	status := db.AlertStatus{
+		Host:        host.Host,
+		Description: host.Description,
+		Status:      "ALERT",
+		Timestamp:   time.Now().Format(time.RFC3339),
+		FailAlert:   *host.FailAlert,
+	}
+
+	// 将失败信息保存到数据库
+	err := c.DB.SetAlertStatus(status)
+	if err != nil {
+		c.Logger.Log(fmt.Sprintf("Failed to record ping failure in DB: %v", err), "error")
 	}
 }
 

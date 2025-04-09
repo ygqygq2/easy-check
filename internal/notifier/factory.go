@@ -40,7 +40,7 @@ func CreateNotifiers(cfg *config.Config, logger *logger.Logger) []Notifier {
 		}
 
 		notifiers = append(notifiers, notifier)
-		logger.Log(fmt.Sprintf("Successfully initialized notifier %s", notifierCfg.Name), "info")
+		logger.Log(fmt.Sprintf("Successfully initialized notifier %s", notifierCfg.Name), "debug")
 	}
 
 	return notifiers

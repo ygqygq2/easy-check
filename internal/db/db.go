@@ -1,26 +1,30 @@
 package db
 
 import (
+	"easy-check/internal/config"
+	"easy-check/internal/logger"
+
 	"github.com/dgraph-io/badger/v4"
 )
 
 type DB struct {
-	db *badger.DB
+	Instance *badger.DB
 }
 
 // NewDB 初始化 BadgerDB
-func NewDB(path string) (*DB, error) {
-	opts := badger.DefaultOptions(path).WithLoggingLevel(badger.ERROR) // 设置日志级别为 ERROR
+func NewDB(dbConfig *config.DbConfig, logger *logger.Logger) (*DB, error) {
+	opts := badger.DefaultOptions(dbConfig.Path).WithLoggingLevel(badger.ERROR) // 设置日志级别为 ERROR
 	db, err := badger.Open(opts)
 	if err != nil {
-		return nil, err
+		return nil, logger.LogAndError("Failed to open Badger DB: %v", "error", err)
 	}
-	return &DB{db: db}, nil
+	logger.Log("Badger DB initialized successfully", "info")
+	return &DB{Instance: db}, nil
 }
 
 // Set 设置键值对
 func (d *DB) Set(key, value string) error {
-	return d.db.Update(func(txn *badger.Txn) error {
+	return d.Instance.Update(func(txn *badger.Txn) error {
 		return txn.Set([]byte(key), []byte(value))
 	})
 }
@@ -28,7 +32,7 @@ func (d *DB) Set(key, value string) error {
 // Get 获取键对应的值
 func (d *DB) Get(key string) (string, error) {
 	var val string
-	err := d.db.View(func(txn *badger.Txn) error {
+	err := d.Instance.View(func(txn *badger.Txn) error {
 		item, err := txn.Get([]byte(key))
 		if err != nil {
 			return err
@@ -46,12 +50,12 @@ func (d *DB) Get(key string) (string, error) {
 
 // Delete 删除键
 func (d *DB) Delete(key string) error {
-	return d.db.Update(func(txn *badger.Txn) error {
+	return d.Instance.Update(func(txn *badger.Txn) error {
 		return txn.Delete([]byte(key))
 	})
 }
 
 // Close 关闭数据库
 func (d *DB) Close() error {
-	return d.db.Close()
+	return d.Instance.Close()
 }
