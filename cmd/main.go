@@ -6,6 +6,7 @@ import (
 	"easy-check/internal/db"
 	"easy-check/internal/initializer"
 	"easy-check/internal/logger"
+	"easy-check/internal/notifier"
 	"easy-check/internal/scheduler"
 	"easy-check/internal/signal"
 	"fmt"
@@ -29,9 +30,6 @@ func main() {
 		os.Exit(1)
 	}
 	defer appCtx.Logger.Close()
-
-	// 运行主逻辑
-	run(appCtx)
 
 	// 创建一个通道用于控制定时器
 	tickerControlChan := make(chan time.Duration)
@@ -73,13 +71,17 @@ func main() {
 	// 然后初始化 pinger 和 checker
 	pinger := checker.NewPinger()
 	// 创建 AlertStatusManager
-	alertStatusManager, err := db.NewAlertStatusManager(appCtx.DB.Instance, appCtx.Logger)
+	alertStatusManager, err := db.NewAlertStatusManager(appCtx.DB.Instance, appCtx.Logger, appCtx.Config.Db)
 	if err != nil {
 		appCtx.Logger.Fatal("Failed to create AlertStatusManager", "error")
 	}
 	appCtx.Logger.Log("AlertStatusManager initialized successfully", "debug")
+	appCtx.Logger.Log("Application started successfully", "info")
 
-	chk := checker.NewChecker(appCtx.Config, pinger, appCtx.Logger, appCtx.Notifier, alertStatusManager)
+	consumer := notifier.NewConsumer(alertStatusManager, appCtx.Logger, appCtx.Notifier, 10*time.Second)
+	go consumer.Start()
+
+	chk := checker.NewChecker(appCtx.Config, pinger, appCtx.Logger, alertStatusManager)
 	// 执行初始 ping 检查
 	appCtx.Logger.Log("Performing initial ping check", "info")
 	chk.PingHosts()
@@ -98,8 +100,4 @@ func main() {
 	}
 	appCtx.Logger.Log("Application shutting down", "info")
 	os.Exit(0)
-}
-
-func run(appCtx *initializer.AppContext) {
-	appCtx.Logger.Log("Application started successfully", "info")
 }

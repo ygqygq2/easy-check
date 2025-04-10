@@ -4,7 +4,6 @@ import (
 	"easy-check/internal/config"
 	"easy-check/internal/db"
 	"easy-check/internal/logger"
-	"easy-check/internal/notifier"
 	"fmt"
 	"strings"
 	"sync"
@@ -18,11 +17,10 @@ type Checker struct {
 	Timeout  int
 	Pinger   Pinger
 	Logger   *logger.Logger
-	Notifier notifier.Notifier
 	DB       *db.AlertStatusManager
 }
 
-func NewChecker(config *config.Config, pinger Pinger, logger *logger.Logger, notifier notifier.Notifier, db *db.AlertStatusManager) *Checker {
+func NewChecker(config *config.Config, pinger Pinger, logger *logger.Logger, db *db.AlertStatusManager) *Checker {
 	return &Checker{
 		Hosts:    config.Hosts,
 		Interval: time.Duration(config.Interval) * time.Second,
@@ -30,7 +28,6 @@ func NewChecker(config *config.Config, pinger Pinger, logger *logger.Logger, not
 		Timeout:  config.Ping.Timeout,
 		Pinger:   pinger,
 		Logger:   logger,
-		Notifier: notifier,
 		DB:       db,
 	}
 }
@@ -63,7 +60,7 @@ func (c *Checker) handlePingFailure(host config.Host, reason string) {
 	}
 
 	// 将失败信息保存到数据库
-	err := c.DB.SetAlertStatus(status)
+	err := c.DB.SetOrUpdateAlertStatus(status)
 	if err != nil {
 		c.Logger.Log(fmt.Sprintf("Failed to record ping failure in DB: %v", err), "error")
 	}
