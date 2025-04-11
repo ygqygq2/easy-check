@@ -12,6 +12,17 @@ import (
 	"time"
 )
 
+// 定义配置项的 key 枚举
+type FeishuOptionKey string
+
+const (
+	OptionKeyWebhook         FeishuOptionKey = "webhook"
+	OptionKeyMsgType         FeishuOptionKey = "msg_type"
+	OptionKeyTitle           FeishuOptionKey = "title"
+	OptionKeyAlertContent    FeishuOptionKey = "alert_content"
+	OptionKeyRecoveryContent FeishuOptionKey = "recovery_content"
+)
+
 // FeishuNotifier 飞书通知器
 type FeishuNotifier struct {
 	WebhookURL string
@@ -19,6 +30,14 @@ type FeishuNotifier struct {
 	Logger     *logger.Logger
 	Config     *config.Config
 	Options    map[string]interface{} // 从 NotifierConfig.Options 中读取
+}
+
+// FeishuTextMessage 飞书文本消息结构
+type FeishuTextMessage struct {
+	MsgType string `json:"msg_type"`
+	Content struct {
+		Text string `json:"text"`
+	} `json:"content"`
 }
 
 // FeishuResponse 飞书 API 响应结构
@@ -36,14 +55,6 @@ type FeishuMessageSender interface {
 // TextMessageSender 文本消息发送器
 type TextMessageSender struct{}
 
-// FeishuTextMessage 飞书文本消息结构
-type FeishuTextMessage struct {
-	MsgType string `json:"msg_type"`
-	Content struct {
-		Text string `json:"text"`
-	} `json:"alert_content"`
-}
-
 // TODO Post 卡片消息发送器
 type PostMessageSender struct{}
 
@@ -54,14 +65,26 @@ type InteractiveMessageSender struct{}
 func (f *FeishuNotifier) SendNotification(host config.Host) error {
 	f.Logger.Log(fmt.Sprintf("Sending notification to webhook: %s", f.WebhookURL), "debug")
 
+	// 获取标题
+	title, ok := f.Options[string(OptionKeyTitle)].(string)
+	if !ok || title == "" {
+		title = "💔【easy-check】：检测告警"
+	}
+
 	// 准备消息内容
 	content, err := f.prepareContent(host, time.Now())
 	if err != nil {
 		return fmt.Errorf("failed to prepare content: %v", err)
 	}
 
+	sender := &TextMessageSender{}
+	data, err := sender.PrepareMessage(title, content)
+	if err != nil {
+		return fmt.Errorf("failed to concatenate title and content: %v", err)
+	}
+
 	// 发送消息
-	err = f.sendMessage(content)
+	err = f.sendMessage(string(data))
 	if err != nil {
 		return fmt.Errorf("failed to send message: %v", err)
 	}
@@ -71,12 +94,12 @@ func (f *FeishuNotifier) SendNotification(host config.Host) error {
 }
 
 func NewFeishuNotifier(options map[string]interface{}, logger *logger.Logger) (Notifier, error) {
-	webhookURL, ok := options["webhook"].(string)
+	webhookURL, ok := options[string(OptionKeyWebhook)].(string)
 	if !ok || webhookURL == "" {
 		return nil, fmt.Errorf("missing webhook URL in Feishu notifier options")
 	}
 
-	msgType, ok := options["msg_type"].(string)
+	msgType, ok := options[string(OptionKeyMsgType)].(string)
 	if !ok || (msgType != "text" && msgType != "post" && msgType != "interactive") {
 		return nil, fmt.Errorf("unsupported or missing message type in Feishu notifier options")
 	}
@@ -92,7 +115,7 @@ func NewFeishuNotifier(options map[string]interface{}, logger *logger.Logger) (N
 // prepareContent 准备消息内容
 func (f *FeishuNotifier) prepareContent(host config.Host, failTime time.Time) (string, error) {
 	// 从配置中获取模板内容
-	templateContent, ok := f.Options["alert_content"].(string)
+	templateContent, ok := f.Options[string(OptionKeyAlertContent)].(string)
 	if !ok || templateContent == "" {
 		return "", fmt.Errorf("missing or invalid content template in configuration")
 	}
@@ -107,7 +130,7 @@ func (f *FeishuNotifier) prepareContent(host config.Host, failTime time.Time) (s
 	}
 
 	var buffer bytes.Buffer
-	tmpl, err := template.New("alert_content").Parse(templateContent)
+	tmpl, err := template.New(string(OptionKeyAlertContent)).Parse(templateContent)
 	if err != nil {
 		f.Logger.Log(fmt.Sprintf("Error parsing content template: %v", err), "error")
 		return "", fmt.Errorf("failed to parse content template: %v", err)
@@ -125,15 +148,14 @@ func (f *FeishuNotifier) prepareContent(host config.Host, failTime time.Time) (s
 func (f *FeishuNotifier) sendMessage(content string) error {
 	// 打印发送的消息内容
 	f.Logger.Log(fmt.Sprintf("Sending message: %s", content), "debug")
+
 	// 构造飞书消息
-	data, err := json.Marshal(FeishuTextMessage{
+	message := FeishuTextMessage{
 		MsgType: "text",
-		Content: struct {
-			Text string `json:"text"`
-		}{
-			Text: content,
-		},
-	})
+	}
+	message.Content.Text = content
+
+	data, err := json.Marshal(message)
 	if err != nil {
 		return fmt.Errorf("failed to marshal message: %v", err)
 	}
@@ -156,16 +178,15 @@ func (f *FeishuNotifier) sendMessage(content string) error {
 		return fmt.Errorf("API error: code=%d, message=%s", feishuResp.Code, feishuResp.Msg)
 	}
 
+	f.Logger.Log("Message sent successfully", "info")
 	return nil
 }
 
-// PrepareMessage 准备文本消息内容
+// PrepareMessage 简单拼接标题和内容
 func (s *TextMessageSender) PrepareMessage(title, content string) ([]byte, error) {
-	msg := FeishuTextMessage{
-		MsgType: "text",
-	}
-	msg.Content.Text = fmt.Sprintf("%s\n%s", title, content)
-	return json.Marshal(msg)
+	// 简单拼接标题和内容，用换行分隔
+	message := fmt.Sprintf("%s\n%s", title, content)
+	return []byte(message), nil
 }
 
 func (n *FeishuNotifier) Close() error {
@@ -265,7 +286,7 @@ func (f *FeishuNotifier) SendRecoveryNotification(host config.Host, recoveryInfo
 	f.Logger.Log(fmt.Sprintf("Sending recovery notification for host: %s", host.Host), "debug")
 
 	// 从配置中获取恢复通知模板
-	templateContent, ok := f.Options["recovery_content"].(string)
+	templateContent, ok := f.Options[string(OptionKeyRecoveryContent)].(string)
 	if !ok || templateContent == "" {
 		// 如果没有配置恢复模板，使用默认模板
 		templateContent = "🧭【恢复时间】：{{.Date}} {{.Time}}\n📝【恢复详情】：以下主机已恢复：\n- 开始时间：{{.FailTime}} | 主机：{{.Host}} | 描述：{{.Description}}"

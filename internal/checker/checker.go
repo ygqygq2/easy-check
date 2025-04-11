@@ -47,6 +47,12 @@ func (c *Checker) PingHosts() {
 }
 
 func (c *Checker) handlePingFailure(host config.Host, reason string) {
+	// 检查是否启用失败告警
+	if host.FailAlert != nil && !*host.FailAlert {
+		c.Logger.Log(fmt.Sprintf("Fail alert disabled for host: %s", host.Host), "debug")
+		return
+	}
+
 	// 记录失败日志
 	c.Logger.Log(fmt.Sprintf("Ping to [%s] %s failed: %s", host.Description, host.Host, reason), "error")
 
@@ -73,6 +79,7 @@ func (c *Checker) pingHost(host config.Host) {
 		c.handlePingFailure(host, err.Error())
 		return
 	}
+	c.handlePingSuccess(host)
 
 	lines := strings.Split(output, "\n")
 
@@ -89,9 +96,6 @@ func (c *Checker) pingHost(host config.Host) {
 }
 
 func (c *Checker) handlePingSuccess(host config.Host) {
-	// 记录成功日志
-	c.Logger.Log(fmt.Sprintf("Ping to [%s] %s succeeded", host.Description, host.Host), "info")
-
 	// 检查是否需要发送恢复通知
 	err := c.DB.MarkAsRecovered(host.Host)
 	if err != nil {
