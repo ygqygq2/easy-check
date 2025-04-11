@@ -41,7 +41,7 @@ type FeishuTextMessage struct {
 	MsgType string `json:"msg_type"`
 	Content struct {
 		Text string `json:"text"`
-	} `json:"content"`
+	} `json:"alert_content"`
 }
 
 // TODO Post 卡片消息发送器
@@ -92,7 +92,7 @@ func NewFeishuNotifier(options map[string]interface{}, logger *logger.Logger) (N
 // prepareContent 准备消息内容
 func (f *FeishuNotifier) prepareContent(host config.Host, failTime time.Time) (string, error) {
 	// 从配置中获取模板内容
-	templateContent, ok := f.Options["content"].(string)
+	templateContent, ok := f.Options["alert_content"].(string)
 	if !ok || templateContent == "" {
 		return "", fmt.Errorf("missing or invalid content template in configuration")
 	}
@@ -101,13 +101,13 @@ func (f *FeishuNotifier) prepareContent(host config.Host, failTime time.Time) (s
 	data := map[string]string{
 		"Date":        time.Now().Format("2006-01-02"),
 		"Time":        time.Now().Format("15:04:05"),
-    "FailTime":    failTime.Format("15:04:05"),
+		"FailTime":    failTime.Format("15:04:05"),
 		"Host":        host.Host,
 		"Description": host.Description,
 	}
 
 	var buffer bytes.Buffer
-	tmpl, err := template.New("content").Parse(templateContent)
+	tmpl, err := template.New("alert_content").Parse(templateContent)
 	if err != nil {
 		f.Logger.Log(fmt.Sprintf("Error parsing content template: %v", err), "error")
 		return "", fmt.Errorf("failed to parse content template: %v", err)
@@ -123,7 +123,7 @@ func (f *FeishuNotifier) prepareContent(host config.Host, failTime time.Time) (s
 
 // sendMessage 发送消息
 func (f *FeishuNotifier) sendMessage(content string) error {
-  // 打印发送的消息内容
+	// 打印发送的消息内容
 	f.Logger.Log(fmt.Sprintf("Sending message: %s", content), "debug")
 	// 构造飞书消息
 	data, err := json.Marshal(FeishuTextMessage{
@@ -257,5 +257,50 @@ func (f *FeishuNotifier) SendAggregatedNotification(alerts []*AlertItem) error {
 	}
 
 	f.Logger.Log("Successfully sent aggregated notification via Feishu", "info")
+	return nil
+}
+
+// SendRecoveryNotification 发送恢复通知
+func (f *FeishuNotifier) SendRecoveryNotification(host config.Host, recoveryInfo *RecoveryInfo) error {
+	f.Logger.Log(fmt.Sprintf("Sending recovery notification for host: %s", host.Host), "debug")
+
+	// 从配置中获取恢复通知模板
+	templateContent, ok := f.Options["recovery_content"].(string)
+	if !ok || templateContent == "" {
+		// 如果没有配置恢复模板，使用默认模板
+		templateContent = "🧭【恢复时间】：{{.Date}} {{.Time}}\n📝【恢复详情】：以下主机已恢复：\n- 开始时间：{{.FailTime}} | 主机：{{.Host}} | 描述：{{.Description}}"
+	}
+
+	// 准备模板数据
+	data := map[string]string{
+		"Date":        time.Now().Format("2006-01-02"),
+		"Time":        time.Now().Format("15:04:05"),
+		"Host":        host.Host,
+		"Description": host.Description,
+		"FailTime":    recoveryInfo.FailTime.Format("15:04:05"),
+	}
+
+	// 使用模板生成消息内容
+	var buffer bytes.Buffer
+	tmpl, err := template.New("recovery").Parse(templateContent)
+	if err != nil {
+		f.Logger.Log(fmt.Sprintf("Error parsing recovery template: %v", err), "error")
+		return fmt.Errorf("failed to parse recovery template: %v", err)
+	}
+
+	if err := tmpl.Execute(&buffer, data); err != nil {
+		f.Logger.Log(fmt.Sprintf("Error applying recovery template: %v", err), "error")
+		return fmt.Errorf("failed to apply recovery template: %v", err)
+	}
+
+	content := buffer.String()
+
+	// 发送消息
+	err = f.sendMessage(content)
+	if err != nil {
+		return fmt.Errorf("failed to send recovery notification: %v", err)
+	}
+
+	f.Logger.Log("Successfully sent recovery notification", "debug")
 	return nil
 }

@@ -73,7 +73,7 @@ func Initialize() (*AppContext, error) {
 		DB:       dbInstance,
 	}
 
-	appLogger.Log("Application initialized successfully", "info")
+	appLogger.Log("Application initialized successfully", "debug")
 	return appContext, nil
 }
 
@@ -140,7 +140,7 @@ func initLogger(cfg *config.Config, defaultLogger *logger.Logger) *logger.Logger
 	appLogger := logger.NewLogger(logConfig)
 	// 关闭默认日志器，避免重复释放
 	defaultLogger.Close()
-	appLogger.Log("Logger initialized successfully", "info")
+	appLogger.Log("Logger initialized successfully", "debug")
 	return appLogger
 }
 
@@ -164,7 +164,7 @@ func createNotifier(cfg *config.Config, logger *logger.Logger) (notifier.Notifie
 
 func initializeAlertAggregator(cfg *config.Config, baseNotifier notifier.Notifier, logger *logger.Logger) notifier.Notifier {
 	if cfg.Alert.AggregateAlerts {
-		logger.Log(fmt.Sprintf("Alert aggregation enabled with %d second window", cfg.Alert.AggregateWindow), "info")
+		logger.Log(fmt.Sprintf("Alert aggregation enabled with %d second window", cfg.Alert.AggregateWindow), "debug")
 		window := time.Duration(cfg.Alert.AggregateWindow) * time.Second
 
 		// 创建 AlertAggregator，但不作为返回值

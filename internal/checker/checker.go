@@ -87,3 +87,14 @@ func (c *Checker) pingHost(host config.Host) {
 		c.Logger.Log(fmt.Sprintf("Ping to [%s] %s succeeded: success rate %.2f%%, latency %s", host.Description, host.Host, successRate*100, sampleLatency), "info")
 	}
 }
+
+func (c *Checker) handlePingSuccess(host config.Host) {
+	// 记录成功日志
+	c.Logger.Log(fmt.Sprintf("Ping to [%s] %s succeeded", host.Description, host.Host), "info")
+
+	// 检查是否需要发送恢复通知
+	err := c.DB.MarkAsRecovered(host.Host)
+	if err != nil {
+		c.Logger.Log(fmt.Sprintf("Failed to update host recovery status: %v", err), "error")
+	}
+}

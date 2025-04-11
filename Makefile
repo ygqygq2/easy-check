@@ -39,3 +39,6 @@ package: build
 
 format:
 	goimports -w .
+
+wire:
+	wire ./internal/wire

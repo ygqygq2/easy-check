@@ -18,7 +18,7 @@ func NewDB(dbConfig *config.DbConfig, logger *logger.Logger) (*DB, error) {
 	if err != nil {
 		return nil, logger.LogAndError("Failed to open Badger DB: %v", "error", err)
 	}
-	logger.Log("Badger DB initialized successfully", "info")
+	logger.Log("Badger DB initialized successfully", "debug")
 	return &DB{Instance: db}, nil
 }
 

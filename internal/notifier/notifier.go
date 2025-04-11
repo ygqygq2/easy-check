@@ -14,6 +14,8 @@ type Notifier interface {
 	SendNotification(host config.Host) error
 	// 发送聚合告警
 	SendAggregatedNotification(alerts []*AlertItem) error
+	// 发送恢复通知
+	SendRecoveryNotification(host config.Host, alertStatus *RecoveryInfo) error
 	// 关闭通知器
 	Close() error
 }
@@ -22,6 +24,28 @@ type Notifier interface {
 type MultiNotifier struct {
 	notifiers []Notifier
 	logger    *logger.Logger
+}
+
+// RecoveryInfo 保存恢复通知所需信息
+type RecoveryInfo struct {
+	FailTime     time.Time // 故障发生时间
+	RecoveryTime time.Time // 恢复时间
+}
+
+// NotifierManager 管理通知器的队列和发送逻辑
+type NotifierManager struct {
+	queue         *queue.Queue
+	multiNotifier *MultiNotifier
+	logger        *logger.Logger
+}
+
+// NewNotifierManager 创建一个新的 NotifierManager
+func NewNotifierManager(queue *queue.Queue, multiNotifier *MultiNotifier, logger *logger.Logger) *NotifierManager {
+	return &NotifierManager{
+		queue:         queue,
+		multiNotifier: multiNotifier,
+		logger:        logger,
+	}
 }
 
 // NewMultiNotifier 创建一个新的 MultiNotifier
@@ -68,6 +92,21 @@ func (m *MultiNotifier) SendAggregatedNotification(alerts []*AlertItem) error {
 	return nil
 }
 
+// SendRecoveryNotification 实现 Notifier 接口，向所有启用的通知器发送恢复通知
+func (m *MultiNotifier) SendRecoveryNotification(host config.Host, recoveryInfo *RecoveryInfo) error {
+	var errs []error
+	for _, notifier := range m.notifiers {
+		if err := notifier.SendRecoveryNotification(host, recoveryInfo); err != nil {
+			m.logger.Log(fmt.Sprintf("Error sending recovery notification: %v", err), "error")
+			errs = append(errs, err)
+		}
+	}
+	if len(errs) > 0 {
+		return fmt.Errorf("failed to send recovery notification to some notifiers: %v", errs)
+	}
+	return nil
+}
+
 // Close 实现 Notifier 接口，关闭所有启用的通知器
 func (m *MultiNotifier) Close() error {
 	var errs []error
@@ -81,22 +120,6 @@ func (m *MultiNotifier) Close() error {
 		return fmt.Errorf("failed to close some notifiers: %v", errs)
 	}
 	return nil
-}
-
-// NotifierManager 管理通知器的队列和发送逻辑
-type NotifierManager struct {
-	queue         *queue.Queue
-	multiNotifier *MultiNotifier
-	logger        *logger.Logger
-}
-
-// NewNotifierManager 创建一个新的 NotifierManager
-func NewNotifierManager(queue *queue.Queue, multiNotifier *MultiNotifier, logger *logger.Logger) *NotifierManager {
-	return &NotifierManager{
-		queue:         queue,
-		multiNotifier: multiNotifier,
-		logger:        logger,
-	}
 }
 
 // Start 启动通知器管理器，处理队列中的事件

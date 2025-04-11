@@ -15,6 +15,10 @@ func (n *NoopNotifier) SendAggregatedNotification(alerts []*AlertItem) error {
 	return nil
 }
 
+func (n *NoopNotifier) SendRecoveryNotification(host config.Host, recoveryInfo *RecoveryInfo) error {
+	return nil
+}
+
 func (n *NoopNotifier) Close() error {
 	return nil
 }
