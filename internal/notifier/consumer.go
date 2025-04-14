@@ -36,7 +36,7 @@ func (c *Consumer) Start() {
 
 func (c *Consumer) processAlerts() {
 	// 从数据库中获取未发送的告警
-	alerts, err := c.db.GetAllUnsentAlerts()
+	alerts, err := c.db.GetAllUnsentStatuses(db.StatusAlert)
 	if err != nil {
 		c.logger.Log("Failed to fetch unsent alerts: "+err.Error(), "error")
 		return
@@ -52,7 +52,7 @@ func (c *Consumer) processAlerts() {
 
 		// 更新告警状态为已发送
 		alert.Sent = true
-		err = c.db.SetOrUpdateAlertStatus(alert)
+		err = c.db.UpdateSentStatus(alert.Host, true)
 		if err != nil {
 			c.logger.Log("Failed to update alert status: "+err.Error(), "error")
 		}
@@ -83,7 +83,7 @@ func (c *Consumer) sendAlert(alert db.AlertStatus) error {
 
 func (c *Consumer) processRecoveryNotifications() {
 	// 从数据库中获取未发送的恢复通知
-	recoveries, err := c.db.GetAllUnsentRecoveries()
+	recoveries, err := c.db.GetAllUnsentStatuses(db.StatusRecovery)
 	if err != nil {
 		c.logger.Log(fmt.Sprintf("Failed to get unsent recoveries: %v", err), "error")
 		return
@@ -119,8 +119,7 @@ func (c *Consumer) processRecoveryNotifications() {
 		}
 
 		// 标记为已发送
-		recovery.Sent = true
-		err = c.db.SetOrUpdateAlertStatus(recovery)
+		err = c.db.UpdateSentStatus(recovery.Host, true)
 		if err != nil {
 			c.logger.Log("Failed to update recovery status: "+err.Error(), "error")
 		}
