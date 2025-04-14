@@ -62,7 +62,7 @@ func (c *Checker) handlePingFailure(host config.Host, reason string) {
 		Description: host.Description,
 		Status:      "ALERT",
 		Timestamp:   time.Now().Format(time.RFC3339),
-		FailAlert:   *host.FailAlert,
+		FailAlert:   host.FailAlert == nil || *host.FailAlert, // 默认启用告警
 	}
 
 	// 将失败信息保存到数据库

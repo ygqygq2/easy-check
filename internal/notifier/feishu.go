@@ -178,7 +178,7 @@ func (f *FeishuNotifier) sendMessage(content string) error {
 		return fmt.Errorf("API error: code=%d, message=%s", feishuResp.Code, feishuResp.Msg)
 	}
 
-	f.Logger.Log("Message sent successfully", "info")
+	f.Logger.Log("Message sent successfully", "debug")
 	return nil
 }
 
@@ -190,7 +190,7 @@ func (s *TextMessageSender) PrepareMessage(title, content string) ([]byte, error
 }
 
 func (n *FeishuNotifier) Close() error {
-	n.Logger.Log("Closing FeishuNotifier", "info")
+	n.Logger.Log("Closing FeishuNotifier", "debug")
 	// 如果有需要清理的资源，可以在这里处理
 	return nil
 }

@@ -37,7 +37,6 @@ func (c *Consumer) Start() {
 func (c *Consumer) processAlerts() {
 	// 从数据库中获取未发送的告警
 	alerts, err := c.db.GetAllUnsentAlerts()
-	fmt.Println("🚀 ~ file: consumer.go:40 ~ alerts:", alerts)
 	if err != nil {
 		c.logger.Log("Failed to fetch unsent alerts: "+err.Error(), "error")
 		return
