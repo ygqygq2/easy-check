@@ -4,12 +4,15 @@
 package wire
 
 import (
+	"easy-check/internal/aggregator"
 	"easy-check/internal/checker"
 	"easy-check/internal/config"
 	"easy-check/internal/db"
 	"easy-check/internal/logger"
 	"easy-check/internal/notifier"
+	"easy-check/internal/types"
 	"fmt"
+	"time"
 
 	"github.com/dgraph-io/badger/v4"
 	"github.com/google/wire"
@@ -17,12 +20,13 @@ import (
 
 // 应用程序上下文结构
 type AppContext struct {
-	Config         *config.Config
-	Logger         *logger.Logger
-	DB             *badger.DB
-	AlertStatusMgr *db.AlertStatusManager
-	Checker        *checker.Checker
-	Notifier       notifier.Notifier
+	Config           *config.Config
+	Logger           *logger.Logger
+	DB               *badger.DB
+	AlertStatusMgr   *db.AlertStatusManager
+	Pinger           checker.Pinger
+	Notifier         types.Notifier
+	AggregatorHandle types.AggregatorHandle
 }
 
 // 定义提供者集
@@ -32,7 +36,7 @@ var loggerSet = wire.NewSet(
 
 var dbSet = wire.NewSet(
 	provideBadgerDB,
-	db.NewAlertStatusManager,
+	provideAlertStatusManager,
 )
 
 var checkerSet = wire.NewSet(
@@ -44,12 +48,16 @@ var notifierSet = wire.NewSet(
 	provideNotifier,
 )
 
+var aggregatorSet = wire.NewSet(
+	provideAggregator,
+)
+
 func provideDefaultLogger() *logger.Logger {
 	return logger.NewDefaultLogger()
 }
 
 func provideConfig(configPath string) (*config.Config, error) {
-  defaultLogger := logger.NewDefaultLogger() // 使用默认日志器
+	defaultLogger := logger.NewDefaultLogger() // 使用默认日志器
 	return config.LoadConfig(configPath, defaultLogger)
 }
 
@@ -74,7 +82,7 @@ func provideLogger(cfg *config.Config) (*logger.Logger, error) {
 	return logger.NewLogger(logConfig), nil
 }
 
-// provideBadgerDB 创建数据库连接func provideBadgerDB(cfg *config.Config, log *logger.Logger) (*badger.DB, error) {
+// provideBadgerDB 创建数据库连接
 func provideBadgerDB(cfg *config.Config, log *logger.Logger) (*badger.DB, error) {
 	opts := badger.DefaultOptions(cfg.Db.Path)
 	db, err := badger.Open(opts)
@@ -85,8 +93,13 @@ func provideBadgerDB(cfg *config.Config, log *logger.Logger) (*badger.DB, error)
 	return db, nil
 }
 
+// provideAlertStatusManager 创建 AlertStatusManager
+func provideAlertStatusManager(badgerDB *badger.DB, log *logger.Logger, cfg *config.Config) (*db.AlertStatusManager, error) {
+	return db.NewAlertStatusManager(badgerDB, log, cfg.Db)
+}
+
 // provideNotifier 创建通知器
-func provideNotifier(cfg *config.Config, log *logger.Logger) (notifier.Notifier, error) {
+func provideNotifier(cfg *config.Config, log *logger.Logger) (types.Notifier, error) {
 	if cfg == nil {
 		return nil, fmt.Errorf("config is nil")
 	}
@@ -98,8 +111,29 @@ func provideNotifier(cfg *config.Config, log *logger.Logger) (notifier.Notifier,
 		return &notifier.NoopNotifier{}, nil // 返回一个空操作通知器
 	}
 
-	// 使用 NewMultiNotifier 组合多个通知器
-	return notifier.NewMultiNotifier(notifiers, log), nil
+	// 使用 MultiNotifierWrapper 包装 NewMultiNotifier
+	return &notifier.MultiNotifierWrapper{
+		MultiNotifier: notifier.NewMultiNotifier(notifiers, log),
+	}, nil
+}
+
+// provideAggregator 创建聚合器
+func provideAggregator(cfg *config.Config, log *logger.Logger, notifier types.Notifier) (types.AggregatorHandle, error) {
+	if cfg == nil {
+		return nil, fmt.Errorf("config is nil")
+	}
+
+	if cfg.Alert.AggregateAlerts {
+		window := time.Duration(cfg.Alert.AggregateWindow) * time.Second
+		return aggregator.NewAggregator(
+			cfg.Alert.AggregateLineTemplate,
+			notifier,
+			log,
+			window,
+		), nil
+	} else {
+		return aggregator.NewNoAggregator(notifier, log), nil
+	}
 }
 
 // InitializeApp 是 Wire 生成的初始化函数
@@ -110,6 +144,7 @@ func InitializeApp(configPath string) (*AppContext, error) {
 		dbSet,                             // 数据库提供者集
 		checkerSet,                        // 检查器提供者集
 		notifierSet,                       // 通知器提供者集
+		aggregatorSet,                     // 聚合器提供者集
 		wire.Struct(new(AppContext), "*"), // 构造 AppContext
 	)
 	return nil, nil

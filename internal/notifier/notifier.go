@@ -2,55 +2,38 @@ package notifier
 
 import (
 	"easy-check/internal/config"
+	"easy-check/internal/db"
 	"easy-check/internal/logger"
 	"easy-check/internal/queue"
+	"easy-check/internal/types"
 	"fmt"
 	"time"
 )
 
-// Notifier 接口定义了通知器的基本行为
-type Notifier interface {
-	// 发送单个主机的告警通知
-	SendNotification(host config.Host) error
-	// 发送聚合告警
-	SendAggregatedNotification(alerts []*AlertItem) error
-	// 发送恢复通知
-	SendRecoveryNotification(host config.Host, alertStatus *RecoveryInfo) error
-	// 关闭通知器
-	Close() error
+// MultiNotifierWrapper 是对 types.MultiNotifier 的本地包装器
+type MultiNotifierWrapper struct {
+	*types.MultiNotifier
 }
 
-// MultiNotifier 将消息发送到多个启用的通知器
-type MultiNotifier struct {
-	notifiers []Notifier
-	logger    *logger.Logger
-}
-
-// RecoveryInfo 保存恢复通知所需信息
-type RecoveryInfo struct {
-	FailTime     time.Time // 故障发生时间
-	RecoveryTime time.Time // 恢复时间
-}
-
-// NotifierManager 管理通知器的队列和发送逻辑
-type NotifierManager struct {
-	queue         *queue.Queue
-	multiNotifier *MultiNotifier
-	logger        *logger.Logger
+// NotifierManagerWrapper 包装了 NotifierManager
+type NotifierManagerWrapper struct {
+	Queue         *queue.Queue
+	MultiNotifier *MultiNotifierWrapper
+	Logger        *logger.Logger
 }
 
 // NewNotifierManager 创建一个新的 NotifierManager
-func NewNotifierManager(queue *queue.Queue, multiNotifier *MultiNotifier, logger *logger.Logger) *NotifierManager {
-	return &NotifierManager{
-		queue:         queue,
-		multiNotifier: multiNotifier,
-		logger:        logger,
+func NewNotifierManager(queue *queue.Queue, multiNotifier *types.MultiNotifier, logger *logger.Logger) *types.NotifierManager {
+	return &types.NotifierManager{
+		Queue:         queue,
+		MultiNotifier: multiNotifier,
+		Logger:        logger,
 	}
 }
 
 // NewMultiNotifier 创建一个新的 MultiNotifier
-func NewMultiNotifier(allNotifiers []Notifier, logger *logger.Logger) *MultiNotifier {
-	enabledNotifiers := []Notifier{}
+func NewMultiNotifier(allNotifiers []types.Notifier, logger *logger.Logger) *types.MultiNotifier {
+	enabledNotifiers := []types.Notifier{}
 	for _, notifier := range allNotifiers {
 		if notifier != nil { // 确保通知器有效
 			enabledNotifiers = append(enabledNotifiers, notifier)
@@ -59,15 +42,15 @@ func NewMultiNotifier(allNotifiers []Notifier, logger *logger.Logger) *MultiNoti
 	if len(enabledNotifiers) == 0 {
 		logger.Log("No enabled notifiers found", "warn")
 	}
-	return &MultiNotifier{notifiers: enabledNotifiers, logger: logger}
+	return &types.MultiNotifier{Notifiers: enabledNotifiers, Logger: logger}
 }
 
 // SendNotification 实现 Notifier 接口，向所有启用的通知器发送消息
-func (m *MultiNotifier) SendNotification(host config.Host) error {
+func (m *MultiNotifierWrapper) SendNotification(host config.Host) error {
 	var errs []error
-	for _, notifier := range m.notifiers {
+	for _, notifier := range m.Notifiers {
 		if err := notifier.SendNotification(host); err != nil {
-			m.logger.Log(fmt.Sprintf("Error sending notification: %v", err), "error")
+			m.Logger.Log(fmt.Sprintf("Error sending notification: %v", err), "error")
 			errs = append(errs, err)
 		}
 	}
@@ -78,11 +61,16 @@ func (m *MultiNotifier) SendNotification(host config.Host) error {
 }
 
 // SendAggregatedNotification 实现 Notifier 接口，向所有启用的通知器发送聚合消息
-func (m *MultiNotifier) SendAggregatedNotification(alerts []*AlertItem) error {
+// SendAggregatedNotification 发送聚合通知
+// 该方法接收一个警报项的切片，并尝试通过所有注册的通知器发送聚合通知
+// 如果所有通知器都成功发送通知，则返回nil；否则返回一个错误列表
+func (m *MultiNotifierWrapper) SendAggregatedNotification(alerts []*db.AlertItem) error {
+	// 初始化一个错误切片，用于存储发送通知时发生的错误
 	var errs []error
-	for _, notifier := range m.notifiers {
+	// 遍历所有注册的通知器
+	for _, notifier := range m.Notifiers {
 		if err := notifier.SendAggregatedNotification(alerts); err != nil {
-			m.logger.Log(fmt.Sprintf("Error sending aggregated notification: %v", err), "error")
+			m.Logger.Log(fmt.Sprintf("Error sending aggregated notification: %v", err), "error")
 			errs = append(errs, err)
 		}
 	}
@@ -93,11 +81,11 @@ func (m *MultiNotifier) SendAggregatedNotification(alerts []*AlertItem) error {
 }
 
 // SendRecoveryNotification 实现 Notifier 接口，向所有启用的通知器发送恢复通知
-func (m *MultiNotifier) SendRecoveryNotification(host config.Host, recoveryInfo *RecoveryInfo) error {
+func (m *MultiNotifierWrapper) SendRecoveryNotification(host config.Host, recoveryInfo *types.RecoveryInfo) error {
 	var errs []error
-	for _, notifier := range m.notifiers {
+	for _, notifier := range m.Notifiers {
 		if err := notifier.SendRecoveryNotification(host, recoveryInfo); err != nil {
-			m.logger.Log(fmt.Sprintf("Error sending recovery notification: %v", err), "error")
+			m.Logger.Log(fmt.Sprintf("Error sending recovery notification: %v", err), "error")
 			errs = append(errs, err)
 		}
 	}
@@ -108,11 +96,11 @@ func (m *MultiNotifier) SendRecoveryNotification(host config.Host, recoveryInfo 
 }
 
 // Close 实现 Notifier 接口，关闭所有启用的通知器
-func (m *MultiNotifier) Close() error {
+func (m *MultiNotifierWrapper) Close() error {
 	var errs []error
-	for _, notifier := range m.notifiers {
+	for _, notifier := range m.Notifiers {
 		if err := notifier.Close(); err != nil {
-			m.logger.Log(fmt.Sprintf("Error closing notifier: %v", err), "error")
+			m.Logger.Log(fmt.Sprintf("Error closing notifier: %v", err), "error")
 			errs = append(errs, err)
 		}
 	}
@@ -123,9 +111,9 @@ func (m *MultiNotifier) Close() error {
 }
 
 // Start 启动通知器管理器，处理队列中的事件
-func (n *NotifierManager) Start() {
+func (n *NotifierManagerWrapper) Start() {
 	for {
-		event, ok := n.queue.Pop()
+		event, ok := n.Queue.Pop()
 		if !ok {
 			// 如果队列为空，等待一段时间再尝试
 			time.Sleep(100 * time.Millisecond)
@@ -134,25 +122,25 @@ func (n *NotifierManager) Start() {
 
 		switch event.Type {
 		case "ALERT":
-			n.logger.Log("Processing alert event", "info")
+			n.Logger.Log("Processing alert event", "info")
 			host := config.Host{
 				Host:        event.Host,
 				Description: event.Description,
 			}
-			if err := n.multiNotifier.SendNotification(host); err != nil {
-				n.logger.Log(fmt.Sprintf("Failed to send alert notification: %v", err), "error")
+			if err := n.MultiNotifier.SendNotification(host); err != nil {
+				n.Logger.Log(fmt.Sprintf("Failed to send alert notification: %v", err), "error")
 			}
 		case "RECOVERY":
-			n.logger.Log("Processing recovery event", "info")
+			n.Logger.Log("Processing recovery event", "info")
 			host := config.Host{
 				Host:        event.Host,
 				Description: event.Description,
 			}
-			if err := n.multiNotifier.SendNotification(host); err != nil {
-				n.logger.Log(fmt.Sprintf("Failed to send recovery notification: %v", err), "error")
+			if err := n.MultiNotifier.SendNotification(host); err != nil {
+				n.Logger.Log(fmt.Sprintf("Failed to send recovery notification: %v", err), "error")
 			}
 		default:
-			n.logger.Log(fmt.Sprintf("Unknown event type: %s", event.Type), "warn")
+			n.Logger.Log(fmt.Sprintf("Unknown event type: %s", event.Type), "warn")
 		}
 	}
 }

@@ -2,6 +2,7 @@ package notifier
 
 import (
 	"bytes"
+	"easy-check/internal/db"
 	"fmt"
 	"text/template"
 )
@@ -23,7 +24,7 @@ func processTemplate(templateStr string, data interface{}) (string, error) {
 }
 
 // 通用的告警列表格式化函数
-func formatAlertList(alerts []*AlertItem, templateStr string) string {
+func formatAlertList(alerts []*db.AlertItem, templateStr string) string {
 	var buffer bytes.Buffer
 
 	// 如果提供了模板字符串，尝试解析模板
@@ -52,7 +53,7 @@ func formatAlertList(alerts []*AlertItem, templateStr string) string {
 					buffer.WriteString(fmt.Sprintf("- [%s] %s: %s\n", data.FailTime, data.Host, data.Description))
 				} else {
 					buffer.WriteString(lineBuffer.String())
-          buffer.WriteString("\n")
+					buffer.WriteString("\n")
 				}
 			}
 			return buffer.String()

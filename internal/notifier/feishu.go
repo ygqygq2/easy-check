@@ -3,7 +3,9 @@ package notifier
 import (
 	"bytes"
 	"easy-check/internal/config"
+	"easy-check/internal/db"
 	"easy-check/internal/logger"
+	"easy-check/internal/types"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -45,6 +47,15 @@ type FeishuResponse struct {
 	Code int         `json:"code"`
 	Msg  string      `json:"msg"`
 	Data interface{} `json:"data"`
+}
+
+// TemplateData 定义用于模板渲染的数据结构
+type TemplateData struct {
+	Date       string
+	Time       string
+	AlertCount int
+	AlertList  string
+	Alerts     []*db.AlertItem
 }
 
 // FeishuMessageSender 消息发送器接口
@@ -93,7 +104,7 @@ func (f *FeishuNotifier) SendNotification(host config.Host) error {
 	return nil
 }
 
-func NewFeishuNotifier(options map[string]interface{}, logger *logger.Logger) (Notifier, error) {
+func NewFeishuNotifier(options map[string]interface{}, logger *logger.Logger) (types.Notifier, error) {
 	webhookURL, ok := options[string(OptionKeyWebhook)].(string)
 	if !ok || webhookURL == "" {
 		return nil, fmt.Errorf("missing webhook URL in Feishu notifier options")
@@ -196,7 +207,7 @@ func (n *FeishuNotifier) Close() error {
 }
 
 // PrepareAggregatedContent 准备聚合告警的内容
-func (f *FeishuNotifier) PrepareAggregatedContent(alerts []*AlertItem) (string, error) {
+func (f *FeishuNotifier) PrepareAggregatedContent(alerts []*db.AlertItem) (string, error) {
 	// 从配置中获取行模板
 	lineTemplate := f.Config.Alert.AggregateLineTemplate
 	if lineTemplate == "" {
@@ -264,7 +275,7 @@ func (f *FeishuNotifier) PrepareAggregatedContent(alerts []*AlertItem) (string, 
 	return buffer.String(), nil
 }
 
-func (f *FeishuNotifier) SendAggregatedNotification(alerts []*AlertItem) error {
+func (f *FeishuNotifier) SendAggregatedNotification(alerts []*db.AlertItem) error {
 	content, err := f.PrepareAggregatedContent(alerts)
 	if err != nil {
 		f.Logger.Log(fmt.Sprintf("Error preparing aggregated content: %v", err), "error")
@@ -282,7 +293,7 @@ func (f *FeishuNotifier) SendAggregatedNotification(alerts []*AlertItem) error {
 }
 
 // SendRecoveryNotification 发送恢复通知
-func (f *FeishuNotifier) SendRecoveryNotification(host config.Host, recoveryInfo *RecoveryInfo) error {
+func (f *FeishuNotifier) SendRecoveryNotification(host config.Host, recoveryInfo *types.RecoveryInfo) error {
 	f.Logger.Log(fmt.Sprintf("Sending recovery notification for host: %s", host.Host), "debug")
 
 	// 从配置中获取恢复通知模板

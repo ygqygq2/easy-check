@@ -2,6 +2,8 @@ package notifier
 
 import (
 	"easy-check/internal/config"
+	"easy-check/internal/db"
+	"easy-check/internal/types"
 )
 
 // NoopNotifier 是一个不执行任何操作的通知器
@@ -11,11 +13,11 @@ func (n *NoopNotifier) SendNotification(host config.Host) error {
 	return nil
 }
 
-func (n *NoopNotifier) SendAggregatedNotification(alerts []*AlertItem) error {
+func (n *NoopNotifier) SendAggregatedNotification(alerts []*db.AlertItem) error {
 	return nil
 }
 
-func (n *NoopNotifier) SendRecoveryNotification(host config.Host, recoveryInfo *RecoveryInfo) error {
+func (n *NoopNotifier) SendRecoveryNotification(host config.Host, recoveryInfo *types.RecoveryInfo) error {
 	return nil
 }
 

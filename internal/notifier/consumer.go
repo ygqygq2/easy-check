@@ -4,8 +4,8 @@ import (
 	"easy-check/internal/config"
 	"easy-check/internal/db"
 	"easy-check/internal/logger"
+	"easy-check/internal/types"
 	"fmt"
-
 	"time"
 )
 
@@ -13,15 +13,20 @@ type Consumer struct {
 	db       *db.AlertStatusManager
 	logger   *logger.Logger
 	interval time.Duration
-	Notifier Notifier
+	handler  types.AggregatorHandle
 }
 
-func NewConsumer(db *db.AlertStatusManager, logger *logger.Logger, notifier Notifier, interval time.Duration) *Consumer {
+func NewConsumer(
+	db *db.AlertStatusManager,
+	logger *logger.Logger,
+	interval time.Duration,
+	handler types.AggregatorHandle,
+) *Consumer {
 	return &Consumer{
 		db:       db,
 		logger:   logger,
-		Notifier: notifier,
 		interval: interval,
+		handler:  handler,
 	}
 }
 
@@ -30,98 +35,65 @@ func (c *Consumer) Start() {
 	defer ticker.Stop()
 
 	for range ticker.C {
-		c.processAlerts()
+		c.processEvents(db.StatusAlert, "alerts")
+		c.processEvents(db.StatusRecovery, "recoveries")
 	}
 }
 
-func (c *Consumer) processAlerts() {
-	// 从数据库中获取未发送的告警
-	alerts, err := c.db.GetAllUnsentStatuses(db.StatusAlert)
+// 通用事件处理方法
+func (c *Consumer) processEvents(statusType db.StatusType, eventType string) {
+	events, err := c.db.GetAllUnsentStatuses(statusType)
 	if err != nil {
-		c.logger.Log("Failed to fetch unsent alerts: "+err.Error(), "error")
+		c.logError(fmt.Sprintf("Failed to fetch unsent %s", eventType), err)
 		return
 	}
 
-	for _, alert := range alerts {
-		// 发送告警
-		err := c.sendAlert(alert)
-		if err != nil {
-			c.logger.Log("Failed to send alert: "+err.Error(), "error")
-			continue
-		}
+	if len(events) == 0 {
+		c.logger.Log(fmt.Sprintf("No unsent %s to process", eventType), "debug")
+		return
+	}
 
-		// 更新告警状态为已发送
-		alert.Sent = true
-		err = c.db.UpdateSentStatus(alert.Host, true)
-		if err != nil {
-			c.logger.Log("Failed to update alert status: "+err.Error(), "error")
+	if eventType == "alerts" {
+		if err := c.handler.ProcessAlerts(events, c.db); err != nil {
+			c.logError("Failed to process alerts", err)
+		}
+	} else if eventType == "recoveries" {
+		for _, recovery := range events {
+			c.processSingleRecovery(recovery)
 		}
 	}
 }
 
-func (c *Consumer) sendAlert(alert db.AlertStatus) error {
-	// 实现告警发送逻辑
-	c.logger.Log("Sending alert for host: "+alert.Host, "info")
+func (c *Consumer) processSingleRecovery(recovery *db.AlertStatus) {
+	c.logger.Log(fmt.Sprintf("Processing recovery for host: %s", recovery.Host), "debug")
 
-	// 构造 config.Host 类型的实例
 	host := config.Host{
-		Host:        alert.Host,
-		Description: alert.Description,
+		Host:        recovery.Host,
+		Description: recovery.Description,
 	}
 
-	// 发送通知
-	if c.Notifier != nil {
-		err := c.Notifier.SendNotification(host)
-		if err != nil {
-			c.logger.Log(fmt.Sprintf("Failed to send notification: %v", err), "error")
-			return err
-		}
-	}
-
-	return nil
-}
-
-func (c *Consumer) processRecoveryNotifications() {
-	// 从数据库中获取未发送的恢复通知
-	recoveries, err := c.db.GetAllUnsentStatuses(db.StatusRecovery)
+	failTime, err := time.Parse(time.RFC3339, recovery.Timestamp)
 	if err != nil {
-		c.logger.Log(fmt.Sprintf("Failed to get unsent recoveries: %v", err), "error")
+		c.logError(fmt.Sprintf("Failed to parse timestamp for host %s", recovery.Host), err)
+		failTime = time.Now()
+	}
+
+	recoveryInfo := &types.RecoveryInfo{
+		FailTime:     failTime,
+		RecoveryTime: time.Now(),
+	}
+
+	if err := c.handler.SendRecoveryNotification(host, recoveryInfo); err != nil {
+		c.logError(fmt.Sprintf("Failed to send recovery notification for host %s", recovery.Host), err)
 		return
 	}
 
-	for _, recovery := range recoveries {
-		c.logger.Log(fmt.Sprintf("Sending recovery notification for host: %s", recovery.Host), "debug")
-
-		// 构造主机信息
-		host := config.Host{
-			Host:        recovery.Host,
-			Description: recovery.Description,
-		}
-
-		// 将数据库中的时间字符串解析为time.Time
-		failTime, err := time.Parse(time.RFC3339, recovery.Timestamp)
-		if err != nil {
-			c.logger.Log(fmt.Sprintf("Failed to parse timestamp for host %s: %v", recovery.Host, err), "error")
-			failTime = time.Now() // 解析失败则使用当前时间
-		}
-
-		// 构造恢复信息
-		recoveryInfo := &RecoveryInfo{
-			FailTime:     failTime,
-			RecoveryTime: time.Now(),
-		}
-
-		// 发送恢复通知，传入所有需要的信息
-		err = c.Notifier.SendRecoveryNotification(host, recoveryInfo)
-		if err != nil {
-			c.logger.Log(fmt.Sprintf("Failed to send recovery notification: %v", err), "error")
-			continue
-		}
-
-		// 标记为已发送
-		err = c.db.UpdateSentStatus(recovery.Host, true)
-		if err != nil {
-			c.logger.Log("Failed to update recovery status: "+err.Error(), "error")
-		}
+	if err := c.db.UpdateSentStatus(recovery.Host, true); err != nil {
+		c.logError(fmt.Sprintf("Failed to update recovery status for host %s", recovery.Host), err)
 	}
+}
+
+// logError 记录错误日志
+func (c *Consumer) logError(message string, err error) {
+	c.logger.Log(fmt.Sprintf("%s: %v", message, err), "error")
 }

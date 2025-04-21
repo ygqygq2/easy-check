@@ -1,95 +1,119 @@
 package aggregator
 
 import (
+	"easy-check/internal/config"
 	"easy-check/internal/db"
 	"easy-check/internal/logger"
-	"easy-check/internal/queue"
+	"easy-check/internal/types"
+	"fmt"
+	"strings"
+	"sync"
 	"time"
 )
 
-// AggregatorManager 负责管理告警的聚合逻辑
-type AggregatorManager struct {
-	window time.Duration
-	logger *logger.Logger
-	alerts chan *AlertItem
-	done   chan struct{}
-	db     *db.DB
-	queue  *queue.Queue
+// Aggregator 实现了聚合告警的逻辑
+type Aggregator struct {
+	lineTemplate string
+	notifier     types.Notifier
+	logger       *logger.Logger
+	window       time.Duration
+	alerts       []*db.AlertStatus
+	mu           sync.Mutex
 }
 
-// NewAggregatorManager 创建一个新的 AggregatorManager
-func NewAggregatorManager(window int, logger *logger.Logger, db *db.DB, queue *queue.Queue) *AggregatorManager {
-	return &AggregatorManager{
-		window: time.Duration(window) * time.Second,
-		logger: logger,
-		alerts: make(chan *AlertItem, 100),
-		done:   make(chan struct{}),
-		db:     db,
-		queue:  queue,
+// 确保 Aggregator 实现了 AggregatorHandle 接口
+var _ types.AggregatorHandle = (*Aggregator)(nil)
+
+func NewAggregator(lineTemplate string, notifier types.Notifier, logger *logger.Logger, window time.Duration) *Aggregator {
+	return &Aggregator{
+		lineTemplate: lineTemplate,
+		notifier:     notifier,
+		logger:       logger,
+		window:       window,
+		alerts:       make([]*db.AlertStatus, 0),
 	}
 }
 
-// AddAlert 添加告警到聚合队列
-func (am *AggregatorManager) AddAlert(host, description string) {
-	// 检查当前状态
-	currentStatus, _ := am.db.GetAlertStatus(host)
-	if currentStatus == "ALERT" {
-		// 如果已经是告警状态，忽略
-		return
+// parseTime 辅助函数，将时间字符串解析为 time.Time
+func parseTime(timestamp string) time.Time {
+	// 假设时间戳格式为 "2006-01-02 15:04:05"
+	t, err := time.Parse("2006-01-02 15:04:05", timestamp)
+	if err != nil {
+		// 如果解析失败，返回当前时间
+		return time.Now()
 	}
-
-	// 更新状态为 ALERT
-	am.db.SetAlertStatus(host, "ALERT")
-
-	// 推送告警事件到队列
-	am.queue.Push(queue.AlertEvent{
-		Host:        host,
-		Description: description,
-		Type:        "ALERT",
-	})
+	return t
 }
 
-// AddRecovery 添加恢复事件到队列
-func (am *AggregatorManager) AddRecovery(host string) {
-	// 检查当前状态
-	currentStatus, _ := am.db.GetAlertStatus(host)
-	if currentStatus != "ALERT" {
-		// 如果不是告警状态，忽略
-		return
+func (a *Aggregator) ProcessAlerts(alerts []*db.AlertStatus, dbManager *db.AlertStatusManager) error {
+	a.mu.Lock()
+	defer a.mu.Unlock()
+
+	if len(alerts) == 0 {
+		return nil
 	}
 
-	// 更新状态为 RECOVERY
-	am.db.SetAlertStatus(host, "RECOVERY")
+	// 格式化告警内容
+	content, err := a.formatAlerts(alerts)
+	if err != nil {
+		a.logger.Log(fmt.Sprintf("Failed to format alerts: %v", err), "error")
+		return err
+	}
 
-	// 推送恢复事件到队列
-	am.queue.Push(queue.AlertEvent{
-		Host: host,
-		Type: "RECOVERY",
-	})
-}
-
-// Start 启动聚合逻辑
-func (am *AggregatorManager) Start(sendFunc func(alerts []*AlertItem)) {
-	ticker := time.NewTicker(am.window)
-	defer ticker.Stop()
-
-	var batch []*AlertItem
-	for {
-		select {
-		case alert := <-am.alerts:
-			batch = append(batch, alert)
-		case <-ticker.C:
-			if len(batch) > 0 {
-				sendFunc(batch) // 调用外部传入的发送函数
-				batch = nil
-			}
-		case <-am.done:
-			return
+	// 将 AlertStatus 转换为 AlertItem
+	alertItems := make([]*db.AlertItem, len(alerts))
+	for i, alert := range alerts {
+		alertItems[i] = &db.AlertItem{
+			Host:        alert.Host,
+			Description: alert.Description,
+			Timestamp:   parseTime(alert.Timestamp), // 需要将时间字符串转换为 time.Time
 		}
 	}
+
+	// 发送聚合通知
+	a.logger.Log(fmt.Sprintf("Sending aggregated alerts:\n%s", content), "info")
+	if err := a.notifier.SendAggregatedNotification(alertItems); err != nil {
+		a.logger.Log(fmt.Sprintf("Failed to send aggregated alerts: %v", err), "error")
+		return err
+	}
+
+	// 更新告警状态
+	if err := a.updateAlertStatuses(alerts, dbManager); err != nil {
+		a.logger.Log(fmt.Sprintf("Failed to update alert statuses: %v", err), "error")
+		return err
+	}
+
+	return nil
 }
 
-// Stop 停止聚合逻辑
-func (am *AggregatorManager) Stop() {
-	close(am.done)
+// 格式化告警内容
+func (a *Aggregator) formatAlerts(alerts []*db.AlertStatus) (string, error) {
+	alertList := make([]string, len(alerts))
+	for i, alert := range alerts {
+		line := strings.ReplaceAll(a.lineTemplate, "{{.FailTime}}", alert.Timestamp)
+		line = strings.ReplaceAll(line, "{{.Host}}", alert.Host)
+		line = strings.ReplaceAll(line, "{{.Description}}", alert.Description)
+		alertList[i] = line
+	}
+	return strings.Join(alertList, "\n"), nil
+}
+
+// 更新告警状态
+func (a *Aggregator) updateAlertStatuses(alerts []*db.AlertStatus, dbManager *db.AlertStatusManager) error {
+	for _, alert := range alerts {
+		if err := dbManager.UpdateSentStatus(alert.Host, true); err != nil {
+			a.logger.Log(fmt.Sprintf("Failed to update alert status for host %s: %v", alert.Host, err), "error")
+			return err
+		}
+	}
+	return nil
+}
+
+func (a *Aggregator) SendRecoveryNotification(host config.Host, recoveryInfo *types.RecoveryInfo) error {
+	err := a.notifier.SendRecoveryNotification(host, recoveryInfo)
+	if err != nil {
+		a.logger.Log(fmt.Sprintf("Failed to send recovery notification for host %s: %v", host.Host, err), "error")
+		return err
+	}
+	return nil
 }

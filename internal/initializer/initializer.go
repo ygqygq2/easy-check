@@ -1,11 +1,13 @@
 package initializer
 
 import (
+	"easy-check/internal/aggregator"
 	"easy-check/internal/checker"
 	"easy-check/internal/config"
 	"easy-check/internal/db"
 	"easy-check/internal/logger"
 	"easy-check/internal/notifier"
+	"easy-check/internal/types"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -14,11 +16,13 @@ import (
 
 // AppContext 包含应用程序的所有依赖
 type AppContext struct {
-	Config   *config.Config
-	Logger   *logger.Logger
-	Pinger   checker.Pinger
-	Notifier notifier.Notifier
-	DB       *db.DB
+	Config           *config.Config
+	Logger           *logger.Logger
+	Pinger           checker.Pinger
+	Notifier         types.Notifier
+	DB               *db.DB
+	AlertStatusMgr   *db.AlertStatusManager
+	AggregatorHandle types.AggregatorHandle
 }
 
 // Initialize 初始化应用程序上下文
@@ -51,7 +55,7 @@ func Initialize() (*AppContext, error) {
 	}
 
 	// 初始化聚合告警逻辑
-	finalNotifier := initializeAlertAggregator(cfg, baseNotifier, appLogger)
+	baseNotifier, aggregatorHandle := initializeAlertAggregator(cfg, baseNotifier, appLogger)
 
 	// 初始化数据库
 	dbInstance, err := db.NewDB(&cfg.Db, appLogger)
@@ -64,13 +68,21 @@ func Initialize() (*AppContext, error) {
 	}
 	appLogger.Log("Database instance created successfully", "debug")
 
+	// 创建 AlertStatusManager
+	alertStatusMgr, err := db.NewAlertStatusManager(dbInstance.Instance, appLogger, cfg.Db)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create alert status manager: %w", err)
+	}
+
 	// 创建 AppContext
 	appContext := &AppContext{
-		Config:   cfg,
-		Logger:   appLogger,
-		Pinger:   checker.NewPinger(),
-		Notifier: finalNotifier,
-		DB:       dbInstance,
+		Config:           cfg,
+		Logger:           appLogger,
+		Pinger:           checker.NewPinger(),
+		Notifier:         baseNotifier,
+		DB:               dbInstance,
+		AlertStatusMgr:   alertStatusMgr,
+		AggregatorHandle: aggregatorHandle,
 	}
 
 	appLogger.Log("Application initialized successfully", "debug")
@@ -152,36 +164,36 @@ func RegisterNotifiers(logger *logger.Logger) {
 }
 
 // createNotifier 创建通知器实例
-func createNotifier(cfg *config.Config, logger *logger.Logger) (notifier.Notifier, error) {
+func createNotifier(cfg *config.Config, logger *logger.Logger) (types.Notifier, error) {
 	// 从配置中创建所有启用的通知器
 	notifiers := notifier.CreateNotifiers(cfg, logger)
 	if len(notifiers) == 0 {
 		logger.Log("No enabled notifiers found in configuration", "warn")
 		return &notifier.NoopNotifier{}, nil // 返回空操作通知器
 	}
-	return notifier.NewMultiNotifier(notifiers, logger), nil
+	// 使用 MultiNotifierWrapper 包装 MultiNotifier
+	return &notifier.MultiNotifierWrapper{
+		MultiNotifier: notifier.NewMultiNotifier(notifiers, logger),
+	}, nil
 }
 
-func initializeAlertAggregator(cfg *config.Config, baseNotifier notifier.Notifier, logger *logger.Logger) notifier.Notifier {
+// initializeAlertAggregator 初始化告警聚合器
+func initializeAlertAggregator(cfg *config.Config, baseNotifier types.Notifier, logger *logger.Logger) (types.Notifier, types.AggregatorHandle) {
+	var aggregatorHandle types.AggregatorHandle
+
 	if cfg.Alert.AggregateAlerts {
-		logger.Log(fmt.Sprintf("Alert aggregation enabled with %d second window", cfg.Alert.AggregateWindow), "debug")
 		window := time.Duration(cfg.Alert.AggregateWindow) * time.Second
-
-		// 创建 AlertAggregator，但不作为返回值
-		aggregator := notifier.NewAlertAggregator(window, []notifier.Notifier{baseNotifier}, logger, cfg)
-
-		// 启动一个 goroutine，监听告警队列
-		go func() {
-			for {
-				// 模拟告警添加逻辑
-				time.Sleep(10 * time.Second)
-				aggregator.AddAlert("example-host", "example-description")
-			}
-		}()
-
-		// 返回基础通知器
-		return baseNotifier
+		aggregatorHandle = aggregator.NewAggregator(
+			cfg.Alert.AggregateLineTemplate,
+			baseNotifier,
+			logger,
+			window,
+		)
+		logger.Log("Aggregated alerting enabled", "info")
+	} else {
+		aggregatorHandle = aggregator.NewNoAggregator(baseNotifier, logger)
+		logger.Log("Direct alerting enabled (no aggregation)", "info")
 	}
 
-	return baseNotifier
+	return baseNotifier, aggregatorHandle
 }

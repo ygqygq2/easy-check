@@ -34,8 +34,8 @@ type LogConfig struct {
 
 // DbConfig 数据库配置
 type DbConfig struct {
-	Path string `yaml:"path"`
-  Expire int `yaml:"expire"`
+	Path   string `yaml:"path"`
+	Expire int    `yaml:"expire"`
 }
 
 // NotifierConfig 通知器配置

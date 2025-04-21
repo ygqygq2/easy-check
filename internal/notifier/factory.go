@@ -3,11 +3,12 @@ package notifier
 import (
 	"easy-check/internal/config"
 	"easy-check/internal/logger"
+	"easy-check/internal/types"
 	"fmt"
 )
 
 // NotifierCreator 通知器创建函数类型
-type NotifierCreator func(options map[string]interface{}, logger *logger.Logger) (Notifier, error)
+type NotifierCreator func(options map[string]interface{}, logger *logger.Logger) (types.Notifier, error)
 
 // 全局注册表
 var notifierRegistry = make(map[string]NotifierCreator)
@@ -18,8 +19,8 @@ func RegisterNotifier(typeName string, creator NotifierCreator) {
 }
 
 // CreateNotifiers 从配置创建所有通知器
-func CreateNotifiers(cfg *config.Config, logger *logger.Logger) []Notifier {
-	var notifiers []Notifier
+func CreateNotifiers(cfg *config.Config, logger *logger.Logger) []types.Notifier {
+	var notifiers []types.Notifier
 
 	for _, notifierCfg := range cfg.Alert.Notifiers {
 		if !notifierCfg.Enable {

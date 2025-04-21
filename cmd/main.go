@@ -78,7 +78,8 @@ func main() {
 	appCtx.Logger.Log("AlertStatusManager initialized successfully", "debug")
 	appCtx.Logger.Log("Application started successfully", "info")
 
-	consumer := notifier.NewConsumer(alertStatusManager, appCtx.Logger, appCtx.Notifier, 10*time.Second)
+	interval := time.Duration(appCtx.Config.Alert.AggregateWindow) * time.Second
+	consumer := notifier.NewConsumer(alertStatusManager, appCtx.Logger, interval, appCtx.AggregatorHandle)
 	go consumer.Start()
 
 	chk := checker.NewChecker(appCtx.Config, pinger, appCtx.Logger, alertStatusManager)
