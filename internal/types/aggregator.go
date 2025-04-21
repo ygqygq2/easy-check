@@ -1,7 +1,6 @@
 package types
 
 import (
-	"easy-check/internal/config"
 	"easy-check/internal/db"
 )
 
@@ -10,6 +9,6 @@ type AggregatorHandle interface {
 	// 处理多个告警
 	ProcessAlerts(alerts []*db.AlertStatus, dbManager *db.AlertStatusManager) error
 
-	// 发送恢复通知
-	SendRecoveryNotification(host config.Host, recoveryInfo *RecoveryInfo) error
+	// 处理多个恢复通知
+	ProcessRecoveries(recoveries []*db.AlertStatus, dbManager *db.AlertStatusManager) error
 }

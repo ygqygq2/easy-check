@@ -1,7 +1,6 @@
 package aggregator
 
 import (
-	"easy-check/internal/config"
 	"easy-check/internal/db"
 	"easy-check/internal/logger"
 	"easy-check/internal/types"
@@ -26,13 +25,8 @@ func NewNoAggregator(notifier types.Notifier, logger *logger.Logger) *NoAggregat
 
 func (n *NoAggregator) ProcessAlerts(alerts []*db.AlertStatus, dbManager *db.AlertStatusManager) error {
 	for _, alert := range alerts {
-		host := config.Host{
-			Host:        alert.Host,
-			Description: alert.Description,
-		}
-
 		n.logger.Log(fmt.Sprintf("Sending alert for host: %s", alert.Host), "debug")
-		err := n.notifier.SendNotification(host)
+		err := n.notifier.SendNotification(alert)
 		if err != nil {
 			n.logger.Log(fmt.Sprintf("Failed to send alert for host %s: %v", alert.Host, err), "error")
 			continue
@@ -46,6 +40,23 @@ func (n *NoAggregator) ProcessAlerts(alerts []*db.AlertStatus, dbManager *db.Ale
 	return nil
 }
 
-func (n *NoAggregator) SendRecoveryNotification(host config.Host, recoveryInfo *types.RecoveryInfo) error {
-	return n.notifier.SendRecoveryNotification(host, recoveryInfo)
+func (n *NoAggregator) ProcessRecoveries(recoveries []*db.AlertStatus, dbManager *db.AlertStatusManager) error {
+	for _, recovery := range recoveries {
+		n.logger.Log(fmt.Sprintf("Sending recovery for host: %s", recovery.Host), "debug")
+		err := n.notifier.SendRecoveryNotification(recovery)
+		if err != nil {
+			n.logger.Log(fmt.Sprintf("Failed to send recovery for host %s: %v", recovery.Host, err), "error")
+			continue
+		}
+
+		err = dbManager.UpdateSentStatus(recovery.Host, true)
+		if err != nil {
+			n.logger.Log(fmt.Sprintf("Failed to update status for host %s: %v", recovery.Host, err), "error")
+		}
+	}
+	return nil
 }
+
+// func (n *NoAggregator) SendRecoveryNotification(host config.Host, eventTime *types.EventTime) error {
+// 	return n.notifier.SendRecoveryNotification(host, eventTime)
+// }

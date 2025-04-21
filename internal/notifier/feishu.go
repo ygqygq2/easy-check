@@ -56,7 +56,7 @@ type TemplateData struct {
 	Time       string
 	AlertCount int
 	AlertList  string
-	Alerts     []*db.AlertItem
+	Alerts     []*db.AlertStatus
 }
 
 // FeishuMessageSender 消息发送器接口
@@ -74,8 +74,8 @@ type PostMessageSender struct{}
 type InteractiveMessageSender struct{}
 
 // 实现 Notifier 接口的 SendNotification 方法
-func (f *FeishuNotifier) SendNotification(host config.Host) error {
-	return f.SendNotificationWithType(host, nil, false)
+func (f *FeishuNotifier) SendNotification(alert *db.AlertStatus) error {
+	return f.SendNotificationWithType(alert, false)
 }
 
 func NewFeishuNotifier(options map[string]interface{}, logger *logger.Logger) (types.Notifier, error) {
@@ -181,9 +181,9 @@ func (n *FeishuNotifier) Close() error {
 }
 
 // PrepareAggregatedContent 准备聚合告警的内容
-func (f *FeishuNotifier) PrepareAggregatedContent(alerts []*db.AlertItem) (string, error) {
+func (f *FeishuNotifier) PrepareAggregatedContent(alerts []*db.AlertStatus) (string, error) {
 	// 从配置中获取行模板
-	lineTemplate := f.Config.Alert.AggregateLineTemplate
+	lineTemplate := f.Config.Alert.AggregateAlertLineTemplate
 	if lineTemplate == "" {
 		lineTemplate = "- 时间：{{.FailTime}} | 主机：{{.Host}} | 描述：{{.Description}}" // 默认行模板
 	}
@@ -198,7 +198,7 @@ func (f *FeishuNotifier) PrepareAggregatedContent(alerts []*db.AlertItem) (strin
 		}{
 			Host:        alert.Host,
 			Description: alert.Description,
-			FailTime:    alert.Timestamp.Format("15:04:05"),
+			FailTime:    alert.FailTime,
 		}
 
 		var buffer bytes.Buffer
@@ -220,9 +220,9 @@ func (f *FeishuNotifier) PrepareAggregatedContent(alerts []*db.AlertItem) (strin
 	alertListStr := strings.Join(alertList, "\n")
 
 	// 准备聚合模板
-	templateStr := f.Config.Alert.AggregateLineTemplate
+	templateStr := f.Config.Alert.AggregateAlertLineTemplate
 	if templateStr == "" {
-		templateStr = "检测到 {{.AlertCount}} 个主机异常:\n\n{{.AlertList}}" // 默认聚合模板
+		templateStr = "检测到 {{.AlertCount}} 个主机异常:\n{{.AlertList}}" // 默认聚合模板
 	}
 
 	// 替换聚合模板中的 AlertList
@@ -249,7 +249,7 @@ func (f *FeishuNotifier) PrepareAggregatedContent(alerts []*db.AlertItem) (strin
 	return buffer.String(), nil
 }
 
-func (f *FeishuNotifier) SendAggregatedNotification(alerts []*db.AlertItem) error {
+func (f *FeishuNotifier) SendAggregatedNotification(alerts []*db.AlertStatus) error {
 	content, err := f.PrepareAggregatedContent(alerts)
 	if err != nil {
 		f.Logger.Log(fmt.Sprintf("Error preparing aggregated content: %v", err), "error")
@@ -267,20 +267,20 @@ func (f *FeishuNotifier) SendAggregatedNotification(alerts []*db.AlertItem) erro
 }
 
 // SendRecoveryNotification 发送恢复通知
-func (f *FeishuNotifier) SendRecoveryNotification(host config.Host, recoveryInfo *types.RecoveryInfo) error {
-	return f.SendNotificationWithType(host, recoveryInfo, true)
+func (f *FeishuNotifier) SendRecoveryNotification(alert *db.AlertStatus) error {
+	return f.SendNotificationWithType(alert, true)
 }
 
-func (f *FeishuNotifier) SendNotificationWithType(host config.Host, info *types.RecoveryInfo, isRecovery bool) error {
+func (f *FeishuNotifier) SendNotificationWithType(alert *db.AlertStatus, isRecovery bool) error {
 	// 根据类型设置标题和模板
 	var titleKey, contentKey FeishuOptionKey
 	var defaultTitle, defaultTemplate string
 
 	if isRecovery {
-		titleKey = OptionKeyAlertTitle
+		titleKey = OptionKeyRecoveryTitle
 		contentKey = OptionKeyRecoveryContent
 		defaultTitle = "💚【easy-check】：恢复通知"
-		defaultTemplate = "🧭【恢复时间】：{{.Date}} {{.Time}}\n📝【恢复详情】：以下主机已恢复：\n- 开始时间：{{.FailTime}} | 主机：{{.Host}} | 描述：{{.Description}}"
+		defaultTemplate = "🧭【恢复时间】：{{.RecoveryTime}}\n📝【恢复详情】：以下主机已恢复：\n- 开始时间：{{.FailTime}} | 主机：{{.Host}} | 描述：{{.Description}} | 恢复时间：{{.RecoveryTime}}"
 	} else {
 		titleKey = OptionKeyAlertTitle
 		contentKey = OptionKeyAlertContent
@@ -302,14 +302,17 @@ func (f *FeishuNotifier) SendNotificationWithType(host config.Host, info *types.
 
 	// 准备模板数据
 	data := map[string]string{
-		"Date":        time.Now().Format("2006-01-02"),
-		"Time":        time.Now().Format("15:04:05"),
-		"Host":        host.Host,
-		"Description": host.Description,
+		"Date":         time.Now().Format("2006-01-02"),
+		"Time":         time.Now().Format("15:04:05"),
+		"Host":         alert.Host,
+		"Description":  alert.Description,
+		"FailTime":     formatTime(alert.FailTime),
+		"RecoveryTime": "", // 默认值为空字符串
 	}
 
-	if info != nil {
-		data["FailTime"] = info.FailTime.Format("15:04:05")
+	// 检查 RecoveryTime 是否存在
+	if alert.RecoveryTime != "" {
+		data["RecoveryTime"] = formatTime(alert.RecoveryTime)
 	}
 
 	// 使用模板生成消息内容

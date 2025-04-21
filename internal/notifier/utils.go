@@ -2,10 +2,27 @@ package notifier
 
 import (
 	"bytes"
-	"easy-check/internal/db"
 	"fmt"
 	"text/template"
+	"time"
 )
+
+func formatTime(timestamp string) string {
+	if timestamp == "" {
+		return "" // 如果时间为空，返回空字符串
+	}
+
+	// 假设 JSON 中的时间格式为 "2006-01-02T15:04:05Z07:00"（ISO 8601 格式）
+	parsedTime, err := time.Parse("2006-01-02T15:04:05Z07:00", timestamp)
+	if err != nil {
+		// 如果解析失败，记录日志并返回原始时间字符串
+		fmt.Printf("Failed to parse time: %v\n", err)
+		return timestamp
+	}
+
+	// 格式化为目标时间格式
+	return parsedTime.Format("2006-01-02 15:04:05")
+}
 
 // 通用的模板处理函数
 func processTemplate(templateStr string, data interface{}) (string, error) {
@@ -24,47 +41,47 @@ func processTemplate(templateStr string, data interface{}) (string, error) {
 }
 
 // 通用的告警列表格式化函数
-func formatAlertList(alerts []*db.AlertItem, templateStr string) string {
-	var buffer bytes.Buffer
+// func formatAlertList(alerts []*db.AlertItem, templateStr string) string {
+// 	var buffer bytes.Buffer
 
-	// 如果提供了模板字符串，尝试解析模板
-	if templateStr != "" {
-		tmpl, err := template.New("alertList").Parse(templateStr)
-		if err != nil {
-			// 如果模板解析失败，记录错误并使用默认格式
-			fmt.Printf("Error parsing alert list template: %v\n", err)
-		} else {
-			// 使用模板格式化每条告警
-			for _, alert := range alerts {
-				data := struct {
-					Host        string
-					Description string
-					FailTime    string
-				}{
-					Host:        alert.Host,
-					Description: alert.Description,
-					FailTime:    alert.Timestamp.Format("15:04:05"),
-				}
+// 	// 如果提供了模板字符串，尝试解析模板
+// 	if templateStr != "" {
+// 		tmpl, err := template.New("alertList").Parse(templateStr)
+// 		if err != nil {
+// 			// 如果模板解析失败，记录错误并使用默认格式
+// 			fmt.Printf("Error parsing alert list template: %v\n", err)
+// 		} else {
+// 			// 使用模板格式化每条告警
+// 			for _, alert := range alerts {
+// 				data := struct {
+// 					Host        string
+// 					Description string
+// 					FailTime    string
+// 				}{
+// 					Host:        alert.Host,
+// 					Description: alert.Description,
+// 					FailTime:    alert.FailTime.Format("15:04:05"),
+// 				}
 
-				var lineBuffer bytes.Buffer
-				if err := tmpl.Execute(&lineBuffer, data); err != nil {
-					// 如果模板执行失败，记录错误并使用默认格式
-					fmt.Printf("Error applying alert list template: %v\n", err)
-					buffer.WriteString(fmt.Sprintf("- [%s] %s: %s\n", data.FailTime, data.Host, data.Description))
-				} else {
-					buffer.WriteString(lineBuffer.String())
-					buffer.WriteString("\n")
-				}
-			}
-			return buffer.String()
-		}
-	}
+// 				var lineBuffer bytes.Buffer
+// 				if err := tmpl.Execute(&lineBuffer, data); err != nil {
+// 					// 如果模板执行失败，记录错误并使用默认格式
+// 					fmt.Printf("Error applying alert list template: %v\n", err)
+// 					buffer.WriteString(fmt.Sprintf("- [%s] %s: %s\n", data.FailTime, data.Host, data.Description))
+// 				} else {
+// 					buffer.WriteString(lineBuffer.String())
+// 					buffer.WriteString("\n")
+// 				}
+// 			}
+// 			return buffer.String()
+// 		}
+// 	}
 
-	// 如果没有模板或模板解析失败，使用默认格式
-	for _, alert := range alerts {
-		timeStr := alert.Timestamp.Format("15:04:05")
-		buffer.WriteString(fmt.Sprintf("- [%s] %s: %s\n", timeStr, alert.Host, alert.Description))
-	}
+// 	// 如果没有模板或模板解析失败，使用默认格式
+// 	for _, alert := range alerts {
+// 		timeStr := alert.FailTime.Format("15:04:05")
+// 		buffer.WriteString(fmt.Sprintf("- [%s] %s: %s\n", timeStr, alert.Host, alert.Description))
+// 	}
 
-	return buffer.String()
-}
+// 	return buffer.String()
+// }

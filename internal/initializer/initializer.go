@@ -184,7 +184,8 @@ func initializeAlertAggregator(cfg *config.Config, baseNotifier types.Notifier, 
 	if cfg.Alert.AggregateAlerts {
 		window := time.Duration(cfg.Alert.AggregateWindow) * time.Second
 		aggregatorHandle = aggregator.NewAggregator(
-			cfg.Alert.AggregateLineTemplate,
+			cfg.Alert.AggregateAlertLineTemplate,
+			cfg.Alert.AggregateRecoveryLineTemplate,
 			baseNotifier,
 			logger,
 			window,

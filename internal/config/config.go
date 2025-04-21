@@ -48,12 +48,12 @@ type NotifierConfig struct {
 
 // AlertConfig 告警配置
 type AlertConfig struct {
-	FailAlert             bool             `yaml:"fail_alert"`
-	AggregateAlerts       bool             `yaml:"aggregate_alerts"`
-	AggregateWindow       int              `yaml:"aggregate_window"`
-	AggregateLineTemplate string           `yaml:"aggregate_line_template"`
-	AggregateTemplate     string           `yaml:"aggregate_template"` // 聚合告警的整体模板
-	Notifiers             []NotifierConfig `yaml:"notifiers"`
+	FailAlert                     bool             `yaml:"fail_alert"`
+	AggregateAlerts               bool             `yaml:"aggregate_alerts"`
+	AggregateWindow               int              `yaml:"aggregate_window"`
+	AggregateAlertLineTemplate    string           `yaml:"aggregate_alert_line_template"`
+	AggregateRecoveryLineTemplate string           `yaml:"aggregate_recovery_line_template"`
+	Notifiers                     []NotifierConfig `yaml:"notifiers"`
 }
 
 // Config 应用总配置

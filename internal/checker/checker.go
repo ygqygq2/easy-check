@@ -60,12 +60,13 @@ func (c *Checker) handlePingFailure(host config.Host, reason string) {
 
 	// 构造 AlertStatus 结构体
 	status := db.AlertStatus{
-		Host:        host.Host,
-		Description: host.Description,
-		Status:      db.StatusAlert,
-		Timestamp:   time.Now().Format(time.RFC3339),
-		FailAlert:   true,
-		Sent:        false,
+		Host:         host.Host,
+		Description:  host.Description,
+		Status:       db.StatusAlert,
+		FailTime:     time.Now().Format(time.RFC3339),
+		RecoveryTime: "",
+		FailAlert:    true,
+		Sent:         false,
 	}
 
 	// 将失败信息保存到数据库
@@ -99,8 +100,16 @@ func (c *Checker) pingHost(host config.Host) {
 }
 
 func (c *Checker) handlePingSuccess(host config.Host) {
-	// 检查是否需要发送恢复通知
-	err := c.DB.MarkAsRecovered(host.Host)
+	// 构造 AlertStatus 结构体
+	status := db.AlertStatus{
+		Host:         host.Host,
+		Description:  host.Description,
+		Status:       db.StatusRecovery,
+		RecoveryTime: time.Now().Format(time.RFC3339),
+	}
+
+	// 将失败信息保存到数据库
+	err := c.DB.MarkAsRecovered(status)
 	if err != nil {
 		c.Logger.Log(fmt.Sprintf("Failed to update host recovery status: %v", err), "error")
 	}

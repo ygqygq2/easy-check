@@ -1,7 +1,6 @@
 package aggregator
 
 import (
-	"easy-check/internal/config"
 	"easy-check/internal/db"
 	"easy-check/internal/logger"
 	"easy-check/internal/types"
@@ -13,24 +12,26 @@ import (
 
 // Aggregator 实现了聚合告警的逻辑
 type Aggregator struct {
-	lineTemplate string
-	notifier     types.Notifier
-	logger       *logger.Logger
-	window       time.Duration
-	alerts       []*db.AlertStatus
-	mu           sync.Mutex
+	alertLineTemplate    string
+	recoveryLineTemplate string
+	notifier             types.Notifier
+	logger               *logger.Logger
+	window               time.Duration
+	alerts               []*db.AlertStatus
+	mu                   sync.Mutex
 }
 
 // 确保 Aggregator 实现了 AggregatorHandle 接口
 var _ types.AggregatorHandle = (*Aggregator)(nil)
 
-func NewAggregator(lineTemplate string, notifier types.Notifier, logger *logger.Logger, window time.Duration) *Aggregator {
+func NewAggregator(alertLineTemplate string, recoveryLineTemplate string, notifier types.Notifier, logger *logger.Logger, window time.Duration) *Aggregator {
 	return &Aggregator{
-		lineTemplate: lineTemplate,
-		notifier:     notifier,
-		logger:       logger,
-		window:       window,
-		alerts:       make([]*db.AlertStatus, 0),
+		alertLineTemplate:    alertLineTemplate,
+		recoveryLineTemplate: recoveryLineTemplate,
+		notifier:             notifier,
+		logger:               logger,
+		window:               window,
+		alerts:               make([]*db.AlertStatus, 0),
 	}
 }
 
@@ -54,25 +55,15 @@ func (a *Aggregator) ProcessAlerts(alerts []*db.AlertStatus, dbManager *db.Alert
 	}
 
 	// 格式化告警内容
-	content, err := a.formatAlerts(alerts)
+	content, err := a.formatAlerts(alerts, false) // false 表示这是告警
 	if err != nil {
 		a.logger.Log(fmt.Sprintf("Failed to format alerts: %v", err), "error")
 		return err
 	}
 
-	// 将 AlertStatus 转换为 AlertItem
-	alertItems := make([]*db.AlertItem, len(alerts))
-	for i, alert := range alerts {
-		alertItems[i] = &db.AlertItem{
-			Host:        alert.Host,
-			Description: alert.Description,
-			Timestamp:   parseTime(alert.Timestamp), // 需要将时间字符串转换为 time.Time
-		}
-	}
-
 	// 发送聚合通知
 	a.logger.Log(fmt.Sprintf("Sending aggregated alerts:\n%s", content), "info")
-	if err := a.notifier.SendAggregatedNotification(alertItems); err != nil {
+	if err := a.notifier.SendAggregatedNotification(alerts); err != nil {
 		a.logger.Log(fmt.Sprintf("Failed to send aggregated alerts: %v", err), "error")
 		return err
 	}
@@ -87,10 +78,18 @@ func (a *Aggregator) ProcessAlerts(alerts []*db.AlertStatus, dbManager *db.Alert
 }
 
 // 格式化告警内容
-func (a *Aggregator) formatAlerts(alerts []*db.AlertStatus) (string, error) {
+func (a *Aggregator) formatAlerts(alerts []*db.AlertStatus, isRecovery bool) (string, error) {
+	var template string
+	if isRecovery {
+		template = a.recoveryLineTemplate
+	} else {
+		template = a.alertLineTemplate
+	}
+
 	alertList := make([]string, len(alerts))
 	for i, alert := range alerts {
-		line := strings.ReplaceAll(a.lineTemplate, "{{.FailTime}}", alert.Timestamp)
+		line := strings.ReplaceAll(template, "{{.FailTime}}", alert.FailTime)
+		line = strings.ReplaceAll(line, "{{.RecoveryTime}}", alert.RecoveryTime)
 		line = strings.ReplaceAll(line, "{{.Host}}", alert.Host)
 		line = strings.ReplaceAll(line, "{{.Description}}", alert.Description)
 		alertList[i] = line
@@ -109,11 +108,42 @@ func (a *Aggregator) updateAlertStatuses(alerts []*db.AlertStatus, dbManager *db
 	return nil
 }
 
-func (a *Aggregator) SendRecoveryNotification(host config.Host, recoveryInfo *types.RecoveryInfo) error {
-	err := a.notifier.SendRecoveryNotification(host, recoveryInfo)
+func (a *Aggregator) ProcessRecoveries(recoveries []*db.AlertStatus, dbManager *db.AlertStatusManager) error {
+	a.mu.Lock()
+	defer a.mu.Unlock()
+
+	if len(recoveries) == 0 {
+		return nil
+	}
+
+	// 格式化恢复通知内容
+	content, err := a.formatAlerts(recoveries, true) // true 表示这是恢复
 	if err != nil {
-		a.logger.Log(fmt.Sprintf("Failed to send recovery notification for host %s: %v", host.Host, err), "error")
+		a.logger.Log(fmt.Sprintf("Failed to format recoveries: %v", err), "error")
 		return err
 	}
+
+	// 发送恢复通知
+	a.logger.Log(fmt.Sprintf("Sending aggregated recoveries:\n%s", content), "info")
+	if err := a.notifier.SendAggregatedNotification(recoveries); err != nil {
+		a.logger.Log(fmt.Sprintf("Failed to send aggregated recoveries: %v", err), "error")
+		return err
+	}
+
+	// 更新恢复状态
+	if err := a.updateAlertStatuses(recoveries, dbManager); err != nil {
+		a.logger.Log(fmt.Sprintf("Failed to update recovery statuses: %v", err), "error")
+		return err
+	}
+
 	return nil
 }
+
+// func (a *Aggregator) SendRecoveryNotification(host config.Host, eventTime *types.EventTime) error {
+// 	err := a.notifier.SendRecoveryNotification(host, eventTime)
+// 	if err != nil {
+// 		a.logger.Log(fmt.Sprintf("Failed to send recovery notification for host %s: %v", host.Host, err), "error")
+// 		return err
+// 	}
+// 	return nil
+// }

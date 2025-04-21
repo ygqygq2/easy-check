@@ -84,7 +84,7 @@ func provideLogger(cfg *config.Config) (*logger.Logger, error) {
 
 // provideBadgerDB 创建数据库连接
 func provideBadgerDB(cfg *config.Config, log *logger.Logger) (*badger.DB, error) {
-	opts := badger.DefaultOptions(cfg.Db.Path)
+	opts := badger.DefaultOptions(cfg.Db.Path).WithLogger(log)
 	db, err := badger.Open(opts)
 	if err != nil {
 		log.Fatal(fmt.Sprintf("Failed to open database: %v", err))
@@ -106,7 +106,7 @@ func provideNotifier(cfg *config.Config, log *logger.Logger) (types.Notifier, er
 
 	// 使用 notifier.CreateNotifiers 从配置中创建所有通知器
 	notifiers := notifier.CreateNotifiers(cfg, log)
-	if len(notifiers) == 0 {
+	if notifiers == nil || len(notifiers) == 0 {
 		log.Log("No enabled notifiers found in configuration", "warn")
 		return &notifier.NoopNotifier{}, nil // 返回一个空操作通知器
 	}
@@ -125,8 +125,24 @@ func provideAggregator(cfg *config.Config, log *logger.Logger, notifier types.No
 
 	if cfg.Alert.AggregateAlerts {
 		window := time.Duration(cfg.Alert.AggregateWindow) * time.Second
+
+		// 使用 AggregateAlertLineTemplate，如果为空则使用默认模板
+		alertLineTemplate := cfg.Alert.AggregateAlertLineTemplate
+		if alertLineTemplate == "" {
+			alertLineTemplate = "- 时间：{{.FailTime}} | 主机：{{.Host}} | 描述：{{.Description}}" // 默认告警模板
+			log.Log("Using default aggregate alert line template", "info")
+		}
+
+		// 使用 AggregateRecoveryLineTemplate，如果为空则使用默认模板
+		recoveryLineTemplate := cfg.Alert.AggregateRecoveryLineTemplate
+		if recoveryLineTemplate == "" {
+			recoveryLineTemplate = "- 恢复时间：{{.RecoveryTime}} | 主机：{{.Host}} | 描述：{{.Description}}" // 默认恢复模板
+			log.Log("Using default aggregate recovery line template", "info")
+		}
+
 		return aggregator.NewAggregator(
-			cfg.Alert.AggregateLineTemplate,
+			alertLineTemplate,
+			recoveryLineTemplate,
 			notifier,
 			log,
 			window,
