@@ -23,40 +23,34 @@ func NewNoAggregator(notifier types.Notifier, logger *logger.Logger) *NoAggregat
 	}
 }
 
+func (n *NoAggregator) ProcessNotifications(notifications []*db.AlertStatus, dbManager *db.AlertStatusManager, isRecovery bool) error {
+	for _, notification := range notifications {
+		action := "alert"
+		if isRecovery {
+			action = "recovery"
+		}
+
+		n.logger.Log(fmt.Sprintf("Sending %s for host: %s", action, notification.Host), "debug")
+		err := n.notifier.SendNotification(notification, isRecovery)
+		if err != nil {
+			n.logger.Log(fmt.Sprintf("Failed to send %s for host %s: %v", action, notification.Host, err), "error")
+			continue
+		}
+
+		err = dbManager.UpdateSentStatus(notification.Host, true)
+		if err != nil {
+			n.logger.Log(fmt.Sprintf("Failed to update status for host %s: %v", notification.Host, err), "error")
+		}
+	}
+	return nil
+}
+
+// ProcessAlerts 调用通用方法处理告警
 func (n *NoAggregator) ProcessAlerts(alerts []*db.AlertStatus, dbManager *db.AlertStatusManager) error {
-	for _, alert := range alerts {
-		n.logger.Log(fmt.Sprintf("Sending alert for host: %s", alert.Host), "debug")
-		err := n.notifier.SendNotification(alert)
-		if err != nil {
-			n.logger.Log(fmt.Sprintf("Failed to send alert for host %s: %v", alert.Host, err), "error")
-			continue
-		}
-
-		err = dbManager.UpdateSentStatus(alert.Host, true)
-		if err != nil {
-			n.logger.Log(fmt.Sprintf("Failed to update status for host %s: %v", alert.Host, err), "error")
-		}
-	}
-	return nil
+	return n.ProcessNotifications(alerts, dbManager, false)
 }
 
+// ProcessRecoveries 调用通用方法处理恢复
 func (n *NoAggregator) ProcessRecoveries(recoveries []*db.AlertStatus, dbManager *db.AlertStatusManager) error {
-	for _, recovery := range recoveries {
-		n.logger.Log(fmt.Sprintf("Sending recovery for host: %s", recovery.Host), "debug")
-		err := n.notifier.SendRecoveryNotification(recovery)
-		if err != nil {
-			n.logger.Log(fmt.Sprintf("Failed to send recovery for host %s: %v", recovery.Host, err), "error")
-			continue
-		}
-
-		err = dbManager.UpdateSentStatus(recovery.Host, true)
-		if err != nil {
-			n.logger.Log(fmt.Sprintf("Failed to update status for host %s: %v", recovery.Host, err), "error")
-		}
-	}
-	return nil
+	return n.ProcessNotifications(recoveries, dbManager, true)
 }
-
-// func (n *NoAggregator) SendRecoveryNotification(host config.Host, eventTime *types.EventTime) error {
-// 	return n.notifier.SendRecoveryNotification(host, eventTime)
-// }

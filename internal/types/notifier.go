@@ -8,12 +8,10 @@ import (
 
 // Notifier 接口定义了通知器的基本行为
 type Notifier interface {
-	// 发送单个主机的告警通知
-	SendNotification(alert *db.AlertStatus) error
-	// 发送单个恢复通知
-	SendRecoveryNotification(alert *db.AlertStatus) error
-	// 发送聚合告警
-	SendAggregatedNotification(alerts []*db.AlertStatus) error
+	// 发送单个主机的告警/恢复通知
+	SendNotification(alert *db.AlertStatus, isRecovery bool) error
+	// 发送聚合/恢复告警
+	SendAggregatedNotification(alerts []*db.AlertStatus, isRecovery bool) error
 	// 关闭通知器
 	Close() error
 }

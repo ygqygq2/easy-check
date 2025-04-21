@@ -35,17 +35,6 @@ func NewAggregator(alertLineTemplate string, recoveryLineTemplate string, notifi
 	}
 }
 
-// parseTime 辅助函数，将时间字符串解析为 time.Time
-func parseTime(timestamp string) time.Time {
-	// 假设时间戳格式为 "2006-01-02 15:04:05"
-	t, err := time.Parse("2006-01-02 15:04:05", timestamp)
-	if err != nil {
-		// 如果解析失败，返回当前时间
-		return time.Now()
-	}
-	return t
-}
-
 func (a *Aggregator) ProcessAlerts(alerts []*db.AlertStatus, dbManager *db.AlertStatusManager) error {
 	a.mu.Lock()
 	defer a.mu.Unlock()
@@ -63,7 +52,7 @@ func (a *Aggregator) ProcessAlerts(alerts []*db.AlertStatus, dbManager *db.Alert
 
 	// 发送聚合通知
 	a.logger.Log(fmt.Sprintf("Sending aggregated alerts:\n%s", content), "info")
-	if err := a.notifier.SendAggregatedNotification(alerts); err != nil {
+	if err := a.notifier.SendAggregatedNotification(alerts, false); err != nil {
 		a.logger.Log(fmt.Sprintf("Failed to send aggregated alerts: %v", err), "error")
 		return err
 	}
@@ -125,7 +114,7 @@ func (a *Aggregator) ProcessRecoveries(recoveries []*db.AlertStatus, dbManager *
 
 	// 发送恢复通知
 	a.logger.Log(fmt.Sprintf("Sending aggregated recoveries:\n%s", content), "info")
-	if err := a.notifier.SendAggregatedNotification(recoveries); err != nil {
+	if err := a.notifier.SendAggregatedNotification(recoveries, true); err != nil {
 		a.logger.Log(fmt.Sprintf("Failed to send aggregated recoveries: %v", err), "error")
 		return err
 	}
@@ -138,12 +127,3 @@ func (a *Aggregator) ProcessRecoveries(recoveries []*db.AlertStatus, dbManager *
 
 	return nil
 }
-
-// func (a *Aggregator) SendRecoveryNotification(host config.Host, eventTime *types.EventTime) error {
-// 	err := a.notifier.SendRecoveryNotification(host, eventTime)
-// 	if err != nil {
-// 		a.logger.Log(fmt.Sprintf("Failed to send recovery notification for host %s: %v", host.Host, err), "error")
-// 		return err
-// 	}
-// 	return nil
-// }

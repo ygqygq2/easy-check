@@ -19,7 +19,7 @@ log:
   max_age: 7 # 保留旧日志文件的最大天数
   max_backups: 100 # 保留旧日志文件的最大数量
   compress: false # 是否压缩旧日志文件
-  console_level: "debug" # 控制台日志级别
+  console_level: "error" # 控制台日志级别
   file_level: "info" # 日志文件日志级别
 
 db:
@@ -37,7 +37,7 @@ alert:
   # {{.Description}}：主机描述
   # {{.AlertList}}：所有检测失败的告警列表，聚合告警时使用
   # {{.AlertCount}}：检测失败的告警数量，聚合告警时使用
-  aggregate_alerts: false # 是否启用聚合告警
+  aggregate_alerts: true # 是否启用聚合告警
   aggregate_window: 10 # 每次告警检测的间隔，不启用聚合告警时建议设置为 10，单位为秒
   aggregate_alert_line_template: "- 开始时间：{{.FailTime}} | 主机：{{.Host}} | 描述：{{.Description}}" # 聚合告警的行模板
   aggregate_recovery_line_template: "- 开始时间：{{.FailTime}} | 恢复时间：{{.RecoveryTime}} | 主机：{{.Host}} | 描述：{{.Description}}" # 聚合告警恢复行模板
@@ -49,19 +49,19 @@ alert:
     msg_type: "text" # 飞书告警的类型，可选值：text、post、interactive
     alert_title: "💔【easy-check】：告警通知" # 飞书告警的标题
     recovery_title: "💚【easy-check】：恢复通知"
-    alert_content: |
-      🧭【告警时间】：{{.Date}} {{.Time}}
-      📝【告警详情】：以下主机不可达：
-      - 开始时间：{{.FailTime}} | 主机：{{.Host}} | 描述：{{.Description}}
-    recovery_content: |
-      🧭【恢复时间】：{{.RecoveryTime}}
-      📝【恢复详情】：以下主机已恢复：
-      - 开始时间：{{.FailTime}} | 主机：{{.Host}} | 描述：{{.Description}}
     # alert_content: |
     #   🧭【告警时间】：{{.Date}} {{.Time}}
-    #   📝【告警详情】：以下 {{.AlertCount}} 个主机不可达：
-    #   {{.AlertList}}
+    #   📝【告警详情】：以下主机不可达：
+    #   - 开始时间：{{.FailTime}} | 主机：{{.Host}} | 描述：{{.Description}}
     # recovery_content: |
-    #   🧭【发送时间】：{{.Date}} {{.Time}}
-    #   📝【恢复详情】：以下 {{.AlertCount}} 主机已恢复：
-    #   {{.AlertList}}
+    #   🧭【恢复时间】：{{.RecoveryTime}}
+    #   📝【恢复详情】：以下主机已恢复：
+    #   - 开始时间：{{.FailTime}} | 主机：{{.Host}} | 描述：{{.Description}}
+    alert_content: |
+      🧭【告警时间】：{{.Date}} {{.Time}}
+      📝【告警详情】：以下 {{.AlertCount}} 个主机不可达：
+      {{.AlertList}}
+    recovery_content: |
+      🧭【发送时间】：{{.Date}} {{.Time}}
+      📝【恢复详情】：以下 {{.AlertCount}} 主机已恢复：
+      {{.AlertList}}
