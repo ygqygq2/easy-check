@@ -20,8 +20,9 @@ type FeishuOptionKey string
 const (
 	OptionKeyWebhook         FeishuOptionKey = "webhook"
 	OptionKeyMsgType         FeishuOptionKey = "msg_type"
-	OptionKeyTitle           FeishuOptionKey = "title"
+	OptionKeyAlertTitle      FeishuOptionKey = "alert_title"
 	OptionKeyAlertContent    FeishuOptionKey = "alert_content"
+	OptionKeyRecoveryTitle   FeishuOptionKey = "recovery_title"
 	OptionKeyRecoveryContent FeishuOptionKey = "recovery_content"
 )
 
@@ -74,34 +75,7 @@ type InteractiveMessageSender struct{}
 
 // 实现 Notifier 接口的 SendNotification 方法
 func (f *FeishuNotifier) SendNotification(host config.Host) error {
-	f.Logger.Log(fmt.Sprintf("Sending notification to webhook: %s", f.WebhookURL), "debug")
-
-	// 获取标题
-	title, ok := f.Options[string(OptionKeyTitle)].(string)
-	if !ok || title == "" {
-		title = "💔【easy-check】：检测告警"
-	}
-
-	// 准备消息内容
-	content, err := f.prepareContent(host, time.Now())
-	if err != nil {
-		return fmt.Errorf("failed to prepare content: %v", err)
-	}
-
-	sender := &TextMessageSender{}
-	data, err := sender.PrepareMessage(title, content)
-	if err != nil {
-		return fmt.Errorf("failed to concatenate title and content: %v", err)
-	}
-
-	// 发送消息
-	err = f.sendMessage(string(data))
-	if err != nil {
-		return fmt.Errorf("failed to send message: %v", err)
-	}
-
-	f.Logger.Log("Successfully sent notification", "info")
-	return nil
+	return f.SendNotificationWithType(host, nil, false)
 }
 
 func NewFeishuNotifier(options map[string]interface{}, logger *logger.Logger) (types.Notifier, error) {
@@ -294,13 +268,36 @@ func (f *FeishuNotifier) SendAggregatedNotification(alerts []*db.AlertItem) erro
 
 // SendRecoveryNotification 发送恢复通知
 func (f *FeishuNotifier) SendRecoveryNotification(host config.Host, recoveryInfo *types.RecoveryInfo) error {
-	f.Logger.Log(fmt.Sprintf("Sending recovery notification for host: %s", host.Host), "debug")
+	return f.SendNotificationWithType(host, recoveryInfo, true)
+}
 
-	// 从配置中获取恢复通知模板
-	templateContent, ok := f.Options[string(OptionKeyRecoveryContent)].(string)
+func (f *FeishuNotifier) SendNotificationWithType(host config.Host, info *types.RecoveryInfo, isRecovery bool) error {
+	// 根据类型设置标题和模板
+	var titleKey, contentKey FeishuOptionKey
+	var defaultTitle, defaultTemplate string
+
+	if isRecovery {
+		titleKey = OptionKeyAlertTitle
+		contentKey = OptionKeyRecoveryContent
+		defaultTitle = "💚【easy-check】：恢复通知"
+		defaultTemplate = "🧭【恢复时间】：{{.Date}} {{.Time}}\n📝【恢复详情】：以下主机已恢复：\n- 开始时间：{{.FailTime}} | 主机：{{.Host}} | 描述：{{.Description}}"
+	} else {
+		titleKey = OptionKeyAlertTitle
+		contentKey = OptionKeyAlertContent
+		defaultTitle = "💔【easy-check】：告警通知"
+		defaultTemplate = "🧭【告警时间】：{{.Date}} {{.Time}}\n📝【告警详情】：以下主机不可达：\n- 开始时间：{{.FailTime}} | 主机：{{.Host}} | 描述：{{.Description}}"
+	}
+
+	// 获取标题
+	title, ok := f.Options[string(titleKey)].(string)
+	if !ok || title == "" {
+		title = defaultTitle
+	}
+
+	// 获取模板
+	templateContent, ok := f.Options[string(contentKey)].(string)
 	if !ok || templateContent == "" {
-		// 如果没有配置恢复模板，使用默认模板
-		templateContent = "🧭【恢复时间】：{{.Date}} {{.Time}}\n📝【恢复详情】：以下主机已恢复：\n- 开始时间：{{.FailTime}} | 主机：{{.Host}} | 描述：{{.Description}}"
+		templateContent = defaultTemplate
 	}
 
 	// 准备模板数据
@@ -309,30 +306,41 @@ func (f *FeishuNotifier) SendRecoveryNotification(host config.Host, recoveryInfo
 		"Time":        time.Now().Format("15:04:05"),
 		"Host":        host.Host,
 		"Description": host.Description,
-		"FailTime":    recoveryInfo.FailTime.Format("15:04:05"),
+	}
+
+	if info != nil {
+		data["FailTime"] = info.FailTime.Format("15:04:05")
 	}
 
 	// 使用模板生成消息内容
 	var buffer bytes.Buffer
-	tmpl, err := template.New("recovery").Parse(templateContent)
+	tmpl, err := template.New("notification").Parse(templateContent)
 	if err != nil {
-		f.Logger.Log(fmt.Sprintf("Error parsing recovery template: %v", err), "error")
-		return fmt.Errorf("failed to parse recovery template: %v", err)
+		f.Logger.Log(fmt.Sprintf("Error parsing template: %v", err), "error")
+		return fmt.Errorf("failed to parse template: %v", err)
 	}
 
 	if err := tmpl.Execute(&buffer, data); err != nil {
-		f.Logger.Log(fmt.Sprintf("Error applying recovery template: %v", err), "error")
-		return fmt.Errorf("failed to apply recovery template: %v", err)
+		f.Logger.Log(fmt.Sprintf("Error applying template: %v", err), "error")
+		return fmt.Errorf("failed to apply template: %v", err)
 	}
 
 	content := buffer.String()
+	f.Logger.Log(fmt.Sprintf("Generated notification content: %s", content), "debug")
 
-	// 发送消息
-	err = f.sendMessage(content)
+	// 准备完整消息（包含标题和内容）
+	sender := &TextMessageSender{}
+	message, err := sender.PrepareMessage(title, content)
 	if err != nil {
-		return fmt.Errorf("failed to send recovery notification: %v", err)
+		return fmt.Errorf("failed to concatenate title and content: %v", err)
 	}
 
-	f.Logger.Log("Successfully sent recovery notification", "debug")
+	// 发送消息
+	err = f.sendMessage(string(message))
+	if err != nil {
+		return fmt.Errorf("failed to send notification: %v", err)
+	}
+
+	f.Logger.Log("Successfully sent notification", "debug")
 	return nil
 }

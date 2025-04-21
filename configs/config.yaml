@@ -8,10 +8,10 @@ hosts:
     fail_alert: true # 是否启用失败告警，默认值可在 alert.fail_alert 设置，为 true 即失败时发送告警
 
 ping:
-  count: 5 # ping的次数
+  count: 8 # ping的次数
   timeout: 2 # ping的超时时间，单位为秒
 
-interval: 60 # 检测间隔时间，单位为秒
+interval: 10 # 检测间隔时间，单位为秒
 
 log:
   file: "logs/check-log.txt" # 日志文件名
@@ -37,7 +37,7 @@ alert:
   # {{.AlertList}}：所有检测失败的告警列表，聚合告警时使用
   # {{.AlertCount}}：检测失败的告警数量，聚合告警时使用
   aggregate_alerts: false # 是否启用聚合告警
-  aggregate_window: 120 # 聚合告警的时间窗口，单位为秒
+  aggregate_window: 10 # 每次告警检测的间隔，不启用聚合告警时建议设置为 10，单位为秒
   aggregate_line_template: "- 开始时间：{{.FailTime}} | 主机：{{.Host}} | 描述：{{.Description}}" # 聚合告警的行模板
   notifiers:
   - name: "alert1"
@@ -45,12 +45,13 @@ alert:
     enable: true # 是否启用飞书告警
     webhook: "https://open.feishu.cn/open-apis/bot/v2/hook/xxxxxxxxxxxxxxxxxxxx" # 飞书机器人的 webhook 地址
     msg_type: "text" # 飞书告警的类型，可选值：text、post、interactive
-    title: "💔【easy-check】：检测告警" # 飞书告警的标题
+    #alert_title: "💔【easy-check】：告警通知" # 飞书告警的标题
+    #recovery_title: "💚【easy-check】：恢复通知"
     alert_content: |
       🧭【告警时间】：{{.Date}} {{.Time}}
       📝【告警详情】：以下主机不可达：
       - 开始时间：{{.FailTime}} | 主机：{{.Host}} | 描述：{{.Description}}
-    recovery_content:
+    recovery_content: |
       🧭【恢复时间】：{{.Date}} {{.Time}}
       📝【恢复详情】：以下主机已恢复：
       - 开始时间：{{.FailTime}} | 主机：{{.Host}} | 描述：{{.Description}}
@@ -58,7 +59,7 @@ alert:
     #   🧭【告警时间】：{{.Date}} {{.Time}}
     #   📝【告警详情】：以下 {{.AlertCount}} 个主机不可达：
     #   {{.AlertList}}
-    # recovery_content:
+    # recovery_content: |
     #   🧭【恢复时间】：{{.Date}} {{.Time}}
     #   📝【恢复详情】：以下 {{.AlertCount}} 主机已恢复：
     #   {{.AlertList}}
