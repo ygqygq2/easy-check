@@ -52,11 +52,15 @@ func (p *ICMPPinger) Ping(host string, count int, timeout int) (string, error) {
 		_, _, err = conn.ReadFrom(reply)
 		if err != nil {
 			buffer.WriteString(fmt.Sprintf("Request timeout for icmp_seq %d\n", i+1))
-			continue
+		} else {
+			duration := time.Since(start)
+			buffer.WriteString(fmt.Sprintf("Reply from %s: time=%v\n", ipAddr.String(), duration))
 		}
 
-		duration := time.Since(start)
-		buffer.WriteString(fmt.Sprintf("Reply from %s: time=%v\n", ipAddr.String(), duration))
+		// 等待 1 秒再发送下一个包
+		if i < count-1 {
+			time.Sleep(1 * time.Second)
+		}
 	}
 
 	return buffer.String(), nil
