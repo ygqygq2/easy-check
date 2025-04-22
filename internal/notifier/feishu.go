@@ -6,6 +6,7 @@ import (
 	"easy-check/internal/db"
 	"easy-check/internal/logger"
 	"easy-check/internal/types"
+	"easy-check/internal/utils"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -109,13 +110,13 @@ func (f *FeishuNotifier) SendNotification(alert *db.AlertStatus, isRecovery bool
 		"Time":         time.Now().Format("15:04:05"),
 		"Host":         alert.Host,
 		"Description":  alert.Description,
-		"FailTime":     formatTime(alert.FailTime),
+		"FailTime":     utils.FormatTime(alert.FailTime),
 		"RecoveryTime": "", // 默认值为空字符串
 	}
 
 	// 检查 RecoveryTime 是否存在
 	if alert.RecoveryTime != "" {
-		data["RecoveryTime"] = formatTime(alert.RecoveryTime)
+		data["RecoveryTime"] = utils.FormatTime(alert.RecoveryTime)
 	}
 
 	// 使用模板生成消息内容
@@ -295,8 +296,8 @@ func (f *FeishuNotifier) PrepareAggregatedContent(alerts []*db.AlertStatus, isRe
 		}{
 			Host:         alert.Host,
 			Description:  alert.Description,
-			FailTime:     formatTime(alert.FailTime),
-			RecoveryTime: formatTime(alert.RecoveryTime),
+			FailTime:     utils.FormatTime(alert.FailTime),
+			RecoveryTime: utils.FormatTime(alert.RecoveryTime),
 			Date:         time.Now().Format("2006-01-02"),
 			Time:         time.Now().Format("15:04:05"),
 		}
@@ -379,7 +380,6 @@ func (f *FeishuNotifier) SendAggregatedNotification(alerts []*db.AlertStatus, is
 	// 发送消息
 	err = f.sendMessage(string(message))
 	if err != nil {
-		f.Logger.Log(fmt.Sprintf("Error sending aggregated notification: %v", err), "error")
 		return err
 	}
 

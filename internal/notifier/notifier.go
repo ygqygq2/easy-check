@@ -5,6 +5,7 @@ import (
 	"easy-check/internal/logger"
 	"easy-check/internal/queue"
 	"easy-check/internal/types"
+	"errors"
 	"fmt"
 )
 
@@ -31,6 +32,11 @@ func NewNotifierManager(queue *queue.Queue, multiNotifier *types.MultiNotifier, 
 
 // NewMultiNotifier 创建一个新的 MultiNotifier
 func NewMultiNotifier(allNotifiers []types.Notifier, logger *logger.Logger) *types.MultiNotifier {
+	if len(allNotifiers) == 0 {
+		logger.Log("No notifiers provided", "warn")
+		return nil
+	}
+
 	enabledNotifiers := []types.Notifier{}
 	for _, notifier := range allNotifiers {
 		if notifier != nil { // 确保通知器有效
@@ -53,7 +59,7 @@ func (m *MultiNotifierWrapper) SendNotification(alert *db.AlertStatus, isRecover
 		}
 	}
 	if len(errs) > 0 {
-		return fmt.Errorf("failed to send notification to some notifiers: %v", errs)
+		return errors.Join(errs...)
 	}
 	return nil
 }
@@ -64,11 +70,12 @@ func (m *MultiNotifierWrapper) SendAggregatedNotification(alerts []*db.AlertStat
 	// 遍历所有注册的通知器
 	for _, notifier := range m.Notifiers {
 		if err := notifier.SendAggregatedNotification(alerts, isRecovery); err != nil {
+			m.Logger.Log(fmt.Sprintf("Error sending aggregated notification: %v", err), "error")
 			errs = append(errs, err)
 		}
 	}
 	if len(errs) > 0 {
-		return fmt.Errorf("failed to send aggregated notification to some notifiers: %v", errs)
+		return errors.Join(errs...)
 	}
 	return nil
 }
@@ -82,8 +89,12 @@ func (m *MultiNotifierWrapper) Close() error {
 			errs = append(errs, err)
 		}
 	}
+
 	if len(errs) > 0 {
-		return fmt.Errorf("failed to close some notifiers: %v", errs)
+		m.Logger.Log(fmt.Sprintf("Failed to close some notifiers: %v", errs), "error")
+		return errors.Join(errs...)
 	}
+
+	m.Logger.Log("All notifiers closed successfully", "debug")
 	return nil
 }
