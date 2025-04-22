@@ -51,9 +51,8 @@ func (a *Aggregator) ProcessAlerts(alerts []*db.AlertStatus, dbManager *db.Alert
 	}
 
 	// 发送聚合通知
-	a.logger.Log(fmt.Sprintf("Sending aggregated alerts:\n%s", content), "info")
+	a.logger.Log(fmt.Sprintf("Sending aggregated alerts:\n%s", content), "debug")
 	if err := a.notifier.SendAggregatedNotification(alerts, false); err != nil {
-		a.logger.Log(fmt.Sprintf("Failed to send aggregated alerts: %v", err), "error")
 		return err
 	}
 

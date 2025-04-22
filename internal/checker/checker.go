@@ -48,15 +48,45 @@ func (c *Checker) isFailAlertEnabled(host config.Host) bool {
 	return c.Config.Alert.FailAlert // 否则使用全局配置
 }
 
-func (c *Checker) handlePingFailure(host config.Host, reason string) {
+func (c *Checker) pingHost(host config.Host) {
+	output, err := c.Pinger.Ping(host.Host, c.Config.Ping.Count, c.Config.Ping.Timeout)
+	if err != nil {
+		// 调用提取的函数处理 Ping 失败，同时传递原始输出
+		c.handlePingFailure(host, err.Error(), output)
+		return
+	}
+	c.handlePingSuccess(host)
+
+	lines := strings.Split(output, "\n")
+
+	// 使用平台特定的解析方法
+	successCount, sampleLatency := c.Pinger.ParsePingOutput(lines, c.Config.Ping.Count)
+
+	// 使用默认值0.8，如果配置中未设置FailRate
+	failRateThreshold := 0.8
+	if c.Config.Ping.FailRate > 0 {
+		failRateThreshold = float64(c.Config.Ping.FailRate)
+	}
+
+	successRate := float64(successCount) / float64(c.Config.Ping.Count)
+	if successRate < failRateThreshold {
+		// 调用提取的函数处理 Ping 成功率过低，同时传递原始输出
+		c.handlePingFailure(host, fmt.Sprintf("success rate %.2f%%", successRate*100), output)
+	} else {
+		c.Logger.Log(fmt.Sprintf("Ping to [%s] %s succeeded: success rate %.2f%%, latency %s", host.Description, host.Host, successRate*100, sampleLatency), "info")
+	}
+}
+
+func (c *Checker) handlePingFailure(host config.Host, reason string, output string) {
 	// 检查是否启用失败告警
 	if !c.isFailAlertEnabled(host) {
 		c.Logger.Log(fmt.Sprintf("Fail alert disabled for host: %s", host.Host), "debug")
 		return
 	}
 
-	// 记录失败日志
+	// 记录失败日志以及完整的ping输出
 	c.Logger.Log(fmt.Sprintf("Ping to [%s] %s failed: %s", host.Description, host.Host, reason), "error")
+	c.Logger.Log(fmt.Sprintf("Ping output for [%s] %s: \n%s", host.Description, host.Host, output), "info")
 
 	// 构造 AlertStatus 结构体
 	status := db.AlertStatus{
@@ -73,29 +103,6 @@ func (c *Checker) handlePingFailure(host config.Host, reason string) {
 	err := c.DB.MarkAsAlert(status)
 	if err != nil {
 		c.Logger.Log(fmt.Sprintf("Failed to record ping failure in DB: %v", err), "error")
-	}
-}
-
-func (c *Checker) pingHost(host config.Host) {
-	output, err := c.Pinger.Ping(host.Host, c.Config.Ping.Count, c.Config.Ping.Timeout)
-	if err != nil {
-		// 调用提取的函数处理 Ping 失败
-		c.handlePingFailure(host, err.Error())
-		return
-	}
-	c.handlePingSuccess(host)
-
-	lines := strings.Split(output, "\n")
-
-	// 使用平台特定的解析方法
-	successCount, sampleLatency := c.Pinger.ParsePingOutput(lines, c.Config.Ping.Count)
-
-	successRate := float64(successCount) / float64(c.Config.Ping.Count)
-	if successRate < 0.8 {
-		// 调用提取的函数处理 Ping 成功率过低
-		c.handlePingFailure(host, fmt.Sprintf("success rate %.2f%%", successRate*100))
-	} else {
-		c.Logger.Log(fmt.Sprintf("Ping to [%s] %s succeeded: success rate %.2f%%, latency %s", host.Description, host.Host, successRate*100, sampleLatency), "info")
 	}
 }
 

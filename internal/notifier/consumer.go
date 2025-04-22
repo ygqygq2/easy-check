@@ -66,25 +66,6 @@ func (c *Consumer) processEvents(statusType db.StatusType, eventType string) {
 	}
 }
 
-// func (c *Consumer) processSingleRecovery(recovery *db.AlertStatus) {
-// 	c.logger.Log(fmt.Sprintf("Processing recovery for host: %s", recovery.Host), "debug")
-
-// 	failTime, err := time.Parse(time.RFC3339, recovery.FailTime)
-// 	if err != nil {
-// 		c.logError(fmt.Sprintf("Failed to parse timestamp for host %s", recovery.Host), err)
-// 		failTime = time.Now()
-// 	}
-
-// 	if err := c.handler.ProcessRecoveries(alert); err != nil {
-// 		c.logError(fmt.Sprintf("Failed to send recovery notification for host %s", recovery.Host), err)
-// 		return
-// 	}
-
-// 	if err := c.db.UpdateSentStatus(recovery.Host, true); err != nil {
-// 		c.logError(fmt.Sprintf("Failed to update recovery status for host %s", recovery.Host), err)
-// 	}
-// }
-
 // logError 记录错误日志
 func (c *Consumer) logError(message string, err error) {
 	c.logger.Log(fmt.Sprintf("%s: %v", message, err), "error")

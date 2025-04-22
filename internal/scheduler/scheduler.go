@@ -9,7 +9,16 @@ import (
 )
 
 func StartPeriodicPingChecks(chk *checker.Checker, cfg *config.Config, logger *logger.Logger, tickerControlChan chan time.Duration) chan struct{} {
-	ticker := time.NewTicker(time.Duration(cfg.Interval) * time.Second)
+	// 优先使用 ping.interval，如果未配置则使用全局 interval
+	interval := cfg.Interval
+	if cfg.Ping.Interval > 0 {
+		interval = cfg.Ping.Interval
+		logger.Log(fmt.Sprintf("Using ping-specific interval: %d seconds", interval), "debug")
+	} else {
+		logger.Log(fmt.Sprintf("Using global interval: %d seconds", interval), "debug")
+	}
+
+	ticker := time.NewTicker(time.Duration(interval) * time.Second)
 
 	logger.Log("Starting periodic ping checks", "info")
 

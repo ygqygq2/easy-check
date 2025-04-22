@@ -70,7 +70,6 @@ func (m *MultiNotifierWrapper) SendAggregatedNotification(alerts []*db.AlertStat
 	// 遍历所有注册的通知器
 	for _, notifier := range m.Notifiers {
 		if err := notifier.SendAggregatedNotification(alerts, isRecovery); err != nil {
-			m.Logger.Log(fmt.Sprintf("Error sending aggregated notification: %v", err), "error")
 			errs = append(errs, err)
 		}
 	}

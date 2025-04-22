@@ -38,6 +38,7 @@ func main() {
 	go config.WatchConfigFile(filepath.Join("configs", "config.yaml"), appCtx.Logger, func(newConfig *config.Config) {
 		// 更新配置
 		oldInterval := appCtx.Config.Interval
+		oldPingInterval := appCtx.Config.Ping.Interval
 
 		// 保存旧的日志配置
 		oldLogConfig := appCtx.Config.Log
@@ -61,10 +62,25 @@ func main() {
 			appCtx.Logger.Log("Logger configuration updated", "info")
 		}
 
-		// 如果间隔时间发生变化，通知定时器更新
-		if oldInterval != appCtx.Config.Interval {
-			appCtx.Logger.Log(fmt.Sprintf("Interval changed from %d to %d seconds", oldInterval, appCtx.Config.Interval), "info")
-			tickerControlChan <- time.Duration(appCtx.Config.Interval) * time.Second
+		// 修改这部分，检查 ping.interval 和全局 interval 是否有变化
+		var newIntervalToUse int
+		if appCtx.Config.Ping.Interval > 0 {
+			newIntervalToUse = appCtx.Config.Ping.Interval
+		} else {
+			newIntervalToUse = appCtx.Config.Interval
+		}
+
+		var oldIntervalInUse int
+		if oldPingInterval > 0 {
+			oldIntervalInUse = oldPingInterval
+		} else {
+			oldIntervalInUse = oldInterval
+		}
+
+		// 如果实际使用的间隔时间发生变化，通知定时器更新
+		if oldIntervalInUse != newIntervalToUse {
+			appCtx.Logger.Log(fmt.Sprintf("Interval changed from %d to %d seconds", oldIntervalInUse, newIntervalToUse), "info")
+			tickerControlChan <- time.Duration(newIntervalToUse) * time.Second
 		}
 	})
 
