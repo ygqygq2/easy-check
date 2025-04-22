@@ -54,5 +54,15 @@ func (p *WindowsPinger) ParsePingOutput(lines []string, count int) (int, string)
 }
 
 func NewPinger() Pinger {
+	if isAdmin() {
+		return &ICMPPinger{}
+	}
 	return &WindowsPinger{}
+}
+
+func isAdmin() bool {
+	// Windows 上检查管理员权限
+	cmd := exec.Command("net", "session")
+	err := cmd.Run()
+	return err == nil
 }

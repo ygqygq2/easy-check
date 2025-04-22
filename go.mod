@@ -9,7 +9,7 @@ require (
 	github.com/fsnotify/fsnotify v1.8.0
 	github.com/google/wire v0.6.0
 	github.com/sirupsen/logrus v1.9.3
-	golang.org/x/text v0.23.0
+	golang.org/x/text v0.24.0
 	gopkg.in/natefinch/lumberjack.v2 v2.2.1
 )
 
@@ -26,7 +26,7 @@ require (
 	go.opentelemetry.io/otel v1.34.0 // indirect
 	go.opentelemetry.io/otel/metric v1.34.0 // indirect
 	go.opentelemetry.io/otel/trace v1.34.0 // indirect
-	golang.org/x/net v0.35.0 // indirect
-	golang.org/x/sys v0.30.0 // indirect
+	golang.org/x/net v0.39.0 // indirect
+	golang.org/x/sys v0.32.0 // indirect
 	google.golang.org/protobuf v1.36.5 // indirect
 )

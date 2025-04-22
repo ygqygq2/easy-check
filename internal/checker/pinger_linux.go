@@ -5,6 +5,7 @@ package checker
 
 import (
 	"fmt"
+	"os"
 	"os/exec"
 	"regexp"
 	"strings"
@@ -41,5 +42,13 @@ func (p *LinuxPinger) ParsePingOutput(lines []string, count int) (int, string) {
 }
 
 func NewPinger() Pinger {
+	if isAdmin() {
+		return &ICMPPinger{}
+	}
 	return &LinuxPinger{}
+}
+
+func isAdmin() bool {
+	// 检查是否有管理员权限
+	return os.Geteuid() == 0
 }
