@@ -16,7 +16,10 @@ build-linux:
 
 # 编译 Windows 可执行文件
 build-windows:
-	GOOS=windows GOARCH=amd64 go build -ldflags "-X main.version=$(GIT_VERSION)" -o bin/easy-check.exe cmd/main.go
+#GOOS=windows GOARCH=amd64 go build -ldflags "-H windowsgui -X main.version=$(GIT_VERSION)" -o bin/easy-check.exe cmd/main.go
+	GOOS=windows GOARCH=amd64 gogio -ldflags "-H windowsgui -X main.version=$(GIT_VERSION)" \
+  -buildmode=exe -icon=internal/assets/images/logo.png -target=windows -o bin/easy-check.exe ./cmd
+
 
 # 测试目标
 test:

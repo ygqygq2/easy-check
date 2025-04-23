@@ -11,6 +11,7 @@ import (
 	"regexp"
 	"strings"
 
+	"golang.org/x/sys/windows"
 	"golang.org/x/text/encoding/simplifiedchinese"
 	"golang.org/x/text/transform"
 )
@@ -20,6 +21,11 @@ type WindowsPinger struct{}
 func (p *WindowsPinger) Ping(host string, count int, timeout int) (string, error) {
 	// Windows ping命令参数不同
 	cmd := exec.Command("ping", "-4", "-n", fmt.Sprintf("%d", count), "-w", fmt.Sprintf("%d", timeout*1000), host)
+	// 隐藏黑色控制台窗口
+	cmd.SysProcAttr = &windows.SysProcAttr{
+		HideWindow:    true,
+		CreationFlags: windows.CREATE_NO_WINDOW,
+	}
 	output, err := cmd.CombinedOutput()
 
 	// 尝试将GBK编码转换为UTF-8
@@ -63,6 +69,11 @@ func NewPinger() Pinger {
 func isAdmin() bool {
 	// Windows 上检查管理员权限
 	cmd := exec.Command("net", "session")
+	// 隐藏黑色控制台窗口
+	cmd.SysProcAttr = &windows.SysProcAttr{
+		HideWindow:    true,
+		CreationFlags: windows.CREATE_NO_WINDOW,
+	}
 	err := cmd.Run()
 	return err == nil
 }
