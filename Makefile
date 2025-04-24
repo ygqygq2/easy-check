@@ -8,17 +8,23 @@ GIT_VERSION := $(if $(GIT_TAG),$(GIT_TAG),$(shell git describe --tags --always -
 all: build
 
 # 编译目标
-build: build-linux build-windows
+build: build-cmd build-wails
+
+# 编译 cmd 可执行文件
+build-cmd: build-linux-cmd build-windows-cmd
+
+# 编译 Wails 应用
+build-wails:
+	wails build -ldflags "-X main.version=$(GIT_VERSION)" -platform linux/amd64 -platform windows/amd64
 
 # 编译 Linux 可执行文件
-build-linux:
+build-linux-cmd:
 	GOOS=linux GOARCH=amd64 go build -ldflags "-X main.version=$(GIT_VERSION)" -o bin/easy-check cmd/main.go
 
 # 编译 Windows 可执行文件
-build-windows:
-#GOOS=windows GOARCH=amd64 go build -ldflags "-H windowsgui -X main.version=$(GIT_VERSION)" -o bin/easy-check.exe cmd/main.go
-	GOOS=windows GOARCH=amd64 gogio -ldflags "-H windowsgui -X main.version=$(GIT_VERSION)" \
-  -buildmode=exe -icon=internal/assets/images/logo.png -target=windows -o bin/easy-check.exe ./cmd
+build-windows-cmd:
+	GOOS=windows GOARCH=amd64 go build -ldflags "-X main.version=$(GIT_VERSION)" -o bin/easy-check.exe cmd/main.go
+
 
 
 # 测试目标
