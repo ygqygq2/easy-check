@@ -3,7 +3,7 @@ import "./App.css";
 import { useState } from "react";
 
 import { Greet } from "../wailsjs/go/main/App";
-import logo from "./assets/images/logo-universal.png";
+import logo from "./assets/images/logo.png";
 
 function App() {
   const [resultText, setResultText] = useState(
