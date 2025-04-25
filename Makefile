@@ -14,7 +14,7 @@ build: build-cmd build-wails
 build-cmd: build-linux-cmd build-windows-cmd
 
 # 编译 Wails 应用
-build-wails:
+build-ui:
 	wails build -ldflags "-X main.version=$(GIT_VERSION)" -platform linux/amd64 -platform windows/amd64
 
 # 编译 Linux 可执行文件
