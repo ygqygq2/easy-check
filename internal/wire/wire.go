@@ -11,6 +11,7 @@ import (
 	"easy-check/internal/logger"
 	"easy-check/internal/notifier"
 	"easy-check/internal/types"
+	"easy-check/internal/utils"
 	"fmt"
 	"time"
 
@@ -27,6 +28,7 @@ type AppContext struct {
 	Pinger           checker.Pinger
 	Notifier         types.Notifier
 	AggregatorHandle types.AggregatorHandle
+	TSDB             *db.TSDB
 }
 
 // 定义提供者集
@@ -36,6 +38,7 @@ var loggerSet = wire.NewSet(
 
 var dbSet = wire.NewSet(
 	provideBadgerDB,
+	provideTSDB,
 	provideAlertStatusManager,
 )
 
@@ -61,8 +64,14 @@ func provideConfig(configPath string) (*config.Config, error) {
 	return config.LoadConfig(configPath, defaultLogger)
 }
 
+// 提取 DbConfig 提供者
+func provideDbConfig(cfg *config.Config) *config.DbConfig {
+	return &cfg.Db
+}
+
 var configSet = wire.NewSet(
 	provideConfig,
+	provideDbConfig,
 )
 
 // provideLogger 创建日志记录器
@@ -83,14 +92,22 @@ func provideLogger(cfg *config.Config) (*logger.Logger, error) {
 }
 
 // provideBadgerDB 创建数据库连接
-func provideBadgerDB(cfg *config.Config, log *logger.Logger) (*badger.DB, error) {
-	opts := badger.DefaultOptions(cfg.Db.Path).WithLogger(log)
+func provideBadgerDB(cfg *config.DbConfig) (*badger.DB, error) {
+	badgerPath := "badger"
+	opts := badger.DefaultOptions(utils.AddDirectorySuffix(cfg.Path) + badgerPath)
 	db, err := badger.Open(opts)
 	if err != nil {
-		log.Fatal(fmt.Sprintf("Failed to open database: %v", err))
-		return nil, err
+		return nil, fmt.Errorf("Failed to open database: %v", err)
 	}
 	return db, nil
+}
+
+func provideTSDB(cfg *config.DbConfig) (*db.TSDB, error) {
+	tsdb, err := db.NewTSDB(cfg)
+	if err != nil {
+		return nil, fmt.Errorf("Failed to initialize TSDB: %v", err)
+	}
+	return tsdb, nil
 }
 
 // provideAlertStatusManager 创建 AlertStatusManager

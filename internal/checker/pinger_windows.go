@@ -9,6 +9,7 @@ import (
 	"io"
 	"os/exec"
 	"regexp"
+	"strconv"
 	"strings"
 
 	"golang.org/x/sys/windows"
@@ -34,29 +35,47 @@ func (p *WindowsPinger) Ping(host string, count int, timeout int) (string, error
 	return string(utf8Output), err
 }
 
-func (p *WindowsPinger) ParsePingOutput(lines []string, count int) (int, string) {
+func (p *WindowsPinger) ParsePingOutput(lines []string, count int) (int, float64, float64, float64) {
 	successCount := 0
-	var sampleLatency string
+	var latencies []float64
 
-	// 使用更通用的正则表达式匹配时间值，不依赖特定的前缀文本
-	// 这个正则表达式会匹配任何"数字+ms"的模式
-	reTime := regexp.MustCompile(`(\d+)ms`)
+	// 使用正则表达式匹配延迟值
+	reTime := regexp.MustCompile(`time=(\d+)ms`)
 
 	for _, line := range lines {
-		// 只检查TTL存在与否，这在不同语言版本中都是一致的
-		if strings.Contains(line, "TTL=") || strings.Contains(line, "TTL=") {
+		// 检查TTL是否存在，表示ping成功
+		if strings.Contains(line, "TTL=") {
 			successCount++
-			if sampleLatency == "" {
-				matches := reTime.FindStringSubmatch(line)
-				if len(matches) > 1 {
-					// 构造延迟字符串
-					sampleLatency = fmt.Sprintf("time=%sms", matches[1])
-				}
+			matches := reTime.FindStringSubmatch(line)
+			if len(matches) > 1 {
+				latency, _ := strconv.ParseFloat(matches[1], 64)
+				latencies = append(latencies, latency)
 			}
 		}
 	}
 
-	return successCount, sampleLatency
+	// 如果没有延迟值，返回默认值
+	if len(latencies) == 0 {
+		return successCount, 0, 0, 0
+	}
+
+	// 计算最小、最大和平均延迟
+	minLatency := latencies[0]
+	maxLatency := latencies[0]
+	var totalLatency float64
+
+	for _, latency := range latencies {
+		if latency < minLatency {
+			minLatency = latency
+		}
+		if latency > maxLatency {
+			maxLatency = latency
+		}
+		totalLatency += latency
+	}
+
+	avgLatency := totalLatency / float64(len(latencies))
+	return successCount, minLatency, avgLatency, maxLatency
 }
 
 func NewPinger() Pinger {

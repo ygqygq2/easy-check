@@ -21,6 +21,7 @@ type AppContext struct {
 	Pinger           checker.Pinger
 	Notifier         types.Notifier
 	DB               *db.DB
+	TSDB             *db.TSDB
 	AlertStatusMgr   *db.AlertStatusManager
 	AggregatorHandle types.AggregatorHandle
 }
@@ -58,13 +59,19 @@ func Initialize() (*AppContext, error) {
 	baseNotifier, aggregatorHandle := initializeAlertAggregator(cfg, baseNotifier, appLogger)
 
 	// 初始化数据库
-	dbInstance, err := db.NewDB(&cfg.Db, appLogger)
+	dbInstance, err := db.NewDB(&cfg.Db)
 	if err != nil {
 		return nil, fmt.Errorf("failed to initialize database: %w", err)
 	}
 	if dbInstance == nil || dbInstance.Instance == nil {
 		appLogger.Log("Database instance is nil", "error")
 		return nil, fmt.Errorf("database instance is nil")
+	}
+	appLogger.Log("Database instance created successfully", "debug")
+
+	tsdbInstance, err := db.NewTSDB(&cfg.Db)
+	if err != nil {
+		return nil, fmt.Errorf("failed to initialize TSDB: %w", err)
 	}
 	appLogger.Log("Database instance created successfully", "debug")
 
@@ -81,6 +88,7 @@ func Initialize() (*AppContext, error) {
 		Pinger:           checker.NewPinger(),
 		Notifier:         baseNotifier,
 		DB:               dbInstance,
+		TSDB:             tsdbInstance,
 		AlertStatusMgr:   alertStatusMgr,
 		AggregatorHandle: aggregatorHandle,
 	}

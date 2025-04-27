@@ -8,6 +8,7 @@ import (
 	"os"
 	"os/exec"
 	"regexp"
+	"strconv"
 	"strings"
 )
 
@@ -19,26 +20,46 @@ func (p *LinuxPinger) Ping(host string, count int, timeout int) (string, error) 
 	return string(output), err
 }
 
-func (p *LinuxPinger) ParsePingOutput(lines []string, count int) (int, string) {
+func (p *LinuxPinger) ParsePingOutput(lines []string, count int) (int, float64, float64, float64) {
 	successCount := 0
-	var sampleLatency string
+	var latencies []float64
 
-	// Linux平台的ping输出解析逻辑
-	re := regexp.MustCompile(`time=\d+(\.\d+)? ms`)
+	// 正则表达式匹配延迟值
+	re := regexp.MustCompile(`time=(\d+(\.\d+)?) ms`)
 
 	for _, line := range lines {
 		if strings.Contains(line, "ttl=") || strings.Contains(line, "time=") {
 			successCount++
-			if sampleLatency == "" {
-				match := re.FindString(line)
-				if match != "" {
-					sampleLatency = match
-				}
+			match := re.FindStringSubmatch(line)
+			if len(match) > 1 {
+				latency, _ := strconv.ParseFloat(match[1], 64)
+				latencies = append(latencies, latency)
 			}
 		}
 	}
 
-	return successCount, sampleLatency
+	// 如果没有延迟值，返回默认值
+	if len(latencies) == 0 {
+		return successCount, 0, 0, 0
+	}
+
+	// 计算最小、最大和平均延迟
+	minLatency := latencies[0]
+	maxLatency := latencies[0]
+	var totalLatency float64
+
+	for _, latency := range latencies {
+		if latency < minLatency {
+			minLatency = latency
+		}
+		if latency > maxLatency {
+			maxLatency = latency
+		}
+		totalLatency += latency
+	}
+
+	avgLatency := totalLatency / float64(len(latencies))
+	return successCount, minLatency, avgLatency, maxLatency
 }
 
 func NewPinger() Pinger {

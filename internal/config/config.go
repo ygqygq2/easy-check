@@ -20,7 +20,7 @@ type PingConfig struct {
 	Count    int `yaml:"count"`
 	Timeout  int `yaml:"timeout"`
 	Interval int `yaml:"interval"`
-	FailRate int `yaml:"fail_rate"`
+	LossRate int `yaml:"loss_rate"`
 }
 
 // LogConfig 日志配置
@@ -36,8 +36,9 @@ type LogConfig struct {
 
 // DbConfig 数据库配置
 type DbConfig struct {
-	Path   string `yaml:"path"`
-	Expire int    `yaml:"expire"`
+	Path      string `yaml:"path"`
+	Expire    int    `yaml:"expire"`
+	Retention string `yaml:"retention"`
 }
 
 // NotifierConfig 通知器配置

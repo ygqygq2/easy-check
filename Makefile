@@ -8,7 +8,7 @@ GIT_VERSION := $(if $(GIT_TAG),$(GIT_TAG),$(shell git describe --tags --always -
 all: build
 
 # 编译目标
-build: build-cmd build-wails
+build: build-cmd build-ui
 
 # 编译 cmd 可执行文件
 build-cmd: build-linux-cmd build-windows-cmd

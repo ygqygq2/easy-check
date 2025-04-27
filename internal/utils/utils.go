@@ -22,3 +22,19 @@ func FormatTime(timestamp string) string {
 	// 格式化为目标时间格式
 	return parsedTime.Format("2006-01-02 15:04:05")
 }
+
+// IsDirectorySuffix 检查路径是否以 "/" 结尾
+func IsDirectorySuffix(path string) bool {
+	if len(path) == 0 {
+		return false
+	}
+	return path[len(path)-1] == '/'
+}
+
+// 目录添加 "/"
+func AddDirectorySuffix(path string) string {
+	if IsDirectorySuffix(path) {
+		return path
+	}
+	return path + "/"
+}

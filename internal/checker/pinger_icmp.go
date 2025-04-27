@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"fmt"
 	"net"
+	"strconv"
 	"strings"
 	"time"
 
@@ -66,18 +67,54 @@ func (p *ICMPPinger) Ping(host string, count int, timeout int) (string, error) {
 	return buffer.String(), nil
 }
 
-func (p *ICMPPinger) ParsePingOutput(lines []string, count int) (int, string) {
+func (p *ICMPPinger) ParsePingOutput(lines []string, count int) (int, float64, float64, float64) {
 	successCount := 0
-	var sampleLatency string
+	var latencies []float64
 
+	// 遍历每一行输出，提取延迟值
 	for _, line := range lines {
 		if strings.Contains(line, "Reply from") {
 			successCount++
-			if sampleLatency == "" {
-				sampleLatency = line
+
+			// 提取延迟值，例如 "time=12ms"
+			start := strings.Index(line, "time=")
+			if start != -1 {
+				end := strings.Index(line[start:], " ")
+				if end == -1 {
+					end = len(line)
+				} else {
+					end += start
+				}
+
+				latencyStr := strings.TrimSuffix(line[start+5:end], "ms")
+				latency, err := strconv.ParseFloat(latencyStr, 64)
+				if err == nil {
+					latencies = append(latencies, latency)
+				}
 			}
 		}
 	}
 
-	return successCount, sampleLatency
+	// 如果没有延迟值，返回默认值
+	if len(latencies) == 0 {
+		return successCount, 0, 0, 0
+	}
+
+	// 计算最小、最大和平均延迟
+	minLatency := latencies[0]
+	maxLatency := latencies[0]
+	var totalLatency float64
+
+	for _, latency := range latencies {
+		if latency < minLatency {
+			minLatency = latency
+		}
+		if latency > maxLatency {
+			maxLatency = latency
+		}
+		totalLatency += latency
+	}
+
+	avgLatency := totalLatency / float64(len(latencies))
+	return successCount, minLatency, avgLatency, maxLatency
 }

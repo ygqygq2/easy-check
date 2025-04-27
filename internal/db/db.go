@@ -2,7 +2,8 @@ package db
 
 import (
 	"easy-check/internal/config"
-	"easy-check/internal/logger"
+	"easy-check/internal/utils"
+	"fmt"
 
 	"github.com/dgraph-io/badger/v4"
 )
@@ -12,13 +13,13 @@ type DB struct {
 }
 
 // NewDB 初始化 BadgerDB
-func NewDB(dbConfig *config.DbConfig, logger *logger.Logger) (*DB, error) {
-	opts := badger.DefaultOptions(dbConfig.Path).WithLoggingLevel(badger.ERROR) // 设置日志级别为 ERROR
+func NewDB(dbConfig *config.DbConfig) (*DB, error) {
+	badgerPath := "badger"
+	opts := badger.DefaultOptions(utils.AddDirectorySuffix(dbConfig.Path) + badgerPath).WithLoggingLevel(badger.ERROR) // 设置日志级别为 ERROR
 	db, err := badger.Open(opts)
 	if err != nil {
-		return nil, logger.LogAndError("Failed to open Badger DB: %v", "error", err)
+		return nil, fmt.Errorf("Failed to open Badger DB: %v", err)
 	}
-	logger.Log("Badger DB initialized successfully", "debug")
 	return &DB{Instance: db}, nil
 }
 

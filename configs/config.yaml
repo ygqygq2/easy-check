@@ -11,7 +11,7 @@ ping:
   count: 8 # ping的次数
   timeout: 2 # ping的超时时间，单位为秒
   interval: 20 # 如果未配置则使用全局的 interval，单位为秒
-  fail_rate: 0.7 # ping失败率，默认值为 0.7，即 70%
+  loss_rate: 0.7 # ping失败率，默认值为 0.7，即 70%
 
 interval: 10 # 检测间隔时间，单位为秒
 
@@ -25,8 +25,9 @@ log:
   file_level: "info" # 日志文件日志级别
 
 db:
-  path: "db/badger" # 数据库
-  expire: 604800 # 数据过期时间，单位为秒，默认为7天
+  path: "db" # 数据库目录，badger 为目录下 badger，prometheus tsdb 为目录下 tsdb
+  expire: 604800 # badger 数据过期时间，单位为秒，默认为7天
+  retention: "30d" # prometheus tsdb 数据保留时间，默认为30天
 
 alert:
   fail_alert: true # 是否全局启用失败告警，为 true 时，即失败时发送告警
@@ -44,26 +45,26 @@ alert:
   aggregate_alert_line_template: "- 开始时间：{{.FailTime}} | 主机：{{.Host}} | 描述：{{.Description}}" # 聚合告警的行模板
   aggregate_recovery_line_template: "- 开始时间：{{.FailTime}} | 恢复时间：{{.RecoveryTime}} | 主机：{{.Host}} | 描述：{{.Description}}" # 聚合告警恢复行模板
   notifiers:
-  - name: "alert1"
-    type: "feishu"
-    enable: true # 是否启用飞书告警
-    webhook: "https://open.feishu.cn/open-apis/bot/v2/hook/xxxxxxxxxxxxxxxxxxxx" # 飞书机器人的 webhook 地址
-    msg_type: "text" # 飞书告警的类型，可选值：text、post、interactive
-    alert_title: "💔【easy-check】：告警通知" # 飞书告警的标题
-    recovery_title: "💚【easy-check】：恢复通知"
-    # alert_content: |
-    #   🧭【告警时间】：{{.Date}} {{.Time}}
-    #   📝【告警详情】：以下主机不可达：
-    #   - 开始时间：{{.FailTime}} | 主机：{{.Host}} | 描述：{{.Description}}
-    # recovery_content: |
-    #   🧭【恢复时间】：{{.RecoveryTime}}
-    #   📝【恢复详情】：以下主机已恢复：
-    #   - 开始时间：{{.FailTime}} | 主机：{{.Host}} | 描述：{{.Description}}
-    alert_content: |
-      🧭【告警时间】：{{.Date}} {{.Time}}
-      📝【告警详情】：以下 {{.AlertCount}} 个主机不可达：
-      {{.AlertList}}
-    recovery_content: |
-      🧭【发送时间】：{{.Date}} {{.Time}}
-      📝【恢复详情】：以下 {{.AlertCount}} 个主机已恢复：
-      {{.AlertList}}
+    - name: "alert1"
+      type: "feishu"
+      enable: true # 是否启用飞书告警
+      webhook: "https://open.feishu.cn/open-apis/bot/v2/hook/xxxxxxxxxxxxxxxxxxxx" # 飞书机器人的 webhook 地址
+      msg_type: "text" # 飞书告警的类型，可选值：text、post、interactive
+      alert_title: "💔【easy-check】：告警通知" # 飞书告警的标题
+      recovery_title: "💚【easy-check】：恢复通知"
+      # alert_content: |
+      #   🧭【告警时间】：{{.Date}} {{.Time}}
+      #   📝【告警详情】：以下主机不可达：
+      #   - 开始时间：{{.FailTime}} | 主机：{{.Host}} | 描述：{{.Description}}
+      # recovery_content: |
+      #   🧭【恢复时间】：{{.RecoveryTime}}
+      #   📝【恢复详情】：以下主机已恢复：
+      #   - 开始时间：{{.FailTime}} | 主机：{{.Host}} | 描述：{{.Description}}
+      alert_content: |
+        🧭【告警时间】：{{.Date}} {{.Time}}
+        📝【告警详情】：以下 {{.AlertCount}} 个主机不可达：
+        {{.AlertList}}
+      recovery_content: |
+        🧭【发送时间】：{{.Date}} {{.Time}}
+        📝【恢复详情】：以下 {{.AlertCount}} 个主机已恢复：
+        {{.AlertList}}
