@@ -41,7 +41,7 @@ func main() {
 	}()
 
 	// Create an instance of the app structure
-	app := NewApp()
+	app := NewApp(appCtx)
 
 	// Create application with options
 	err = wails.Run(&options.App{

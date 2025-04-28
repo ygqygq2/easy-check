@@ -167,7 +167,7 @@ func (c *Checker) writeMetricsToTSDB(host string, metrics map[string]interface{}
 
 func (c *Checker) getFailRateThreshold() float64 {
 	if c.Config.Ping.LossRate > 0 {
-		return float64(c.Config.Ping.LossRate)
+		return float64(c.Config.Ping.LossRate) * 100
 	}
-	return 20.0 // 默认值（失败率超过 20% 触发告警）
+	return 20 // 默认值（失败率超过 20% 触发告警）
 }

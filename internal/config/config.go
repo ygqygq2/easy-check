@@ -110,3 +110,38 @@ func (c *Config) HasEnabledNotifiers() bool {
 	}
 	return false
 }
+
+// GetConfigContent 获取配置文件内容
+func GetConfigContent(configPath string) (string, error) {
+	data, err := os.ReadFile(configPath)
+	if err != nil {
+		return "", fmt.Errorf("读取配置文件失败: %v", err)
+	}
+	return string(data), nil
+}
+
+// SaveConfigContent 保存配置文件内容
+func SaveConfigContent(configPath string, content string, logger *logger.Logger) error {
+	// 先验证YAML格式是否正确
+	var config Config
+	if err := yaml.Unmarshal([]byte(content), &config); err != nil {
+		return fmt.Errorf("无效的YAML格式: %v", err)
+	}
+
+	// 备份原配置
+	backupPath := configPath + ".bak"
+	if err := os.Rename(configPath, backupPath); err != nil {
+		logger.Log(fmt.Sprintf("创建配置备份失败: %v", err), "warn")
+		// 继续执行，即使备份失败
+	}
+
+	// 写入新配置
+	if err := os.WriteFile(configPath, []byte(content), 0644); err != nil {
+		// 尝试恢复备份
+		os.Rename(backupPath, configPath)
+		return fmt.Errorf("保存配置失败: %v", err)
+	}
+
+	logger.Log("配置已成功保存", "info")
+	return nil
+}

@@ -17,6 +17,7 @@ import (
 // AppContext 包含应用程序的所有依赖
 type AppContext struct {
 	Config           *config.Config
+	ConfigPath       string
 	Logger           *logger.Logger
 	Pinger           checker.Pinger
 	Notifier         types.Notifier
@@ -37,8 +38,9 @@ func Initialize() (*AppContext, error) {
 	defaultLogger := logger.NewDefaultLogger()
 	// 不再defer关闭defaultLogger，移交给initLogger做统一关闭
 
+	configPath := filepath.Join("configs", "config.yaml")
 	// 加载配置
-	cfg, err := loadConfig(defaultLogger)
+	cfg, err := loadConfig(defaultLogger, configPath)
 	if err != nil {
 		return nil, fmt.Errorf("failed to load configuration: %w", err)
 	}
@@ -84,6 +86,7 @@ func Initialize() (*AppContext, error) {
 	// 创建 AppContext
 	appContext := &AppContext{
 		Config:           cfg,
+		ConfigPath:       configPath,
 		Logger:           appLogger,
 		Pinger:           checker.NewPinger(),
 		Notifier:         baseNotifier,
@@ -135,8 +138,7 @@ func changeToProjectRoot() error {
 }
 
 // loadConfig 加载配置文件
-func loadConfig(logger *logger.Logger) (*config.Config, error) {
-	configPath := filepath.Join("configs", "config.yaml")
+func loadConfig(logger *logger.Logger, configPath string) (*config.Config, error) {
 	cfg, err := config.LoadConfig(configPath, logger)
 	if err != nil {
 		logger.Log(fmt.Sprintf("Failed to load configuration: %v", err), "error")

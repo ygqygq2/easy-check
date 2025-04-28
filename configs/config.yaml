@@ -11,7 +11,7 @@ ping:
   count: 8 # ping的次数
   timeout: 2 # ping的超时时间，单位为秒
   interval: 30 # 如果未配置则使用全局的 interval，单位为秒
-  loss_rate: 0.8 # ping失败率，默认值为 0.7，即 70%
+  loss_rate: 0.2 # ping失败率，默认值为 0.2，即 20%
 
 interval: 10 # 检测间隔时间，单位为秒
 

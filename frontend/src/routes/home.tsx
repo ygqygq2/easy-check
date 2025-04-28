@@ -1,15 +1,23 @@
-import "./App.css";
+import "./home.css";
 
 import { Box, Flex } from "@chakra-ui/react";
 import { useState } from "react";
 
-import { Greet } from "../wailsjs/go/main/App";
-import logo from "./assets/images/logo.png";
-import smallLogo from "./assets/images/logo36x36.png";
-import MenuBar from "./components/MenuBar";
-import { ColorModeButton, useColorModeValue } from "./components/ui/color-mode";
+import logo from "@/assets/images/logo.png";
+import smallLogo from "@/assets/images/logo36x36.png";
+import MenuBar from "@/components/MenuBar";
+import { ColorModeButton, useColorModeValue } from "@/components/ui/color-mode";
 
-function App() {
+import type { Route } from "./+types/home";
+
+export function meta({}: Route.MetaArgs) {
+  return [
+    { title: "New React Router App" },
+    { name: "description", content: "Welcome to !" },
+  ];
+}
+
+export default function Home() {
   const navBg = useColorModeValue("gray.200", "gray.700");
   const navColor = useColorModeValue("gray.800", "gray.100");
 
@@ -72,5 +80,3 @@ function App() {
     </div>
   );
 }
-
-export default App;
