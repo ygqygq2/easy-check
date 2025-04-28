@@ -59,32 +59,30 @@ type PingResult struct {
 
 func (c *Checker) pingHost(host config.Host) {
 	output, err := c.Pinger.Ping(host.Host, c.Config.Ping.Count, c.Config.Ping.Timeout)
-	if err != nil {
-		// 调用提取的函数处理 Ping 失败，同时传递原始输出
-		c.handlePingFailure(host, err.Error(), output)
-		return
-	}
-	c.handlePingSuccess(host)
 
+	// 解析 Ping 输出
 	lines := strings.Split(output, "\n")
-
-	// 使用平台特定的解析方法
 	successCount, minLatency, avgLatency, maxLatency := c.Pinger.ParsePingOutput(lines, c.Config.Ping.Count)
+	packetLossRate := c.calculatePacketLoss(successCount, c.Config.Ping.Count)
 
-	// 计算丢包率
-	totalCount := c.Config.Ping.Count
-	packetLossRate := c.calculatePacketLoss(successCount, totalCount)
-
-	// 判断是否超过失败率阈值
-	if packetLossRate > c.getFailRateThreshold() {
-		c.handlePingFailure(host, fmt.Sprintf("packet loss rate %.2f%%", packetLossRate), output)
-		return
+	// 根据 Ping 结果处理逻辑
+	if err != nil || packetLossRate > c.getFailRateThreshold() {
+		// 如果 Ping 失败或丢包率超过阈值，处理失败逻辑
+		reason := err.Error()
+		if err == nil {
+			reason = fmt.Sprintf("packet loss rate %.2f%%", packetLossRate)
+		}
+		// 记录失败日志
+		c.Logger.Log(fmt.Sprintf("Ping to [%s] %s failed: packet loss %.2f%%, avg latency %.2fms",
+			host.Description, host.Host, packetLossRate, avgLatency), "error")
+		c.handlePingFailure(host, reason, output)
+	} else {
+		// 如果 Ping 成功且丢包率在阈值内，处理成功逻辑
+		c.handlePingSuccess(host)
 	}
 
-	c.Logger.Log(fmt.Sprintf("Ping to [%s] %s succeeded: packet loss rate %.2f%%, latency %s", host.Description, host.Host, packetLossRate, avgLatency), "info")
-
-	// 将统计数据写入 TSDB
-	c.writeMetricsToTSDB(host.Host, map[string]interface{}{
+	// 无论成功或失败，都写入统计数据到 TSDB
+	c.writeMetricsToTSDB(host.Host, map[string]any{
 		"packet_loss": packetLossRate,
 		"min_latency": minLatency,
 		"avg_latency": avgLatency,

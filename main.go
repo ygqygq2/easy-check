@@ -78,7 +78,7 @@ func runBackgroundTask(appCtx *initializer.AppContext) {
 		appCtx.Logger.Fatal("Failed to create AlertStatusManager", "error")
 	}
 
-	chk := checker.NewChecker(appCtx.Config, pinger, appCtx.Logger, alertStatusManager)
+	chk := checker.NewChecker(appCtx.Config, pinger, appCtx.Logger, alertStatusManager, appCtx.TSDB)
 
 	for {
 		chk.PingHosts()
