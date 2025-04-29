@@ -1,3 +1,5 @@
 {
-  "Codegeex.RepoIndex": true
+  "Codegeex.RepoIndex": true,
+  // 配置 eslint 为默认格式化程序
+  "editor.defaultFormatter": "dbaeumer.vscode-eslint",
 }

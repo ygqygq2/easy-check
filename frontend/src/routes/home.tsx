@@ -1,82 +1,22 @@
-import "./home.css";
+import type { RouteObject } from "react-router-dom";
+import { Outlet } from "react-router-dom";
 
-import { Box, Flex } from "@chakra-ui/react";
-import { useState } from "react";
+import { Layout as HomeLayout } from "@/components/layout/layout";
 
-import logo from "@/assets/images/logo.png";
-import smallLogo from "@/assets/images/logo36x36.png";
-import MenuBar from "@/components/MenuBar";
-import { ColorModeButton, useColorModeValue } from "@/components/ui/color-mode";
-
-import type { Route } from "./+types/home";
-
-export function meta({}: Route.MetaArgs) {
-  return [
-    { title: "New React Router App" },
-    { name: "description", content: "Welcome to !" },
-  ];
-}
-
-export default function Home() {
-  const navBg = useColorModeValue("gray.200", "gray.700");
-  const navColor = useColorModeValue("gray.800", "gray.100");
-
-  const menus = [
+export const route: RouteObject = {
+  path: "/",
+  element: (
+    <HomeLayout>
+      <Outlet />
+    </HomeLayout>
+  ),
+  children: [
     {
-      label: "文件",
-      items: [
-        { value: "open", label: "打开配置", onClick: () => alert("打开配置") },
-        { value: "exit", label: "退出", onClick: () => alert("退出") },
-      ],
+      index: true,
+      lazy: async () => {
+        const { Page } = await import("@/pages/home");
+        return { Component: Page };
+      },
     },
-    {
-      label: "查看",
-      items: [
-        {
-          value: "log-list",
-          label: "日志列表",
-          onClick: () => alert("日志列表"),
-        },
-        {
-          value: "latest-log",
-          label: "最新日志",
-          onClick: () => alert("最新日志"),
-        },
-      ],
-    },
-    {
-      label: "帮助",
-      items: [
-        {
-          value: "update",
-          label: "自动更新",
-          onClick: () => alert("自动更新"),
-        },
-        { value: "about", label: "关于", onClick: () => alert("关于") },
-      ],
-    },
-  ];
-
-  return (
-    <div id="App">
-      <Flex
-        as="nav"
-        bg={navBg}
-        color={navColor}
-        px={4}
-        py={2}
-        align="center"
-        justify="space-between"
-      >
-        <Flex align="center">
-          <Box className="small-logo" mr={4}>
-            <img src={smallLogo} alt="logo" />
-          </Box>
-          <MenuBar menus={menus} />
-        </Flex>
-        <ColorModeButton />
-      </Flex>
-      <img src={logo} id="logo" alt="logo" />
-    </div>
-  );
-}
+  ],
+};

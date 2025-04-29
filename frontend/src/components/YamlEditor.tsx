@@ -64,12 +64,7 @@ const YamlEditor = () => {
   }
 
   return (
-    <Box
-      height="calc(100vh - 50px)"
-      display="flex"
-      flexDirection="column"
-      p={4}
-    >
+    <Box height="calc(100vh - 50px)" display="flex" flexDirection="column" p={4}>
       <Flex justify="space-between" mb={4}>
         <Text fontSize="xl">配置编辑器</Text>
         <Flex gap={4}>
