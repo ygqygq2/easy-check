@@ -98,7 +98,7 @@ func main() {
 	consumer := notifier.NewConsumer(alertStatusManager, appCtx.Logger, interval, appCtx.AggregatorHandle)
 	go consumer.Start()
 
-	chk := checker.NewChecker(appCtx.Config, pinger, appCtx.Logger, alertStatusManager)
+	chk := checker.NewChecker(appCtx.Config, pinger, appCtx.Logger, alertStatusManager, appCtx.TSDB)
 	// 执行初始 ping 检查
 	appCtx.Logger.Log("Performing initial ping check", "info")
 	chk.PingHosts()
