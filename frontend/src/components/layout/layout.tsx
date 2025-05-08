@@ -39,8 +39,8 @@ export function Layout({ children }: LayoutProps) {
       items: [
         {
           value: "update",
-          label: "自动更新",
-          onClick: () => alert("自动更新"),
+          label: "检查更新",
+          onClick: () => alert("检查更新"),
         },
         { value: "about", label: "关于", onClick: () => alert("关于") },
       ],

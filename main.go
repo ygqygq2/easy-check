@@ -2,6 +2,7 @@ package main
 
 import (
 	"easy-check/internal/checker"
+	"easy-check/internal/constants"
 	"easy-check/internal/db"
 	"easy-check/internal/initializer"
 	"embed"
@@ -26,7 +27,7 @@ func main() {
 
 	// 初始化配置和通知器
 	fmt.Println("Initializing application context...")
-	appCtx, err := initializer.Initialize()
+	appCtx, err := initializer.Initialize(version)
 	if err != nil {
 		fmt.Printf("Failed to initialize application: %v\n", err)
 		os.Exit(1)
@@ -40,6 +41,7 @@ func main() {
 		runBackgroundTask(appCtx)
 	}()
 
+	constants.GetSharedConstants(appCtx)
 	// Create an instance of the app structure
 	app := NewApp(appCtx)
 

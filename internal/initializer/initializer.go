@@ -16,6 +16,7 @@ import (
 
 // AppContext 包含应用程序的所有依赖
 type AppContext struct {
+	AppVersion       string
 	Config           *config.Config
 	ConfigPath       string
 	Logger           *logger.Logger
@@ -28,7 +29,7 @@ type AppContext struct {
 }
 
 // Initialize 初始化应用程序上下文
-func Initialize() (*AppContext, error) {
+func Initialize(version string) (*AppContext, error) {
 	// 切换到项目根目录
 	if err := changeToProjectRoot(); err != nil {
 		return nil, fmt.Errorf("failed to change to project root: %w", err)
@@ -85,6 +86,7 @@ func Initialize() (*AppContext, error) {
 
 	// 创建 AppContext
 	appContext := &AppContext{
+		AppVersion:       version,
 		Config:           cfg,
 		ConfigPath:       configPath,
 		Logger:           appLogger,
