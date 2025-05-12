@@ -13,12 +13,17 @@ type DB struct {
 }
 
 // NewDB 初始化 BadgerDB
-func NewDB(dbConfig *config.DbConfig) (*DB, error) {
+func NewDB(isDev bool, dbConfig *config.DbConfig) (*DB, error) {
 	badgerPath := "badger"
-	opts := badger.DefaultOptions(utils.AddDirectorySuffix(dbConfig.Path) + badgerPath).WithLoggingLevel(badger.ERROR) // 设置日志级别为 ERROR
+	var opts badger.Options
+	if !isDev {
+		opts = badger.DefaultOptions(utils.AddDirectorySuffix(dbConfig.Path) + badgerPath).WithLoggingLevel(badger.ERROR) // 设置日志级别为 ERROR
+	} else {
+		opts = badger.DefaultOptions("").WithInMemory(true).WithLoggingLevel(badger.ERROR)
+	}
 	db, err := badger.Open(opts)
 	if err != nil {
-		return nil, fmt.Errorf("Failed to open Badger DB: %v", err)
+		return nil, fmt.Errorf("failed to open Badger DB: %v", err)
 	}
 	return &DB{Instance: db}, nil
 }

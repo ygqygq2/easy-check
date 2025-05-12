@@ -27,9 +27,17 @@ func NewApp(appCtx *initializer.AppContext) *App {
 func (a *App) startup(ctx context.Context) {
 	// 启动逻辑
 	a.ctx = ctx
+
 }
 
 func (a *App) shutdown(ctx context.Context) {
+	// 关闭数据库连接
+	if a.appCtx != nil && a.appCtx.DB != nil && a.appCtx.DB.Instance != nil {
+		a.appCtx.DB.Instance.Close()
+	}
+	if a.appCtx != nil && a.appCtx.TSDB != nil {
+		a.appCtx.TSDB.Close()
+	}
 }
 
 // GetConfig 获取配置文件内容
@@ -54,16 +62,16 @@ func (a *App) SaveConfig(content string) error {
 
 // GetSharedConstant 获取共享常量
 func (a *App) GetSharedConstant() *constants.SharedConstants {
-    constInfo := constants.GetSharedConstants(a.appCtx)
-    return &constInfo
+	constInfo := constants.GetSharedConstants(a.appCtx)
+	return &constInfo
 }
 
 // CheckForUpdates 检查更新
 func (a *App) CheckForUpdates() string {
-  constInfo := constants.GetSharedConstants(a.appCtx)
-  err := update.CheckAndUpdate(constInfo.UpdateServer, a.appCtx.AppVersion)
-  if err != nil {
-      return fmt.Sprintf("检查更新失败: %v", err)
-  }
-  return "更新成功！请重新启动应用程序。"
+	constInfo := constants.GetSharedConstants(a.appCtx)
+	err := update.CheckAndUpdate(constInfo.UpdateServer, a.appCtx.PlatformInfo.OS, a.appCtx.PlatformInfo.Arch, a.appCtx.AppVersion)
+	if err != nil {
+		return fmt.Sprintf("检查更新失败: %v", err)
+	}
+	return "更新成功！请重新启动应用程序。"
 }

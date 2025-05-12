@@ -66,12 +66,15 @@ func (c *Checker) pingHost(host config.Host) {
 	packetLossRate := c.calculatePacketLoss(successCount, c.Config.Ping.Count)
 
 	// 根据 Ping 结果处理逻辑
-	if err != nil || packetLossRate > c.getFailRateThreshold() {
+	var reason string
+	if err != nil {
+		reason = err.Error()
+	} else if packetLossRate > c.getFailRateThreshold() {
 		// 如果 Ping 失败或丢包率超过阈值，处理失败逻辑
-		reason := err.Error()
-		if err == nil {
-			reason = fmt.Sprintf("packet loss rate %.2f%%", packetLossRate)
-		}
+		reason = fmt.Sprintf("packet loss rate %.2f%%", packetLossRate)
+	}
+
+	if reason != "" {
 		// 记录失败日志
 		c.Logger.Log(fmt.Sprintf("Ping to [%s] %s failed: packet loss %.2f%%, avg latency %.2fms",
 			host.Description, host.Host, packetLossRate, avgLatency), "error")

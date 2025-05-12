@@ -11,11 +11,18 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"runtime"
 	"time"
 )
 
+type PlatformInfo struct {
+	OS   string
+	Arch string
+}
+
 // AppContext 包含应用程序的所有依赖
 type AppContext struct {
+	PlatformInfo     PlatformInfo
 	AppVersion       string
 	Config           *config.Config
 	ConfigPath       string
@@ -61,8 +68,12 @@ func Initialize(version string) (*AppContext, error) {
 	// 初始化聚合告警逻辑
 	baseNotifier, aggregatorHandle := initializeAlertAggregator(cfg, baseNotifier, appLogger)
 
+	isDev := false
+	if version == "dev" {
+		isDev = true
+	}
 	// 初始化数据库
-	dbInstance, err := db.NewDB(&cfg.Db)
+	dbInstance, err := db.NewDB(isDev, &cfg.Db)
 	if err != nil {
 		return nil, fmt.Errorf("failed to initialize database: %w", err)
 	}
@@ -72,7 +83,7 @@ func Initialize(version string) (*AppContext, error) {
 	}
 	appLogger.Log("Database instance created successfully", "debug")
 
-	tsdbInstance, err := db.NewTSDB(&cfg.Db)
+	tsdbInstance, err := db.NewTSDB(isDev, &cfg.Db)
 	if err != nil {
 		return nil, fmt.Errorf("failed to initialize TSDB: %w", err)
 	}
@@ -84,8 +95,15 @@ func Initialize(version string) (*AppContext, error) {
 		return nil, fmt.Errorf("failed to create alert status manager: %w", err)
 	}
 
+	os := runtime.GOOS
+	arch := runtime.GOARCH
+	platformInfo := PlatformInfo{
+		OS:   os,
+		Arch: arch,
+	}
 	// 创建 AppContext
 	appContext := &AppContext{
+		PlatformInfo:     platformInfo,
 		AppVersion:       version,
 		Config:           cfg,
 		ConfigPath:       configPath,
