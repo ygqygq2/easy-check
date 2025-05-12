@@ -2,10 +2,10 @@
 
 import type { IconButtonProps, SpanProps } from "@chakra-ui/react";
 import { ClientOnly, IconButton, Skeleton, Span } from "@chakra-ui/react";
+import { Icon } from "@iconify/react";
 import type { ThemeProviderProps } from "next-themes";
 import { ThemeProvider, useTheme } from "next-themes";
 import * as React from "react";
-import { LuMoon, LuSun } from "react-icons/lu";
 
 export type ColorModeProviderProps = ThemeProviderProps;
 
@@ -40,7 +40,11 @@ export function useColorModeValue<T>(light: T, dark: T) {
 
 export function ColorModeIcon() {
   const { colorMode } = useColorMode();
-  return colorMode === "dark" ? <LuMoon /> : <LuSun />;
+  return colorMode === "dark" ? (
+    <Icon icon="mdi:moon-waning-crescent" width="24" height="24" />
+  ) : (
+    <Icon icon="material-symbols:wb-sunny-outline" width="24" height="24" />
+  );
 }
 
 type ColorModeButtonProps = Omit<IconButtonProps, "aria-label">;
@@ -82,7 +86,7 @@ export const LightMode = React.forwardRef<HTMLSpanElement, SpanProps>(function L
       ref={ref}
       {...props}
     />
-  );
+  ) as React.ReactElement;
 });
 
 export const DarkMode = React.forwardRef<HTMLSpanElement, SpanProps>(function DarkMode(props, ref) {
@@ -96,5 +100,5 @@ export const DarkMode = React.forwardRef<HTMLSpanElement, SpanProps>(function Da
       ref={ref}
       {...props}
     />
-  );
+  ) as React.ReactElement;
 });

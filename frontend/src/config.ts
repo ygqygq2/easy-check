@@ -14,7 +14,7 @@ export interface Config {
 export const config = {
   site: {
     name: "Easy Check",
-    description: "简单的网络检测工具",
+    description: "简单网络检测工具",
     url: getSiteURL(),
     version: import.meta.env.VITE_SITE_VERSION || "0.0.0",
   },

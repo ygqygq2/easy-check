@@ -14,6 +14,7 @@
     "@chakra-ui/react": "^3.16.1",
     "@emotion/cache": "^11.14.0",
     "@emotion/react": "^11.14.0",
+    "@iconify/react": "^6.0.0",
     "@react-router/node": "^7.5.3",
     "@react-router/serve": "^7.5.3",
     "i18next": "^25.0.2",
@@ -24,7 +25,6 @@
     "react": "^19.1.0",
     "react-dom": "^19.1.0",
     "react-i18next": "^15.5.1",
-    "react-icons": "^5.5.0",
     "react-monaco-editor": "^0.58.0",
     "react-router": "^7.5.3",
     "react-router-dom": "^7.5.3",
@@ -35,7 +35,6 @@
     "@types/node": "^22.15.3",
     "@types/react": "^19.1.2",
     "@types/react-dom": "^19.1.2",
-    "@types/react-helmet-async": "^1.0.3",
     "@vitejs/plugin-react": "^4.4.1",
     "@ygqygq2/eslint-config": "^1.0.2",
     "eslint": "9.25.1",
@@ -44,10 +43,9 @@
     "eslint-plugin-react": "^7.37.5",
     "eslint-plugin-react-hooks": "^6.0.0",
     "eslint-plugin-simple-import-sort": "^12.1.1",
-    "react-router-devtools": "^1.1.10",
     "typescript": "^5.8.3",
     "typescript-eslint": "^8.31.1",
-    "vite": "link:@react-router/dev/vite",
+    "vite": "^6.3.5",
     "vite-tsconfig-paths": "^5.1.4"
   }
 }

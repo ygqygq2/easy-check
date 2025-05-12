@@ -41,13 +41,13 @@ func main() {
 		runBackgroundTask(appCtx)
 	}()
 
-	constants.GetSharedConstants(appCtx)
 	// Create an instance of the app structure
 	app := NewApp(appCtx)
 
+	constInfo := constants.GetSharedConstants(appCtx)
 	// Create application with options
 	err = wails.Run(&options.App{
-		Title:  "easy-check",
+		Title:  constInfo.AppName,
 		Width:  1024,
 		Height: 768,
 		AssetServer: &assetserver.Options{
@@ -55,6 +55,7 @@ func main() {
 		},
 		BackgroundColour: &options.RGBA{R: 27, G: 38, B: 54, A: 1},
 		OnStartup:        app.startup,
+		OnShutdown:       app.shutdown,
 		Bind: []interface{}{
 			app,
 		},

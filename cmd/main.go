@@ -24,7 +24,7 @@ func main() {
 	fmt.Printf("easy-check version: %s\n", version)
 
 	// 初始化配置和通知器
-	appCtx, err := initializer.Initialize()
+	appCtx, err := initializer.Initialize(version)
 	if err != nil {
 		fmt.Printf("Failed to initialize application: %v\n", err)
 		os.Exit(1)
