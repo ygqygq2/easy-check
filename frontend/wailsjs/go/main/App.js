@@ -14,6 +14,10 @@ export function GetSharedConstant() {
   return window['go']['main']['App']['GetSharedConstant']();
 }
 
+export function RestartApp() {
+  return window['go']['main']['App']['RestartApp']();
+}
+
 export function SaveConfig(arg1) {
   return window['go']['main']['App']['SaveConfig'](arg1);
 }

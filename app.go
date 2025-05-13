@@ -27,7 +27,7 @@ func NewApp(appCtx *initializer.AppContext) *App {
 func (a *App) startup(ctx context.Context) {
 	// 启动逻辑
 	a.ctx = ctx
-
+	wailsContext = &ctx
 }
 
 func (a *App) shutdown(ctx context.Context) {
@@ -69,9 +69,20 @@ func (a *App) GetSharedConstant() *constants.SharedConstants {
 // CheckForUpdates 检查更新
 func (a *App) CheckForUpdates() string {
 	constInfo := constants.GetSharedConstants(a.appCtx)
-	err := update.CheckAndUpdate(constInfo.UpdateServer, a.appCtx.PlatformInfo.OS, a.appCtx.PlatformInfo.Arch, a.appCtx.AppVersion)
+	err := update.CheckAndUpdate(a.appCtx, constInfo.UpdateServer)
 	if err != nil {
 		return fmt.Sprintf("检查更新失败: %v", err)
 	}
 	return "更新成功！请重新启动应用程序。"
+}
+
+// RestartApp 重启应用程序
+func (a *App) RestartApp() error {
+	if a.appCtx.NeedsRestart {
+		a.appCtx.Logger.Log("应用程序需要重启。", "info")
+
+		// 重启应用程序
+		return update.RestartApp()
+	}
+	return update.RestartApp()
 }

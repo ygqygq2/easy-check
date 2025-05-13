@@ -1,23 +1,29 @@
 package main
 
 import (
+	"context"
 	"easy-check/internal/checker"
 	"easy-check/internal/constants"
 	"easy-check/internal/db"
 	"easy-check/internal/initializer"
+	"easy-check/internal/logger"
+	"easy-check/internal/machineid"
 	"embed"
 	"fmt"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/wailsapp/wails/v2"
 	"github.com/wailsapp/wails/v2/pkg/options"
 	"github.com/wailsapp/wails/v2/pkg/options/assetserver"
+	"github.com/wailsapp/wails/v2/pkg/runtime"
 )
 
 var version string // 通过 ldflags 注入
 //go:embed all:frontend/dist
 var assets embed.FS
+var wailsContext *context.Context
 
 func main() {
 	if version == "" {
@@ -37,7 +43,7 @@ func main() {
 
 	// 启动后台任务
 	go func() {
-		fmt.Println("Starting background task...")
+		// fmt.Println("Starting background task...")
 		runBackgroundTask(appCtx)
 	}()
 
@@ -45,6 +51,10 @@ func main() {
 	app := NewApp(appCtx)
 
 	constInfo := constants.GetSharedConstants(appCtx)
+	machineID, err := machineid.GetMachineID()
+	if err != nil {
+		appCtx.Logger.Fatal("Failed to get machine ID", "error")
+	}
 	// Create application with options
 	err = wails.Run(&options.App{
 		Title:  constInfo.AppName,
@@ -56,6 +66,11 @@ func main() {
 		BackgroundColour: &options.RGBA{R: 27, G: 38, B: 54, A: 1},
 		OnStartup:        app.startup,
 		OnShutdown:       app.shutdown,
+		Logger:           &logger.WailsLogger{Logger: appCtx.Logger},
+		SingleInstanceLock: &options.SingleInstanceLock{
+			UniqueId:               machineID,
+			OnSecondInstanceLaunch: app.onSecondInstanceLaunch,
+		},
 		Bind: []interface{}{
 			app,
 		},
@@ -64,6 +79,16 @@ func main() {
 	if err != nil {
 		println("Error:", err.Error())
 	}
+}
+
+func (a *App) onSecondInstanceLaunch(secondInstanceData options.SecondInstanceData) {
+	secondInstanceArgs := secondInstanceData.Args
+
+	println("user opened second instance", strings.Join(secondInstanceData.Args, ","))
+	println("user opened second from", secondInstanceData.WorkingDirectory)
+	runtime.WindowUnminimise(*wailsContext)
+	runtime.Show(*wailsContext)
+	go runtime.EventsEmit(*wailsContext, "launchArgs", secondInstanceArgs)
 }
 
 // runBackgroundTask 启动后台任务

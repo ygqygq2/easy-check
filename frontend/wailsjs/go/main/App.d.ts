@@ -8,4 +8,6 @@ export function GetConfig():Promise<string>;
 
 export function GetSharedConstant():Promise<constants.SharedConstants>;
 
+export function RestartApp():Promise<void>;
+
 export function SaveConfig(arg1:string):Promise<void>;

@@ -1,11 +1,13 @@
 package logger
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"path/filepath"
 
 	"github.com/sirupsen/logrus"
+	"github.com/wailsapp/wails/v2/pkg/logger"
 	"gopkg.in/natefinch/lumberjack.v2"
 )
 
@@ -166,4 +168,63 @@ func (l *Logger) LogAndError(message string, level string, args ...interface{}) 
 func (l *Logger) Close() error {
 	// logrus 没有显式的关闭方法，这里可以留空
 	return nil
+}
+
+// WailsLogger 实现 Wails 的 logger.Logger 接口
+type WailsLogger struct {
+	*Logger
+}
+
+// Print 实现 Wails Logger 的 Print 方法
+func (wl *WailsLogger) Print(message string) {
+	wl.Log(message, "info")
+}
+
+// Trace 实现 Wails Logger 的 Trace 方法
+func (wl *WailsLogger) Trace(message string) {
+	wl.Log(message, "trace")
+}
+
+// Debug 实现 Wails Logger 的 Debug 方法
+func (wl *WailsLogger) Debug(message string) {
+	wl.Log(message, "debug")
+}
+
+// Info 实现 Wails Logger 的 Info 方法
+func (wl *WailsLogger) Info(message string) {
+	wl.Log(message, "info")
+}
+
+// Warning 实现 Wails Logger 的 Warning 方法
+func (wl *WailsLogger) Warning(message string) {
+	wl.Log(message, "warning")
+}
+
+// Error 实现 Wails Logger 的 Error 方法
+func (wl *WailsLogger) Error(message string) {
+	wl.Log(message, "error")
+}
+
+// Fatal 实现 Wails Logger 的 Fatal 方法
+func (wl *WailsLogger) Fatal(message string) {
+	wl.Fatal(message)
+}
+
+// LogSetLogLevel 设置日志级别
+func (wl *WailsLogger) LogSetLogLevel(ctx context.Context, level logger.LogLevel) {
+	switch level {
+	case logger.TRACE:
+		wl.consoleLevel = logrus.TraceLevel
+	case logger.DEBUG:
+		wl.consoleLevel = logrus.DebugLevel
+	case logger.INFO:
+		wl.consoleLevel = logrus.InfoLevel
+	case logger.WARNING:
+		wl.consoleLevel = logrus.WarnLevel
+	case logger.ERROR:
+		wl.consoleLevel = logrus.ErrorLevel
+	default:
+		wl.consoleLevel = logrus.InfoLevel
+	}
+	wl.consoleLogger.SetLevel(wl.consoleLevel)
 }

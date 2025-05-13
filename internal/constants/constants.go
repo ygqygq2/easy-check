@@ -16,6 +16,7 @@ type SharedConstants struct {
 	AppVersion   string       `json:"appVersion"`
 	PlatformInfo PlatformInfo `json:"platformInfo"`
 	UpdateServer string       `json:"UpdateServer"`
+	NeedsRestart bool         `json:"needsRestart"`
 }
 
 // GetSharedConstants 返回共享常量
@@ -29,5 +30,6 @@ func GetSharedConstants(appCtx *initializer.AppContext) SharedConstants {
 		},
 		UpdateServer: "http://localhost:3000",
 		// UpdateServer: "https://easy-check.ygqygq2.com",
+		NeedsRestart: appCtx.NeedsRestart,
 	}
 }

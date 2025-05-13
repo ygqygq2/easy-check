@@ -19,6 +19,7 @@ export namespace constants {
 	    appVersion: string;
 	    platformInfo: PlatformInfo;
 	    UpdateServer: string;
+	    needsRestart: boolean;
 	
 	    static createFrom(source: any = {}) {
 	        return new SharedConstants(source);
@@ -30,6 +31,7 @@ export namespace constants {
 	        this.appVersion = source["appVersion"];
 	        this.platformInfo = this.convertValues(source["platformInfo"], PlatformInfo);
 	        this.UpdateServer = source["UpdateServer"];
+	        this.needsRestart = source["needsRestart"];
 	    }
 	
 		convertValues(a: any, classs: any, asMap: boolean = false): any {

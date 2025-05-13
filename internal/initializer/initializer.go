@@ -22,6 +22,7 @@ type PlatformInfo struct {
 
 // AppContext 包含应用程序的所有依赖
 type AppContext struct {
+	NeedsRestart     bool
 	PlatformInfo     PlatformInfo
 	AppVersion       string
 	Config           *config.Config
@@ -103,6 +104,7 @@ func Initialize(version string) (*AppContext, error) {
 	}
 	// 创建 AppContext
 	appContext := &AppContext{
+		NeedsRestart:     false,
 		PlatformInfo:     platformInfo,
 		AppVersion:       version,
 		Config:           cfg,

@@ -4,7 +4,7 @@ import smallLogo from "@/assets/images/logo36x36.png";
 import MenuBar from "@/components/MenuBar";
 import { ColorModeButton, useColorModeValue } from "@/components/ui/color-mode";
 
-import { CheckForUpdates } from "../../../wailsjs/go/main/App";
+import { CheckForUpdates, RestartApp } from "../../../wailsjs/go/main/App";
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -44,6 +44,15 @@ export function Layout({ children }: LayoutProps) {
           label: "检查更新",
           onClick: () => {
             CheckForUpdates().then((res) => {
+              alert(res);
+            });
+          },
+        },
+        {
+          value: "restart",
+          label: "重启",
+          onClick: () => {
+            RestartApp().then((res) => {
               alert(res);
             });
           },
