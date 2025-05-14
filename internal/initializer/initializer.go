@@ -22,6 +22,7 @@ type PlatformInfo struct {
 
 // AppContext 包含应用程序的所有依赖
 type AppContext struct {
+	MachineID        string
 	NeedsRestart     bool
 	PlatformInfo     PlatformInfo
 	AppVersion       string
@@ -37,7 +38,7 @@ type AppContext struct {
 }
 
 // Initialize 初始化应用程序上下文
-func Initialize(version string) (*AppContext, error) {
+func Initialize(machineID, version string) (*AppContext, error) {
 	// 切换到项目根目录
 	if err := changeToProjectRoot(); err != nil {
 		return nil, fmt.Errorf("failed to change to project root: %w", err)
@@ -104,6 +105,7 @@ func Initialize(version string) (*AppContext, error) {
 	}
 	// 创建 AppContext
 	appContext := &AppContext{
+		MachineID:        machineID,
 		NeedsRestart:     false,
 		PlatformInfo:     platformInfo,
 		AppVersion:       version,

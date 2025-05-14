@@ -3,9 +3,6 @@ package update
 import (
 	"fmt"
 	"os"
-	"os/exec"
-	"runtime"
-	"syscall"
 )
 
 // RestartApp 重启应用程序
@@ -22,17 +19,8 @@ func RestartApp() error {
 	args := os.Args
 	env := os.Environ()
 
-	if runtime.GOOS == "windows" {
-		cmd := exec.Command(self, args[1:]...)
-		cmd.Stdout = os.Stdout
-		cmd.Stderr = os.Stderr
-		cmd.Stdin = os.Stdin
-		cmd.Env = env
-		err := cmd.Start()
-		if err == nil {
-			os.Exit(0)
-		}
-		return err
-	}
-	return syscall.Exec(self, args, env)
+	// 添加一个环境变量标记，指示是重启操作
+	env = append(env, "EASY_CHECK_RESTART=true")
+
+	return restartOS(self, args, env)
 }

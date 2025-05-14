@@ -31,9 +31,19 @@ func main() {
 	}
 	fmt.Printf("easy-check ui version: %s\n", version)
 
+	// 如果是重启操作，稍微延迟一下以确保上一个实例已完全退出
+	if os.Getenv("EASY_CHECK_RESTART") == "true" {
+		time.Sleep(1 * time.Second)
+	}
+
+	machineID, err := machineid.GetMachineID()
+	if err != nil {
+		fmt.Printf("Failed to get machine ID, %v\n", err)
+		os.Exit(1)
+	}
 	// 初始化配置和通知器
 	fmt.Println("Initializing application context...")
-	appCtx, err := initializer.Initialize(version)
+	appCtx, err := initializer.Initialize(machineID, version)
 	if err != nil {
 		fmt.Printf("Failed to initialize application: %v\n", err)
 		os.Exit(1)
@@ -51,10 +61,6 @@ func main() {
 	app := NewApp(appCtx)
 
 	constInfo := constants.GetSharedConstants(appCtx)
-	machineID, err := machineid.GetMachineID()
-	if err != nil {
-		appCtx.Logger.Fatal("Failed to get machine ID", "error")
-	}
 	// Create application with options
 	err = wails.Run(&options.App{
 		Title:  constInfo.AppName,
