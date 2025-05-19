@@ -33,8 +33,9 @@ func InitializeApp(configPath string) (*AppContext, error) {
 	if err != nil {
 		return nil, err
 	}
+	bool2 := provideIsDev()
 	dbConfig := provideDbConfig(config)
-	db, err := provideBadgerDB(dbConfig)
+	db, err := provideBadgerDB(bool2, dbConfig)
 	if err != nil {
 		return nil, err
 	}
@@ -51,7 +52,7 @@ func InitializeApp(configPath string) (*AppContext, error) {
 	if err != nil {
 		return nil, err
 	}
-	tsdb, err := provideTSDB(dbConfig)
+	tsdb, err := provideTSDB(bool2, dbConfig)
 	if err != nil {
 		return nil, err
 	}
@@ -88,6 +89,7 @@ var loggerSet = wire.NewSet(
 )
 
 var dbSet = wire.NewSet(
+	provideIsDev,
 	provideBadgerDB,
 	provideTSDB,
 	provideAlertStatusManager,
@@ -139,8 +141,13 @@ func provideLogger(cfg *config.Config) (*logger.Logger, error) {
 	return logger.NewLogger(logConfig), nil
 }
 
+// provideIsDev 提供是否为开发模式的布尔值
+func provideIsDev() bool {
+	return true
+}
+
 // provideBadgerDB 创建数据库连接
-func provideBadgerDB(cfg *config.DbConfig) (*badger.DB, error) {
+func provideBadgerDB(isDev bool, cfg *config.DbConfig) (*badger.DB, error) {
 	badgerPath := "badger"
 	opts := badger.DefaultOptions(utils.AddDirectorySuffix(cfg.Path) + badgerPath)
 	db2, err := badger.Open(opts)
@@ -150,8 +157,8 @@ func provideBadgerDB(cfg *config.DbConfig) (*badger.DB, error) {
 	return db2, nil
 }
 
-func provideTSDB(cfg *config.DbConfig) (*db.TSDB, error) {
-	tsdb, err := db.NewTSDB(cfg)
+func provideTSDB(isDev bool, cfg *config.DbConfig) (*db.TSDB, error) {
+	tsdb, err := db.NewTSDB(isDev, cfg)
 	if err != nil {
 		return nil, fmt.Errorf("Failed to initialize TSDB: %v", err)
 	}
