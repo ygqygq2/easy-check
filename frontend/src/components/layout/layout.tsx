@@ -1,10 +1,13 @@
 import { Box, Flex } from "@chakra-ui/react";
+import { useEffect, useState } from "react";
 
 import smallLogo from "@/assets/images/logo36x36.png";
 import MenuBar from "@/components/MenuBar";
 import { ColorModeButton, useColorModeValue } from "@/components/ui/color-mode";
 
 import { CheckForUpdates, RestartApp } from "../../../wailsjs/go/main/App";
+import { toaster, Toaster } from "../ui/toaster";
+import YamlEditor from "../YamlEditor";
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -13,11 +16,26 @@ interface LayoutProps {
 export function Layout({ children }: LayoutProps) {
   const navBg = useColorModeValue("gray.200", "gray.700");
   const navColor = useColorModeValue("gray.800", "gray.100");
+
+  useEffect(() => {
+    toaster.create({
+      title: "测试通知",
+      description: "这是一个测试通知",
+      type: "success",
+    });
+  }, []);
+
+  const [activeComponent, setActiveComponent] = useState<React.ReactNode>(children);
+
   const menus = [
     {
       label: "文件",
       items: [
-        { value: "open", label: "打开配置", onClick: () => alert("打开配置") },
+        {
+          value: "open",
+          label: "打开配置",
+          onClick: () => setActiveComponent(<YamlEditor onClose={() => setActiveComponent(children)} />),
+        },
         { value: "exit", label: "退出", onClick: () => alert("退出") },
       ],
     },
@@ -57,7 +75,17 @@ export function Layout({ children }: LayoutProps) {
             });
           },
         },
-        { value: "about", label: "关于", onClick: () => alert("关于") },
+        {
+          value: "about",
+          label: "关于",
+          onClick: () => {
+            toaster.create({
+              title: "Toaster 测试",
+              description: "这是一个测试通知，Toaster 正常工作！",
+              type: "info",
+            });
+          },
+        },
       ],
     },
   ];
@@ -73,7 +101,8 @@ export function Layout({ children }: LayoutProps) {
         </Flex>
         <ColorModeButton />
       </Flex>
-      {children}
+      <Box>{activeComponent}</Box>
+      <Toaster  />
     </Box>
   );
 }

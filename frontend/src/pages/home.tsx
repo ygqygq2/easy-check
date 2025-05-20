@@ -1,4 +1,5 @@
 "use client";
+import { Button } from "@chakra-ui/react";
 import { Flex, Image } from "@chakra-ui/react";
 
 import logo from "@/assets/images/logo.png";

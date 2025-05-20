@@ -5,10 +5,18 @@ import MonacoEditor from "react-monaco-editor";
 import { toaster } from "@/components/ui/toaster";
 
 import { GetConfig, SaveConfig } from "../../wailsjs/go/main/App";
+import { useColorMode, useColorModeValue } from "./ui/color-mode";
 
-const YamlEditor = () => {
+interface YamlEditorProps {
+  onClose: () => void;
+}
+
+const YamlEditor = ({ onClose }: YamlEditorProps) => {
+  const buttonBg = useColorModeValue("gray.200", "gray.700"); // 按钮背景色
+  const buttonColor = useColorModeValue("gray.800", "white");
   const [content, setContent] = useState("");
   const [loading, setLoading] = useState(true);
+  const { colorMode } = useColorMode();
 
   useEffect(() => {
     loadConfig();
@@ -38,6 +46,7 @@ const YamlEditor = () => {
         description: "配置已成功保存",
         type: "success",
       });
+      onClose();
     } catch (err) {
       toaster.create({
         title: "保存失败",
@@ -55,6 +64,8 @@ const YamlEditor = () => {
     automaticLayout: true,
   };
 
+  const editorTheme = colorMode === "dark" ? "vs-dark" : "vs-light";
+
   if (loading) {
     return (
       <Flex justify="center" align="center" height="100%">
@@ -68,10 +79,20 @@ const YamlEditor = () => {
       <Flex justify="space-between" mb={4}>
         <Text fontSize="xl">配置编辑器</Text>
         <Flex gap={4}>
-          <Button onClick={loadConfig} colorScheme="blue" variant="outline">
+          <Button
+            bg={buttonBg}
+            color={buttonColor}
+            _hover={{ bg: useColorModeValue("gray.300", "gray.600") }}
+            onClick={loadConfig}
+          >
             重新加载
           </Button>
-          <Button onClick={handleSave} colorScheme="green">
+          <Button
+            bg={buttonBg}
+            color={buttonColor}
+            _hover={{ bg: useColorModeValue("gray.300", "gray.600") }}
+            onClick={handleSave}
+          >
             保存配置
           </Button>
         </Flex>
@@ -81,7 +102,7 @@ const YamlEditor = () => {
         <MonacoEditor
           height="100%"
           language="yaml"
-          theme="vs-dark"
+          theme={editorTheme}
           value={content}
           options={editorOptions}
           onChange={setContent}

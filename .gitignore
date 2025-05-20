@@ -36,3 +36,6 @@ go.work.sum
 
 # db
 db/
+
+# bak
+configs/*.bak
