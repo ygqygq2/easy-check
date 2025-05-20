@@ -9,6 +9,7 @@ export interface Config {
     version: string;
   };
   logLevel: keyof typeof LogLevel;
+  defaultYamlUrl: string;
 }
 
 export const config = {
@@ -19,4 +20,5 @@ export const config = {
     version: import.meta.env.VITE_SITE_VERSION || "0.0.0",
   },
   logLevel: (import.meta.env.VITE_LOG_LEVEL as keyof typeof LogLevel) || LogLevel.ALL,
+  defaultYamlUrl: "https://raw.githubusercontent.com/ygqygq2/easy-check/refs/heads/main/configs/config.yaml",
 } satisfies Config;

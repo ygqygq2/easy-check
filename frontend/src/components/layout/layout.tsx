@@ -17,14 +17,6 @@ export function Layout({ children }: LayoutProps) {
   const navBg = useColorModeValue("gray.200", "gray.700");
   const navColor = useColorModeValue("gray.800", "gray.100");
 
-  useEffect(() => {
-    toaster.create({
-      title: "测试通知",
-      description: "这是一个测试通知",
-      type: "success",
-    });
-  }, []);
-
   const [activeComponent, setActiveComponent] = useState<React.ReactNode>(children);
 
   const menus = [
