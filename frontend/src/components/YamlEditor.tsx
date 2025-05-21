@@ -151,6 +151,7 @@ const YamlEditor = ({ onClose }: YamlEditorProps) => {
       <Flex justify="space-between" mb={4}>
         <Text fontSize="xl">配置编辑器</Text>
         <Flex gap={4}>
+          <ActionButton label="取消" onClick={onClose} />
           <ActionButton label="合并默认配置" onClick={handleMergeDefault} />
           <ActionButton label="重新加载" onClick={loadConfig} />
           <ActionButton label="保存配置" onClick={handleSave} />

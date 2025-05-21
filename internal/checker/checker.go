@@ -131,7 +131,6 @@ func (c *Checker) handlePingSuccess(host config.Host) {
 		RecoveryTime: time.Now().Format(time.RFC3339),
 	}
 
-	// 将失败信息保存到数据库
 	err := c.DB.MarkAsRecovered(status)
 	if err != nil {
 		c.Logger.Log(fmt.Sprintf("Failed to update host recovery status: %v", err), "error")
