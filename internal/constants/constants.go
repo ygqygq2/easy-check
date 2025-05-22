@@ -28,8 +28,7 @@ func GetSharedConstants(appCtx *initializer.AppContext) SharedConstants {
 			OS:   appCtx.PlatformInfo.OS,
 			Arch: appCtx.PlatformInfo.Arch,
 		},
-		UpdateServer: "http://localhost:3000",
-		// UpdateServer: "https://easy-check.ygqygq2.com",
+		UpdateServer: "https://easy-check-server.ygqygq2.com",
 		NeedsRestart: appCtx.NeedsRestart,
 	}
 }

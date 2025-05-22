@@ -85,6 +85,12 @@ func Initialize(machineID, version string) (*AppContext, error) {
 	}
 	appLogger.Log("Database instance created successfully", "debug")
 
+	if err := dbInstance.SaveHosts(cfg.Hosts); err != nil {
+		appLogger.Log(fmt.Sprintf("Failed to save hosts to DB: %v", err), "error")
+		return nil, fmt.Errorf("failed to save hosts to DB: %w", err)
+	}
+	appLogger.Log("Hosts loaded into BadgerDB successfully", "debug")
+
 	tsdbInstance, err := db.NewTSDB(isDev, &cfg.Db)
 	if err != nil {
 		return nil, fmt.Errorf("failed to initialize TSDB: %w", err)

@@ -10,6 +10,14 @@ export function GetConfig() {
   return window['go']['main']['App']['GetConfig']();
 }
 
+export function GetHosts(arg1, arg2) {
+  return window['go']['main']['App']['GetHosts'](arg1, arg2);
+}
+
+export function GetLatencyWithHosts(arg1) {
+  return window['go']['main']['App']['GetLatencyWithHosts'](arg1);
+}
+
 export function GetSharedConstant() {
   return window['go']['main']['App']['GetSharedConstant']();
 }

@@ -3,6 +3,7 @@ package db
 import (
 	"easy-check/internal/config"
 	"easy-check/internal/utils"
+	"encoding/json"
 	"fmt"
 
 	"github.com/dgraph-io/badger/v4"
@@ -64,4 +65,12 @@ func (d *DB) Delete(key string) error {
 // Close 关闭数据库
 func (d *DB) Close() error {
 	return d.Instance.Close()
+}
+
+func (d *DB) SaveHosts(hosts []config.Host) error {
+  data, err := json.Marshal(hosts)
+  if err != nil {
+      return err
+  }
+  return d.Set("hosts", string(data))
 }
