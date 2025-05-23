@@ -48,10 +48,38 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-go-
 
+      # node 环境
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '22'
+          cache: 'pnpm'
+          cache-dependency-path: 'frontend/pnpm-lock.yaml'
+
+      # 安装 pnpm
+      - name: Install pnpm
+        run: npm install -g pnpm
+
+      # 安装前端依赖
+      - name: Install frontend dependencies
+        run: pnpm install --frozen-lockfile
+        working-directory: frontend
+
+      # 构建前端
+      - name: Build frontend
+        run: pnpm build
+        working-directory: frontend
+
       # 安装依赖
       - name: Install dependencies
         if: steps.cache-go.outputs.cache-hit != 'true'
-        run: go mod tidy
+        run: |
+          go mod tidy
+          go install github.com/wailsapp/wails/v2/cmd/wails@latest
+
+      # wails 环境确认
+      - name: Wails check
+        run: wails doctor
 
       # 构建项目
       - name: Build project
