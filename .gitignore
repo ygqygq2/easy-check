@@ -35,7 +35,7 @@ go.work.sum
 *.zip
 
 # db
-db/
+/db/
 
 # bak
 configs/*.bak
