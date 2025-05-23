@@ -6,6 +6,7 @@ import (
 	"easy-check/internal/db"
 	"easy-check/internal/initializer"
 	"easy-check/internal/logger"
+	"easy-check/internal/machineid"
 	"easy-check/internal/notifier"
 	"easy-check/internal/scheduler"
 	"easy-check/internal/signal"
@@ -23,8 +24,14 @@ func main() {
 	}
 	fmt.Printf("easy-check version: %s\n", version)
 
+  machineID, err := machineid.GetMachineID()
+	if err != nil {
+		fmt.Printf("Failed to get machine ID, %v\n", err)
+		os.Exit(1)
+	}
+
 	// 初始化配置和通知器
-	appCtx, err := initializer.Initialize(version)
+	appCtx, err := initializer.Initialize(machineID, version)
 	if err != nil {
 		fmt.Printf("Failed to initialize application: %v\n", err)
 		os.Exit(1)
