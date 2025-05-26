@@ -19,7 +19,22 @@ permissions:
 jobs:
   release:
     name: Build and Release
-    runs-on: ubuntu-22.04
+    strategy:
+    # Failure in one platform build won't impact the others
+      fail-fast: false
+      matrix:
+        build:
+          - name: 'App'
+            platform:  'linux/amd64'
+            os: 'ubuntu-latest'
+          - name: 'App'
+            platform:  'windows/amd64'
+            os: 'windows-latest'
+          - name: 'App'
+            platform:  'darwin/universal'
+            os: 'macos-latest'
+
+    runs-on: ${{ matrix.build.os }}
     env:
       flags: ""
 
@@ -73,34 +88,16 @@ jobs:
         run: pnpm build
         working-directory: frontend
 
-      # 安装依赖
-      - name: Install dependencies
-        if: steps.cache-go.outputs.cache-hit != 'true'
-        run: |
-          go mod tidy
-          go install github.com/wailsapp/wails/v2/cmd/wails@latest
-
-      # 安装系统依赖
-      - name: Install system dependencies
-        run: |
-          sudo apt-get -yq update
-          DISTRO=$(lsb_release -rs) # 获取发行版版本号 (如 "20.04", "22.04", "24.04")
-          if [[ "$DISTRO" == "20.04" || "$DISTRO" == "22.04" ]]; then
-            sudo apt-get -yq install libgtk-3-0 libwebkit2gtk-4.0-dev gcc-aarch64-linux-gnu nsis mono-complete mingw-w64 gcc-mingw-w64 g++-mingw-w64-x86-64
-          elif [[ "$DISTRO" == "24.04" ]]; then
-            sudo apt-get -yq install libgtk-3-0 libwebkit2gtk-4.1-dev gcc-aarch64-linux-gnu nsis mono-complete mingw-w64 gcc-mingw-w64 g++-mingw-w64-x86-64
-          else
-            echo "Unsupported Linux distribution: $DISTRO"
-            exit 1 # 如果发行版不支持，则失败
-          fi
-
-      # wails 环境确认
-      - name: Wails check
-        run: wails doctor
-
-      # 构建项目
-      - name: Build project
-        run: make build
+      # 安装 Wails 构建
+      - name: Build wails
+        uses: dAppServer/wails-build-action@v2.2
+        id: build
+        with:
+          go-version: '1.24'
+          build-name: ${{ matrix.build.name }}
+          build-platform: ${{ matrix.build.platform }}
+          # package: false
+          # build: false
 
       # - name: Run GoReleaser
       #   timeout-minutes: 60
