@@ -33,7 +33,8 @@ build-linux-ui:
 	GOOS=linux GOARCH=amd64 wails build -ldflags "-X main.version=$(GIT_VERSION)" -platform linux/amd64 -o $(call ui_binary_name,linux,amd64)
 
 build-windows-ui:
-	GOOS=windows GOARCH=amd64 wails build -ldflags "-X main.version=$(GIT_VERSION)" -platform windows/amd64 -o $(call ui_binary_name,windows,amd64).exe
+	GOOS=windows GOARCH=amd64 wails build -ldflags "-X main.version=$(GIT_VERSION)" -platform windows/amd64 -o $(call ui_binary_name,windows,amd64).exe -skipbindings
+# GOOS=windows GOARCH=amd64 wails build -ldflags "-X main.version=$(GIT_VERSION)" -platform windows/amd64 -o $(call ui_binary_name,windows,amd64).exe
 
 # 编译 Linux 可执行文件
 build-linux-cmd:
