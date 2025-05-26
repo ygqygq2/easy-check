@@ -86,9 +86,9 @@ jobs:
           sudo apt-get -yq update
           DISTRO=$(lsb_release -rs) # 获取发行版版本号 (如 "20.04", "22.04", "24.04")
           if [[ "$DISTRO" == "20.04" || "$DISTRO" == "22.04" ]]; then
-            sudo apt-get -yq install libgtk-3-0 libwebkit2gtk-4.0-dev gcc-aarch64-linux-gnu nsis
+            sudo apt-get -yq install libgtk-3-0 libwebkit2gtk-4.0-dev gcc-aarch64-linux-gnu nsis mono-complete mingw-w64
           elif [[ "$DISTRO" == "24.04" ]]; then
-            sudo apt-get -yq install libgtk-3-0 libwebkit2gtk-4.1-dev gcc-aarch64-linux-gnu nsis
+            sudo apt-get -yq install libgtk-3-0 libwebkit2gtk-4.1-dev gcc-aarch64-linux-gnu nsis mono-complete mingw-w64
           else
             echo "Unsupported Linux distribution: $DISTRO"
             exit 1 # 如果发行版不支持，则失败
