@@ -100,7 +100,7 @@ jobs:
 
       # 构建项目
       - name: Build project
-        run: make build
+        run: make package
 
       # - name: Run GoReleaser
       #   timeout-minutes: 60
