@@ -82,7 +82,7 @@ jobs:
 
       # 安装系统依赖
       - name: Install system dependencies
-        run: sudo apt-get install -y libgtk-3-dev libwebkit2gtk-4.0-dev nsis
+        run: sudo apt-get update && apt-get install -y libgtk-3-dev libwebkit2gtk-4.0-dev nsis
 
       # wails 环境确认
       - name: Wails check
