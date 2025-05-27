@@ -10,8 +10,8 @@ export function GetConfig() {
   return window['go']['main']['App']['GetConfig']();
 }
 
-export function GetHosts(arg1, arg2) {
-  return window['go']['main']['App']['GetHosts'](arg1, arg2);
+export function GetHosts(arg1, arg2, arg3) {
+  return window['go']['main']['App']['GetHosts'](arg1, arg2, arg3);
 }
 
 export function GetLatencyWithHosts(arg1) {

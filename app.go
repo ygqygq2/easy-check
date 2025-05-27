@@ -84,8 +84,8 @@ func (a *App) RestartApp() error {
 }
 
 // GetHosts 获取主机列表
-func (a *App) GetHosts(page int, pageSize int) *types.HostsResponse {
-	hosts, total, err := data.GetHostsFromBadgerWithPagination(a.appCtx.DB, page, pageSize)
+func (a *App) GetHosts(page int, pageSize int, searchTerm string) *types.HostsResponse {
+	hosts, total, err := data.GetHostsFromBadgerWithPagination(a.appCtx.DB, page, pageSize, searchTerm)
 	if err != nil {
 		// 如果发生错误，将错误信息封装到响应中
 		return &types.HostsResponse{

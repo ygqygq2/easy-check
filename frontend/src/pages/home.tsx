@@ -1,25 +1,7 @@
 "use client";
-import {
-  Box,
-  Button,
-  ButtonGroup,
-  CheckboxCard,
-  Flex,
-  HStack,
-  IconButton,
-  Input,
-  InputGroup,
-  NativeSelect,
-  Pagination,
-  Progress,
-  SimpleGrid,
-  Stack,
-  Text,
-} from "@chakra-ui/react";
-import { Icon } from "@iconify/react";
+import { Box, Stack } from "@chakra-ui/react";
 import { useEffect, useState } from "react";
 
-import { Tooltip } from "@/components/ui/tooltip";
 import { Host } from "@/types/host";
 
 import { GetHosts, GetLatencyWithHosts } from "../../wailsjs/go/main/App";
@@ -38,33 +20,39 @@ export function Page() {
   const [searchTerm, setSearchTerm] = useState("");
   const [displayedHosts, setDisplayedHosts] = useState<Host[]>([]);
 
-  useEffect(() => {
-    const fetchHosts = async () => {
-      try {
-        const res = await GetHosts(page, pageSize);
-        const { hosts = [], total = 0 } = res;
-        setHosts(hosts);
-        setTotal(total);
+  const fetchAndSetHosts = async (page: number, searchTerm: string) => {
+    try {
+      const res = await GetHosts(page, pageSize, searchTerm);
+      const { hosts = [], total = 0 } = res;
 
-        // 初始化 latencyData 为 null
-        const initialLatencyData: Record<string, number | null> = {};
-        hosts.forEach((host) => {
-          initialLatencyData[host.host] = null;
-        });
-        setLatencyData((prevData) => ({ ...prevData, ...initialLatencyData }));
-      } catch (err) {
-        console.error("Error fetching hosts:", err);
-      }
-    };
-    fetchHosts();
+      // 更新主机列表和分页总数
+      setHosts(hosts);
+      setTotal(total);
+
+      // 初始化 latencyData 为 null
+      const initialLatencyData: Record<string, number | null> = {};
+      hosts.forEach((host) => {
+        initialLatencyData[host.host] = null;
+      });
+      setLatencyData(initialLatencyData);
+
+      // 更新显示的主机列表
+      setDisplayedHosts(hosts);
+    } catch (err) {
+      console.error("Error fetching hosts:", err);
+    }
+  };
+
+  useEffect(() => {
+    fetchAndSetHosts(page, searchTerm);
   }, [page]);
 
   useEffect(() => {
     if (!searchTerm) {
-      setDisplayedHosts(hosts);
+      setDisplayedHosts(hosts || []);
     } else {
       const lowercasedFilter = searchTerm.toLowerCase();
-      const filtered = hosts.filter(
+      const filtered = (hosts || []).filter(
         (host) =>
           host.host.toLowerCase().includes(lowercasedFilter) ||
           (host.description && host.description.toLowerCase().includes(lowercasedFilter))
@@ -75,13 +63,13 @@ export function Page() {
 
   useEffect(() => {
     const fetchLatency = async () => {
-      if (hosts.length === 0) {
+      if (hosts?.length === 0) {
         setLatencyData({});
         return;
       }
       try {
         const hostNames = hosts.map((host) => host.host);
-        if (hostNames.length === 0) {
+        if (hostNames?.length === 0) {
           setLatencyData({});
           return;
         }
@@ -112,17 +100,9 @@ export function Page() {
     };
   }, [hosts, refreshInterval]);
 
-  const handleRefreshChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    const value = e.target.value;
-    if (value === "close") {
-      setRefreshInterval(null); // 停止刷新
-    } else {
-      setRefreshInterval(parseInt(value, 10) * 1000); // 设置刷新间隔（毫秒）
-    }
-  };
-
   const handleBackendSearch = async (searchTerm: string) => {
-    console.log("后端搜索按钮点击，搜索词:", searchTerm);
+    setPage(1); // 重置到第一页
+    await fetchAndSetHosts(1, searchTerm);
   };
 
   return (

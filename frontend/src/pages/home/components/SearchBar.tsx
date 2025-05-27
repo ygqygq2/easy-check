@@ -20,6 +20,7 @@ export function SearchBar({ searchTerm, setSearchTerm, onSearch }: SearchBarProp
         <Input
           placeholder="搜索主机名称或 IP 地址"
           value={searchTerm}
+          onClick={onSearch}
           onChange={(e) => setSearchTerm(e.target.value)}
         ></Input>
       </InputGroup>

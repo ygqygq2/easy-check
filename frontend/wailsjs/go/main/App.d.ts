@@ -7,7 +7,7 @@ export function CheckForUpdates():Promise<string>;
 
 export function GetConfig():Promise<string>;
 
-export function GetHosts(arg1:number,arg2:number):Promise<types.HostsResponse>;
+export function GetHosts(arg1:number,arg2:number,arg3:string):Promise<types.HostsResponse>;
 
 export function GetLatencyWithHosts(arg1:Array<string>):Promise<types.HostsLatencyResponse>;
 
