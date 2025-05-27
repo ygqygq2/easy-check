@@ -84,6 +84,9 @@ importers:
       '@vitejs/plugin-react':
         specifier: ^4.4.1
         version: 4.4.1(vite@6.3.5(@types/node@22.15.17)(yaml@2.8.0))
+      '@wailsio/runtime':
+        specifier: latest
+        version: 3.0.0-alpha.66
       '@ygqygq2/eslint-config':
         specifier: ^1.0.2
         version: 1.0.2(eslint@9.25.1)
@@ -902,6 +905,9 @@ packages:
     engines: {node: ^14.18.0 || >=16.0.0}
     peerDependencies:
       vite: ^4.2.0 || ^5.0.0 || ^6.0.0
+
+  '@wailsio/runtime@3.0.0-alpha.66':
+    resolution: {integrity: sha512-ENLu8rn1griL1gFHJqkq1i+BVxrrA0JPJHYneUJYuf/s54kjuQViW0RKDEe/WTDo56ABpfykrd/T8OYpPUyXUw==}
 
   '@ygqygq2/eslint-config@1.0.2':
     resolution: {integrity: sha512-M4ECspWlFTU6o6r5wzxoBN74M17cMkXQe8fiR3u/iulaOdtEhXb44wK/6qAuUgacxyZeEZPul88hUeN9HDfvLQ==}
@@ -3884,6 +3890,8 @@ snapshots:
       vite: 6.3.5(@types/node@22.15.17)(yaml@2.8.0)
     transitivePeerDependencies:
       - supports-color
+
+  '@wailsio/runtime@3.0.0-alpha.66': {}
 
   '@ygqygq2/eslint-config@1.0.2(eslint@9.25.1)':
     dependencies:

@@ -1,4 +1,4 @@
-package main
+package services
 
 import (
 	"context"
@@ -8,32 +8,40 @@ import (
 	"easy-check/internal/initializer"
 	"easy-check/internal/types"
 	"easy-check/internal/update"
+	"easy-check/internal/utils"
 	"fmt"
+	"os"
+
+	"github.com/wailsapp/wails/v3/pkg/application"
 )
 
-// App struct
-type App struct {
+// AppService struct
+type AppService struct {
 	ctx    context.Context
 	appCtx *initializer.AppContext
 }
 
-// NewApp creates a new App application struct
-func NewApp(appCtx *initializer.AppContext) *App {
-	return &App{
+// NewAppService creates a new AppService
+func NewAppService(appCtx *initializer.AppContext) *AppService {
+	return &AppService{
 		appCtx: appCtx,
 	}
 }
 
-// startup is called when the app starts. The context is saved
-// so we can call the runtime methods
-func (a *App) startup(ctx context.Context) {
-	// 启动逻辑
-	a.ctx = ctx
-	wailsContext = &ctx
+func (a *AppService) GetCurrentInstanceInfo() map[string]interface{} {
+	return map[string]interface{}{
+		"args":       os.Args,
+		"workingDir": utils.GetCurrentWorkingDir(),
+	}
 }
 
-func (a *App) shutdown(ctx context.Context) {
-	// 关闭数据库连接
+// Startup is called when the service starts
+func (a *AppService) ServiceStartup(ctx context.Context, options application.ServiceOptions) {
+	a.ctx = ctx
+}
+
+// Shutdown is called when the service shuts down
+func (a *AppService) ServiceShutdown(ctx context.Context, options application.ServiceOptions) {
 	if a.appCtx != nil && a.appCtx.DB != nil && a.appCtx.DB.Instance != nil {
 		a.appCtx.DB.Instance.Close()
 	}
@@ -42,18 +50,17 @@ func (a *App) shutdown(ctx context.Context) {
 	}
 }
 
-// GetConfig 获取配置文件内容
-func (a *App) GetConfig() (string, error) {
+// GetConfig retrieves the configuration file content
+func (a *AppService) GetConfig() (string, error) {
 	content, err := config.GetConfigFromFile(a.appCtx.ConfigPath)
 	if err != nil {
-		// a.appCtx.Logger.Log(fmt.Sprintf("获取配置失败: %v", err), "error")
 		return "", fmt.Errorf("获取配置失败: %v", err)
 	}
 	return content, nil
 }
 
-// SaveConfig 保存配置文件内容
-func (a *App) SaveConfig(content string) error {
+// SaveConfig saves the configuration file content
+func (a *AppService) SaveConfig(content string) error {
 	err := config.SaveConfigToFile(a.appCtx.ConfigPath, content, a.appCtx.Logger)
 	if err != nil {
 		a.appCtx.Logger.Log(fmt.Sprintf("保存配置失败: %v", err), "error")
@@ -62,14 +69,14 @@ func (a *App) SaveConfig(content string) error {
 	return nil
 }
 
-// GetSharedConstant 获取共享常量
-func (a *App) GetSharedConstant() *constants.SharedConstants {
+// GetSharedConstant retrieves shared constants
+func (a *AppService) GetSharedConstant() *constants.SharedConstants {
 	constInfo := constants.GetSharedConstants(a.appCtx)
 	return &constInfo
 }
 
-// CheckForUpdates 检查更新
-func (a *App) CheckForUpdates() string {
+// CheckForUpdates checks for updates
+func (a *AppService) CheckForUpdates() string {
 	constInfo := constants.GetSharedConstants(a.appCtx)
 	err := update.CheckAndUpdate(a.appCtx, constInfo.UpdateServer)
 	if err != nil {
@@ -78,16 +85,15 @@ func (a *App) CheckForUpdates() string {
 	return "更新成功！请重新启动应用程序。"
 }
 
-// RestartApp 重启应用程序
-func (a *App) RestartApp() error {
+// RestartApp restarts the application
+func (a *AppService) RestartApp() error {
 	return update.RestartApp()
 }
 
-// GetHosts 获取主机列表
-func (a *App) GetHosts(page int, pageSize int, searchTerm string) *types.HostsResponse {
+// GetHosts retrieves the list of hosts
+func (a *AppService) GetHosts(page int, pageSize int, searchTerm string) *types.HostsResponse {
 	hosts, total, err := data.GetHostsFromBadgerWithPagination(a.appCtx.DB, page, pageSize, searchTerm)
 	if err != nil {
-		// 如果发生错误，将错误信息封装到响应中
 		return &types.HostsResponse{
 			Hosts: nil,
 			Total: 0,
@@ -95,7 +101,6 @@ func (a *App) GetHosts(page int, pageSize int, searchTerm string) *types.HostsRe
 		}
 	}
 
-	// 转换为前端需要的类型
 	var result []types.Host
 	for _, h := range hosts {
 		result = append(result, types.Host{
@@ -104,7 +109,6 @@ func (a *App) GetHosts(page int, pageSize int, searchTerm string) *types.HostsRe
 		})
 	}
 
-	// 返回封装的结构体
 	return &types.HostsResponse{
 		Hosts: result,
 		Total: total,
@@ -112,15 +116,11 @@ func (a *App) GetHosts(page int, pageSize int, searchTerm string) *types.HostsRe
 	}
 }
 
-// GetLatencyWithHosts 获取主机延迟数据
-func (a *App) GetLatencyWithHosts(hosts []string) *types.HostsLatencyResponse {
-	// 定义需要查询的指标
+// GetLatencyWithHosts retrieves latency data for hosts
+func (a *AppService) GetLatencyWithHosts(hosts []string) *types.HostsLatencyResponse {
 	metrics := []string{"min_latency", "avg_latency", "max_latency", "packet_loss"}
-
-	// 存储结果
 	latencyData := make([]types.HostLatencyData, 0)
 
-	// 遍历每个指标查询数据
 	for _, metric := range metrics {
 		data, err := data.GetHostMetrics(a.appCtx.TSDB, hosts, metric)
 		if err != nil {
@@ -131,9 +131,7 @@ func (a *App) GetLatencyWithHosts(hosts []string) *types.HostsLatencyResponse {
 			}
 		}
 
-		// 合并数据到 latencyData
 		for host, value := range data {
-			// 查找是否已有该主机的数据
 			var existing *types.HostLatencyData
 			for i := range latencyData {
 				if latencyData[i].Host == host {
@@ -142,13 +140,11 @@ func (a *App) GetLatencyWithHosts(hosts []string) *types.HostsLatencyResponse {
 				}
 			}
 
-			// 如果没有，创建新的
 			if existing == nil {
 				latencyData = append(latencyData, types.HostLatencyData{Host: host})
 				existing = &latencyData[len(latencyData)-1]
 			}
 
-			// 根据指标名称填充数据
 			switch metric {
 			case "min_latency":
 				existing.MinLatency = value
@@ -162,7 +158,6 @@ func (a *App) GetLatencyWithHosts(hosts []string) *types.HostsLatencyResponse {
 		}
 	}
 
-	// 返回结果
 	return &types.HostsLatencyResponse{
 		Hosts: latencyData,
 		Total: len(latencyData),

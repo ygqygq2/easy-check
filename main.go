@@ -1,29 +1,31 @@
 package main
 
 import (
-	"context"
 	"easy-check/internal/checker"
 	"easy-check/internal/constants"
 	"easy-check/internal/db"
 	"easy-check/internal/initializer"
-	"easy-check/internal/logger"
 	"easy-check/internal/machineid"
+	"easy-check/internal/services"
 	"embed"
 	"fmt"
 	"os"
-	"strings"
+
 	"time"
 
-	"github.com/wailsapp/wails/v2"
-	"github.com/wailsapp/wails/v2/pkg/options"
-	"github.com/wailsapp/wails/v2/pkg/options/assetserver"
-	"github.com/wailsapp/wails/v2/pkg/runtime"
+	"github.com/wailsapp/wails/v3/pkg/application"
 )
 
 var version string // 通过 ldflags 注入
 //go:embed all:frontend/dist
 var assets embed.FS
-var wailsContext *context.Context
+
+var encryptionKey = [32]byte{
+	0x57, 0xad, 0xf9, 0xaa, 0x2d, 0xf1, 0x53, 0x28,
+	0x2e, 0x2c, 0x6f, 0x6f, 0xfd, 0xf8, 0xc7, 0x55,
+	0x9a, 0x53, 0x92, 0xef, 0xed, 0x50, 0xec, 0x6b,
+	0xc3, 0x4c, 0x09, 0x06, 0xc7, 0x9c, 0xa1, 0x4d,
+}
 
 func main() {
 	if version == "" {
@@ -51,50 +53,59 @@ func main() {
 	defer appCtx.Logger.Close()
 	fmt.Println("Application context initialized successfully")
 
-	// 启动后台任务
-	go func() {
-		// fmt.Println("Starting background task...")
-		runBackgroundTask(appCtx)
-	}()
-
-	// Create an instance of the app structure
-	app := NewApp(appCtx)
-
 	constInfo := constants.GetSharedConstants(appCtx)
-	// Create application with options
-	err = wails.Run(&options.App{
-		Title:  constInfo.AppName,
-		Width:  1024,
-		Height: 768,
-		AssetServer: &assetserver.Options{
-			Assets: assets,
+
+	var window *application.WebviewWindow
+	app := application.New(application.Options{
+		Name:        constInfo.AppName,
+		Description: "简单网络检测工具",
+		Services: []application.Service{
+			application.NewService(&services.AppService{}),
 		},
-		BackgroundColour: &options.RGBA{R: 27, G: 38, B: 54, A: 1},
-		OnStartup:        app.startup,
-		OnShutdown:       app.shutdown,
-		Logger:           &logger.WailsLogger{Logger: appCtx.Logger},
-		SingleInstanceLock: &options.SingleInstanceLock{
-			UniqueId:               machineID,
-			OnSecondInstanceLaunch: app.onSecondInstanceLaunch,
+		SingleInstance: &application.SingleInstanceOptions{
+			UniqueID:      "com.ygqygq2.easy-check",
+			EncryptionKey: encryptionKey,
+			OnSecondInstanceLaunch: func(data application.SecondInstanceData) {
+				if window != nil {
+					window.EmitEvent("secondInstanceLaunched", data)
+					window.Restore()
+					window.Focus()
+				}
+			},
 		},
-		Bind: []interface{}{
-			app,
+		Assets: application.AssetOptions{
+			Handler: application.AssetFileServerFS(assets),
+		},
+		Mac: application.MacOptions{
+			ApplicationShouldTerminateAfterLastWindowClosed: true,
 		},
 	})
+
+	app.NewWebviewWindowWithOptions(application.WebviewWindowOptions{
+		Title: constInfo.AppName,
+		Mac: application.MacWindow{
+			InvisibleTitleBarHeight: 50,
+			Backdrop:                application.MacBackdropTranslucent,
+			TitleBar:                application.MacTitleBarHiddenInset,
+		},
+		BackgroundColour: application.NewRGB(27, 38, 54),
+		URL:              "/",
+	})
+
+	go func() {
+		runBackgroundTask(appCtx)
+		for {
+			now := time.Now().Format(time.RFC1123)
+			app.EmitEvent("time", now)
+			time.Sleep(time.Second)
+		}
+	}()
+
+	err = app.Run()
 
 	if err != nil {
 		println("Error:", err.Error())
 	}
-}
-
-func (a *App) onSecondInstanceLaunch(secondInstanceData options.SecondInstanceData) {
-	secondInstanceArgs := secondInstanceData.Args
-
-	println("user opened second instance", strings.Join(secondInstanceData.Args, ","))
-	println("user opened second from", secondInstanceData.WorkingDirectory)
-	runtime.WindowUnminimise(*wailsContext)
-	runtime.Show(*wailsContext)
-	go runtime.EventsEmit(*wailsContext, "launchArgs", secondInstanceArgs)
 }
 
 // runBackgroundTask 启动后台任务

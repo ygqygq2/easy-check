@@ -6,6 +6,7 @@ import (
 	"easy-check/internal/config"
 	"easy-check/internal/db"
 	"easy-check/internal/logger"
+	"easy-check/internal/utils"
 	"easy-check/internal/notifier"
 	"easy-check/internal/types"
 	"fmt"
@@ -133,10 +134,7 @@ func Initialize(machineID, version string) (*AppContext, error) {
 // changeToProjectRoot 切换到项目根目录
 func changeToProjectRoot() error {
 	// 首先尝试使用当前工作目录
-	cwd, err := os.Getwd()
-	if err != nil {
-		return fmt.Errorf("error getting current working directory: %w", err)
-	}
+  cwd := utils.GetCurrentWorkingDir()
 
 	// 检查当前目录下是否存在configs目录
 	configPath := filepath.Join(cwd, "configs")

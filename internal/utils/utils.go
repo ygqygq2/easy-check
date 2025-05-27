@@ -2,6 +2,7 @@ package utils
 
 import (
 	"fmt"
+	"os"
 	"time"
 )
 
@@ -37,4 +38,13 @@ func AddDirectorySuffix(path string) string {
 		return path
 	}
 	return path + "/"
+}
+
+// GetCurrentWorkingDir 获取当前工作目录
+func GetCurrentWorkingDir() string {
+	cwd, err := os.Getwd()
+	if err != nil {
+		return ""
+	}
+	return cwd
 }

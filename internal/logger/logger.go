@@ -1,13 +1,11 @@
 package logger
 
 import (
-	"context"
 	"fmt"
 	"os"
 	"path/filepath"
 
 	"github.com/sirupsen/logrus"
-	"github.com/wailsapp/wails/v2/pkg/logger"
 	"gopkg.in/natefinch/lumberjack.v2"
 )
 
@@ -208,23 +206,4 @@ func (wl *WailsLogger) Error(message string) {
 // Fatal 实现 Wails Logger 的 Fatal 方法
 func (wl *WailsLogger) Fatal(message string) {
 	wl.Fatal(message)
-}
-
-// LogSetLogLevel 设置日志级别
-func (wl *WailsLogger) LogSetLogLevel(ctx context.Context, level logger.LogLevel) {
-	switch level {
-	case logger.TRACE:
-		wl.consoleLevel = logrus.TraceLevel
-	case logger.DEBUG:
-		wl.consoleLevel = logrus.DebugLevel
-	case logger.INFO:
-		wl.consoleLevel = logrus.InfoLevel
-	case logger.WARNING:
-		wl.consoleLevel = logrus.WarnLevel
-	case logger.ERROR:
-		wl.consoleLevel = logrus.ErrorLevel
-	default:
-		wl.consoleLevel = logrus.InfoLevel
-	}
-	wl.consoleLogger.SetLevel(wl.consoleLevel)
 }
