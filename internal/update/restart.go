@@ -7,7 +7,7 @@ import (
 
 // RestartApp 重启应用程序
 func RestartApp() error {
-	fmt.Println("应用程序需要重启...")
+	fmt.Println("应用程序重启...")
 
 	// 获取当前可执行文件路径
 	self, err := os.Executable()

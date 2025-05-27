@@ -80,12 +80,6 @@ func (a *App) CheckForUpdates() string {
 
 // RestartApp 重启应用程序
 func (a *App) RestartApp() error {
-	if a.appCtx.NeedsRestart {
-		a.appCtx.Logger.Log("应用程序需要重启。", "info")
-
-		// 重启应用程序
-		return update.RestartApp()
-	}
 	return update.RestartApp()
 }
 
