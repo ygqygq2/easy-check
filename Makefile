@@ -16,6 +16,7 @@ GIT_VERSION := $(if $(GIT_TAG),$(GIT_TAG),$(shell git describe --tags --always -
 
 # 编译参数
 LDFLAGS ?= -ldflags "-X main.version=$(GIT_VERSION)"
+UI_LDFLAGS ?= -ldflags "-X main.version=$(GIT_VERSION) -w -s -H windowsgui"
 
 # 默认目标
 all: build
@@ -30,11 +31,10 @@ build-cmd: build-linux-cmd build-windows-cmd
 build-ui: build-linux-ui build-windows-ui
 
 build-linux-ui:
-	GOOS=linux GOARCH=amd64 wails build -ldflags "-X main.version=$(GIT_VERSION)" -platform linux/amd64 -o $(call ui_binary_name,linux,amd64)
+	PRODUCTION=true GOOS=linux GOARCH=amd64 task linux:build
 
 build-windows-ui:
-	GOOS=windows GOARCH=amd64 wails build -ldflags "-X main.version=$(GIT_VERSION)" -platform windows/amd64 -o $(call ui_binary_name,windows,amd64).exe -skipbindings
-# GOOS=windows GOARCH=amd64 wails build -ldflags "-X main.version=$(GIT_VERSION)" -platform windows/amd64 -o $(call ui_binary_name,windows,amd64).exe
+	PRODUCTION=true GOOS=windows GOARCH=amd64 task windows:build
 
 # 编译 Linux 可执行文件
 build-linux-cmd:

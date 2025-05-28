@@ -7,7 +7,8 @@ import { config } from "@/config";
 import { loadConfigFromUrl } from "@/lib/load-config";
 import { mergeYamlDocuments } from "@/lib/merge-yaml";
 
-import { GetConfig, SaveConfig } from "../../wailsjs/go/main/App";
+// @ts-ignore
+import { GetConfig, SaveConfig } from "@bindings/easy-check/internal/services/appservice";
 import { useColorMode, useColorModeValue } from "./ui/color-mode";
 
 interface YamlEditorProps {

@@ -1,6 +1,6 @@
 module easy-check
 
-go 1.24.1
+go 1.24.3
 
 require github.com/wailsapp/wails/v3 v3.0.0-alpha.9
 

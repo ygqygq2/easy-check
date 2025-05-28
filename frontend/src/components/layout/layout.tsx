@@ -5,7 +5,7 @@ import smallLogo from "@/assets/images/logo36x36.png";
 import MenuBar from "@/components/MenuBar";
 import { ColorModeButton, useColorModeValue } from "@/components/ui/color-mode";
 
-import { CheckForUpdates, RestartApp } from "../../../wailsjs/go/main/App";
+import { CheckForUpdates, RestartApp } from "@bindings/easy-check/internal/services/appservice";
 import { toaster, Toaster } from "../ui/toaster";
 import YamlEditor from "../YamlEditor";
 

@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "vite",
     "build:dev": "vite build --minify false --mode development",
-    "build": "tsc && vite build",
+    "build": "vite build",
     "preview": "vite preview",
     "lint": "eslint src",
     "lint-fix": "eslint src --fix"

@@ -7,9 +7,13 @@ includes:
   linux: ./build/linux/Taskfile.yml
 
 vars:
-  APP_NAME: "v3"
+  APP_NAME: "easy-check-ui"
   BIN_DIR: "bin"
   VITE_PORT: '{{.WAILS_VITE_PORT | default 9245}}'
+  GIT_TAG: 
+    sh: git describe --tags --exact-match 2>/dev/null || echo ""
+  GIT_VERSION:
+    sh: '[ -n "$(git describe --tags --exact-match 2>/dev/null)" ] && git describe --tags --exact-match 2>/dev/null || git describe --tags --always --dirty'
 
 tasks:
   build:
@@ -31,4 +35,3 @@ tasks:
     summary: Runs the application in development mode
     cmds:
       - wails3 dev -config ./build/config.yml -port {{.VITE_PORT}}
-

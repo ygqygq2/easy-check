@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 
 import { Host } from "@/types/host";
 
-import { GetHosts, GetLatencyWithHosts } from "../../wailsjs/go/main/App";
+import { GetHosts, GetLatencyWithHosts } from "@bindings/easy-check/internal/services/appservice";
 import { PaginationControls } from "../components/PaginationControls";
 import { HostList } from "./home/components/HostList";
 import { RefreshIntervalSelector } from "./home/components/RefreshIntervalSelector";
@@ -22,7 +22,7 @@ export function Page() {
 
   const fetchAndSetHosts = async (page: number, searchTerm: string) => {
     try {
-      const res = await GetHosts(page, pageSize, searchTerm);
+      const res = await GetHosts(page, pageSize, searchTerm) || { hosts: [], total: 0 };
       const { hosts = [], total = 0 } = res;
 
       // 更新主机列表和分页总数
@@ -73,8 +73,8 @@ export function Page() {
           setLatencyData({});
           return;
         }
-        const res = await GetLatencyWithHosts(hostNames);
-        const latencyHosts = res.hosts || [];
+        const res = await GetLatencyWithHosts(hostNames) ;
+        const latencyHosts = res?.hosts || [];
         const latencyMap: Record<string, number | null> = {};
         latencyHosts.forEach((latencyHost: { host: string; avg_latency: number | null }) => {
           latencyMap[latencyHost.host] = latencyHost.avg_latency;

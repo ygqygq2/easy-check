@@ -13,8 +13,10 @@ tasks:
     cmds:
       - go build {{.BUILD_FLAGS}} -o {{.OUTPUT}}
     vars:
-      BUILD_FLAGS: '{{if eq .PRODUCTION "true"}}-tags production -trimpath -buildvcs=false -ldflags="-w -s"{{else}}-buildvcs=false -gcflags=all="-l"{{end}}'
-      DEFAULT_OUTPUT: '{{.BIN_DIR}}/{{.APP_NAME}}'
+      OS: '{{.OS | default "darwin"}}'
+      ARCH: '{{.ARCH | default ARCH}}'
+      BUILD_FLAGS: '{{if eq .PRODUCTION "true"}}-tags production -trimpath -buildvcs=false -ldflags="-X main.version={{.GIT_VERSION}} -w -s"{{else}}-buildvcs=false -gcflags=all="-l"{{end}}'
+      DEFAULT_OUTPUT: '{{.BIN_DIR}}/{{.APP_NAME}}-{{.OS}}-{{.ARCH}}'
       OUTPUT: '{{ .OUTPUT | default .DEFAULT_OUTPUT }}'
     env:
       GOOS: darwin
@@ -67,4 +69,4 @@ tasks:
 
   run:
     cmds:
-      - '{{.BIN_DIR}}/{{.APP_NAME}}'
+      - '{{.BIN_DIR}}/{{.APP_NAME}}-{{.GOOS}}-{{.GOARCH}}'

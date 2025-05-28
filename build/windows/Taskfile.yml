@@ -14,13 +14,15 @@ tasks:
       - task: common:generate:icons
     cmds:
       - task: generate:syso
-      - go build {{.BUILD_FLAGS}} -o {{.BIN_DIR}}/{{.APP_NAME}}.exe
+      - go build {{.BUILD_FLAGS}} -o {{.BIN_DIR}}/{{.APP_NAME}}-{{.OS}}-{{.ARCH}}.exe
       - cmd: powershell Remove-item *.syso
         platforms: [windows]
       - cmd: rm -f *.syso
         platforms: [linux, darwin]
     vars:
-      BUILD_FLAGS: '{{if eq .PRODUCTION "true"}}-tags production -trimpath -buildvcs=false -ldflags="-w -s -H windowsgui"{{else}}-buildvcs=false -gcflags=all="-l"{{end}}'
+      OS: '{{.OS | default "windows"}}'
+      ARCH: '{{.ARCH | default ARCH}}'
+      BUILD_FLAGS: '{{if eq .PRODUCTION "true"}}-tags production -trimpath -buildvcs=false -ldflags="-X main.version={{.GIT_VERSION}} -w -s -H windowsgui"{{else}}-buildvcs=false -gcflags=all="-l"{{end}}'
     env:
       GOOS: windows
       CGO_ENABLED: 0
@@ -57,4 +59,4 @@ tasks:
 
   run:
     cmds:
-      - '{{.BIN_DIR}}\\{{.APP_NAME}}.exe'
+      - '{{.BIN_DIR}}\\{{.APP_NAME}}-{{.GOOS}}-{{.GOARCH}}.exe'

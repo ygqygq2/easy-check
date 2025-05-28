@@ -54,13 +54,14 @@ func main() {
 	fmt.Println("Application context initialized successfully")
 
 	constInfo := constants.GetSharedConstants(appCtx)
+	appService := services.NewAppService(appCtx)
 
 	var window *application.WebviewWindow
 	app := application.New(application.Options{
 		Name:        constInfo.AppName,
 		Description: "简单网络检测工具",
 		Services: []application.Service{
-			application.NewService(&services.AppService{}),
+			application.NewService(appService),
 		},
 		SingleInstance: &application.SingleInstanceOptions{
 			UniqueID:      "com.ygqygq2.easy-check",
@@ -83,6 +84,8 @@ func main() {
 
 	app.NewWebviewWindowWithOptions(application.WebviewWindowOptions{
 		Title: constInfo.AppName,
+		Width: 1024,
+		Height: 768,
 		Mac: application.MacWindow{
 			InvisibleTitleBarHeight: 50,
 			Backdrop:                application.MacBackdropTranslucent,
