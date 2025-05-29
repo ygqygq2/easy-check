@@ -1,12 +1,15 @@
+import {
+  CheckForUpdates,
+  RestartApp,
+} from "@bindings/easy-check/internal/services/appservice";
 import { Box, Flex } from "@chakra-ui/react";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 
 import smallLogo from "@/assets/images/logo36x36.png";
 import MenuBar from "@/components/MenuBar";
 import { ColorModeButton, useColorModeValue } from "@/components/ui/color-mode";
 
-import { CheckForUpdates, RestartApp } from "@bindings/easy-check/internal/services/appservice";
-import { toaster, Toaster } from "../ui/toaster";
+import { Toaster, toaster } from "../ui/toaster";
 import YamlEditor from "../YamlEditor";
 
 interface LayoutProps {
@@ -17,7 +20,8 @@ export function Layout({ children }: LayoutProps) {
   const navBg = useColorModeValue("gray.200", "gray.700");
   const navColor = useColorModeValue("gray.800", "gray.100");
 
-  const [activeComponent, setActiveComponent] = useState<React.ReactNode>(children);
+  const [activeComponent, setActiveComponent] =
+    useState<React.ReactNode>(children);
 
   const menus = [
     {
@@ -26,7 +30,10 @@ export function Layout({ children }: LayoutProps) {
         {
           value: "open",
           label: "打开配置",
-          onClick: () => setActiveComponent(<YamlEditor onClose={() => setActiveComponent(children)} />),
+          onClick: () =>
+            setActiveComponent(
+              <YamlEditor onClose={() => setActiveComponent(children)} />
+            ),
         },
         { value: "exit", label: "退出", onClick: () => alert("退出") },
       ],
@@ -84,7 +91,15 @@ export function Layout({ children }: LayoutProps) {
 
   return (
     <Box>
-      <Flex as="nav" bg={navBg} color={navColor} px={4} py={2} align="center" justify="space-between">
+      <Flex
+        as="nav"
+        bg={navBg}
+        color={navColor}
+        px={4}
+        py={2}
+        align="center"
+        justify="space-between"
+      >
         <Flex align="center">
           <Box className="small-logo" mr={4}>
             <img src={smallLogo} alt="logo" />
@@ -94,7 +109,7 @@ export function Layout({ children }: LayoutProps) {
         <ColorModeButton />
       </Flex>
       <Box>{activeComponent}</Box>
-      <Toaster  />
+      <Toaster />
     </Box>
   );
 }

@@ -8,7 +8,9 @@ interface CommentedPair<K = unknown, V = unknown> extends Pair<K, V> {
 }
 
 // 类型守卫：判断 Pair 是否为 CommentedPair
-function isCommentedPair<K = unknown, V = unknown>(pair: Pair<K, V>): pair is CommentedPair<K, V> {
+function isCommentedPair<K = unknown, V = unknown>(
+  pair: Pair<K, V>
+): pair is CommentedPair<K, V> {
   return true; // 运行时属性总会有，类型断言用
 }
 
@@ -18,7 +20,10 @@ function isCommentedPair<K = unknown, V = unknown>(pair: Pair<K, V>): pair is Co
  * @param currentYaml 当前配置的 YAML 字符串
  * @returns 合并后的 YAML 字符串
  */
-export const mergeYamlDocuments = (defaultYaml: string, currentYaml: string): string => {
+export const mergeYamlDocuments = (
+  defaultYaml: string,
+  currentYaml: string
+): string => {
   const defaultDoc = yaml.parseDocument(defaultYaml);
   const currentDoc = yaml.parseDocument(currentYaml);
 
@@ -30,11 +35,15 @@ export const mergeYamlDocuments = (defaultYaml: string, currentYaml: string): st
 
   // 合并内容
   if (isMap(currentDoc.contents)) {
-    mergeYAMLMaps(mergedDoc.contents as YAMLMap, currentDoc.contents as YAMLMap);
+    mergeYAMLMaps(
+      mergedDoc.contents as YAMLMap,
+      currentDoc.contents as YAMLMap
+    );
   }
 
   // 合并文件级注释
-  mergedDoc.commentBefore = defaultDoc.commentBefore || currentDoc.commentBefore || null;
+  mergedDoc.commentBefore =
+    defaultDoc.commentBefore || currentDoc.commentBefore || null;
 
   return mergedDoc.toString();
 };
@@ -57,9 +66,15 @@ function mergeYAMLMaps(targetMap: YAMLMap, sourceMap: YAMLMap): void {
     const key = String(item.key);
 
     // 查找目标中的同名 Pair
-    const targetPair = targetMap.items.find((p): p is CommentedPair => isPair(p) && String(p.key) === key);
+    const targetPair = targetMap.items.find(
+      (p): p is CommentedPair => isPair(p) && String(p.key) === key
+    );
 
-    if (targetPair && item.value instanceof YAMLMap && targetPair.value instanceof YAMLMap) {
+    if (
+      targetPair &&
+      item.value instanceof YAMLMap &&
+      targetPair.value instanceof YAMLMap
+    ) {
       // 递归合并嵌套对象
       mergeYAMLMaps(targetPair.value, item.value);
     } else if (targetPair) {
@@ -67,7 +82,8 @@ function mergeYAMLMaps(targetMap: YAMLMap, sourceMap: YAMLMap): void {
       if (isCommentedPair(targetPair) && isCommentedPair(item)) {
         targetPair.value = item.value;
         targetPair.comment = item.comment ?? targetPair.comment;
-        targetPair.commentBefore = item.commentBefore ?? targetPair.commentBefore;
+        targetPair.commentBefore =
+          item.commentBefore ?? targetPair.commentBefore;
       } else {
         targetPair.value = item.value;
       }

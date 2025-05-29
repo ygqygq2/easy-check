@@ -7,7 +7,11 @@ interface SearchBarProps {
   onSearch: () => void;
 }
 
-export function SearchBar({ searchTerm, setSearchTerm, onSearch }: SearchBarProps) {
+export function SearchBar({
+  searchTerm,
+  setSearchTerm,
+  onSearch,
+}: SearchBarProps) {
   const searchIcon = (
     <IconButton colorPalette="blue">
       <Icon icon="mynaui:search" width="24" height="24" />

@@ -40,7 +40,12 @@ const MenuBar: React.FC<MenuBarProps> = ({ menus }) => {
             <Menu.Positioner>
               <Menu.Content>
                 {menu.items.map((item) => (
-                  <Menu.Item key={item.value} value={item.value} onClick={item.onClick} _active={{ bg: activeBg }}>
+                  <Menu.Item
+                    key={item.value}
+                    value={item.value}
+                    onClick={item.onClick}
+                    _active={{ bg: activeBg }}
+                  >
                     {item.label}
                   </Menu.Item>
                 ))}

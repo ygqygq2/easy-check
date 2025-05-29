@@ -12,7 +12,10 @@ export interface I18nProviderProps {
   language?: string;
 }
 
-export function I18nProvider({ children, language = "en" }: I18nProviderProps): React.JSX.Element {
+export function I18nProvider({
+  children,
+  language = "en",
+}: I18nProviderProps): React.JSX.Element {
   const { i18n } = useTranslation();
 
   React.useEffect(() => {

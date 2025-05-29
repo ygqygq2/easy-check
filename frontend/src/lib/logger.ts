@@ -29,7 +29,11 @@ export class Logger {
 
   private levelNumber: number;
 
-  constructor({ prefix = "", level = LogLevel.ALL, showLevel = true }: LoggerOptions) {
+  constructor({
+    prefix = "",
+    level = LogLevel.ALL,
+    showLevel = true,
+  }: LoggerOptions) {
     this.prefix = prefix;
     this.level = level;
     this.levelNumber = LogLevelNumber[this.level];

@@ -9,7 +9,12 @@ interface PaginationControlsProps {
   onPageChange: (page: number) => void;
 }
 
-export function PaginationControls({ page, total, pageSize, onPageChange }: PaginationControlsProps) {
+export function PaginationControls({
+  page,
+  total,
+  pageSize,
+  onPageChange,
+}: PaginationControlsProps) {
   return (
     <Pagination.Root
       count={Math.ceil(total / pageSize)}
@@ -26,7 +31,11 @@ export function PaginationControls({ page, total, pageSize, onPageChange }: Pagi
           </Pagination.PrevTrigger>
 
           <Pagination.Items
-            render={(page) => <IconButton variant={{ base: "ghost", _selected: "outline" }}>{page.value}</IconButton>}
+            render={(page) => (
+              <IconButton variant={{ base: "ghost", _selected: "outline" }}>
+                {page.value}
+              </IconButton>
+            )}
           />
 
           <Pagination.NextTrigger asChild>

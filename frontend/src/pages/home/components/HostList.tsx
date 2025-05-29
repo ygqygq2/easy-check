@@ -1,4 +1,10 @@
-import { CheckboxCard, HStack, Progress, SimpleGrid, Stack } from "@chakra-ui/react";
+import {
+  CheckboxCard,
+  HStack,
+  Progress,
+  SimpleGrid,
+  Stack,
+} from "@chakra-ui/react";
 
 import { Tooltip } from "@/components/ui/tooltip";
 import { Host } from "@/types/host";
@@ -62,7 +68,10 @@ export function HostList({ hosts, latencyData }: HostListProps) {
                       <Progress.Range />
                     </Progress.Track>
                     <Progress.ValueText>
-                      {latencyData[host.host] === null ? "加载中" : latencyData[host.host]?.toFixed(0)}ms
+                      {latencyData[host.host] === null
+                        ? "加载中"
+                        : latencyData[host.host]?.toFixed(0)}
+                      ms
                     </Progress.ValueText>
                   </HStack>
                 </Progress.Root>

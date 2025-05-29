@@ -1,3 +1,7 @@
+import {
+  GetConfig,
+  SaveConfig,
+} from "@bindings/easy-check/internal/services/appservice";
 import { Box, Button, Flex, Spinner, Text } from "@chakra-ui/react";
 import { useEffect, useState } from "react";
 import MonacoEditor from "react-monaco-editor";
@@ -7,8 +11,6 @@ import { config } from "@/config";
 import { loadConfigFromUrl } from "@/lib/load-config";
 import { mergeYamlDocuments } from "@/lib/merge-yaml";
 
-// @ts-ignore
-import { GetConfig, SaveConfig } from "@bindings/easy-check/internal/services/appservice";
 import { useColorMode, useColorModeValue } from "./ui/color-mode";
 
 interface YamlEditorProps {
@@ -128,7 +130,13 @@ const YamlEditor = ({ onClose }: YamlEditorProps) => {
 
   const editorTheme = colorMode === "dark" ? "vs-dark" : "vs-light";
 
-  const ActionButton = ({ label, onClick }: { label: string; onClick: () => void }) => (
+  const ActionButton = ({
+    label,
+    onClick,
+  }: {
+    label: string;
+    onClick: () => void;
+  }) => (
     <Button
       bg={buttonBg}
       color={buttonColor}
@@ -148,7 +156,12 @@ const YamlEditor = ({ onClose }: YamlEditorProps) => {
   }
 
   return (
-    <Box height="calc(100vh - 50px)" display="flex" flexDirection="column" p={4}>
+    <Box
+      height="calc(100vh - 50px)"
+      display="flex"
+      flexDirection="column"
+      p={4}
+    >
       <Flex justify="space-between" mb={4}>
         <Text fontSize="xl">配置编辑器</Text>
         <Flex gap={4}>
