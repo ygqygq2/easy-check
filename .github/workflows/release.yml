@@ -91,7 +91,8 @@ jobs:
       - name: Install dependencies
         if: steps.cache-go.outputs.cache-hit != 'true'
         run: |
-          go install -v github.com/wailsapp/wails/v3/cmd/wails3@latest
+          go install github.com/go-task/task/v3/cmd/task@latest
+          go install github.com/wailsapp/wails/v3/cmd/wails3@latest
           go mod tidy
 
       # wails 环境确认
