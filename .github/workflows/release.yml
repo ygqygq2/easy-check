@@ -73,13 +73,6 @@ jobs:
         run: pnpm build
         working-directory: frontend
 
-      # 安装依赖
-      - name: Install dependencies
-        if: steps.cache-go.outputs.cache-hit != 'true'
-        run: |
-          go install -v github.com/wailsapp/wails/v3/cmd/wails3@latest
-          go mod tidy
-
       # 安装系统依赖
       - name: Install system dependencies
         run: |
@@ -93,6 +86,13 @@ jobs:
             echo "Unsupported Linux distribution: $DISTRO"
             exit 1 # 如果发行版不支持，则失败
           fi
+
+      # 安装依赖
+      - name: Install dependencies
+        if: steps.cache-go.outputs.cache-hit != 'true'
+        run: |
+          go install -v github.com/wailsapp/wails/v3/cmd/wails3@latest
+          go mod tidy
 
       # wails 环境确认
       - name: Wails check
