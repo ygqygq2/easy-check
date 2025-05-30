@@ -30,6 +30,7 @@ var encryptionKey = [32]byte{
 }
 
 func main() {
+	enableSystray := false
 	if version == "" {
 		version = "dev" // 默认值
 	}
@@ -84,10 +85,7 @@ func main() {
 		},
 	})
 
-	// 创建系统托盘并设置标签
-	sysTray := app.NewSystemTray()
-	sysTray.SetLabel(constInfo.AppName)
-
+	// 创建主窗口
 	window = app.NewWebviewWindowWithOptions(application.WebviewWindowOptions{
 		Title:  constInfo.AppName,
 		Width:  1024,
@@ -105,44 +103,49 @@ func main() {
 		CloseButtonState:    application.ButtonDisabled,
 	})
 
-	// 将窗口附加到系统托盘 (附加后托盘图标可自动控制窗口显示隐藏)
-	sysTray.AttachWindow(window)
-	sysTray.WindowOffset(100)
-	sysTray.WindowDebounce(200 * time.Millisecond)
+	// 根据开关决定是否初始化系统托盘
+	if enableSystray {
+		sysTray := app.NewSystemTray()
+		sysTray.SetLabel(constInfo.AppName)
 
-	logo, err := assets.GetAsset("images/logo.png")
-	if err != nil {
-		fmt.Printf("Failed to load logo asset: %v\n", err)
+		// 将窗口附加到系统托盘（图标点击可控制窗口显示/隐藏）
+		sysTray.AttachWindow(window)
+		sysTray.WindowOffset(100)
+		sysTray.WindowDebounce(200 * time.Millisecond)
+
+		logo, err := assets.GetAsset("images/logo.png")
+		if err != nil {
+			fmt.Printf("Failed to load logo asset: %v\n", err)
+		}
+
+		if runtime.GOOS == "darwin" {
+			sysTray.SetTemplateIcon(logo)
+		} else {
+			sysTray.SetIcon(logo)
+		}
+
+		// 托盘菜单：打开窗口、退出
+		menu := app.NewMenu()
+		menu.Add("打开窗口").OnClick(func(_ *application.Context) {
+			window.Show()
+		})
+		menu.Add("退出").OnClick(func(_ *application.Context) {
+			app.Quit()
+		})
+		sysTray.SetMenu(menu)
+
+		// Windows 平台下额外监听任务栏重建事件
+		if runtime.GOOS == "windows" {
+			go watchTaskbarCreated(sysTray, window, logo, menu)
+		}
 	}
 
-	if runtime.GOOS == "darwin" {
-		sysTray.SetTemplateIcon(logo)
-	} else {
-		sysTray.SetIcon(logo)
-	}
-
-	// 菜单：打开窗口、退出
-	menu := app.NewMenu()
-	menu.Add("打开窗口").OnClick(func(_ *application.Context) {
-		window.Show()
-	})
-	menu.Add("退出").OnClick(func(_ *application.Context) {
-		app.Quit()
-	})
-
-	sysTray.SetMenu(menu)
-
-	// Windows 下启动监听
-	if runtime.GOOS == "windows" {
-		go watchTaskbarCreated(sysTray, window, logo, menu)
-	}
-
+	// 启动后台任务
 	go func() {
 		runBackgroundTask(appCtx)
 	}()
 
 	err = app.Run()
-
 	if err != nil {
 		println("Error:", err.Error())
 	}
