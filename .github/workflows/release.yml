@@ -19,7 +19,7 @@ permissions:
 jobs:
   release:
     name: Build and Release
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-24.04
     env:
       flags: ""
 
@@ -96,7 +96,7 @@ jobs:
 
       # wails 环境确认
       - name: Wails check
-        run: wails doctor
+        run: wails3 doctor
 
       # 构建项目
       - name: Build project
