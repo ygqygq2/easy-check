@@ -36,7 +36,7 @@ jobs:
       - name: Setup Go
         uses: actions/setup-go@v5
         with:
-          go-version: '1.24.1'
+          go-version: '1.24.3'
 
       # 设置缓存以加速构建
       - name: Cache Go modules
