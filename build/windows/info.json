@@ -1,15 +1,15 @@
 {
 	"fixed": {
-		"file_version": "{{.Info.ProductVersion}}"
+		"file_version": "v3.0.1"
 	},
 	"info": {
 		"0000": {
-			"ProductVersion": "{{.Info.ProductVersion}}",
-			"CompanyName": "{{.Info.CompanyName}}",
-			"FileDescription": "{{.Info.ProductName}}",
-			"LegalCopyright": "{{.Info.Copyright}}",
-			"ProductName": "{{.Info.ProductName}}",
-			"Comments": "{{.Info.Comments}}"
+			"ProductVersion": "v3.0.1",
+			"CompanyName": "ygqygq2",
+			"FileDescription": "简单网络工具",
+			"LegalCopyright": "(c) 2025, ygqygq2",
+			"ProductName": "easy-check",
+			"Comments": ""
 		}
 	}
 }

@@ -1,6 +1,7 @@
 package main
 
 import (
+	"easy-check/internal/assets"
 	"easy-check/internal/checker"
 	"easy-check/internal/constants"
 	"easy-check/internal/db"
@@ -10,6 +11,7 @@ import (
 	"embed"
 	"fmt"
 	"os"
+	"runtime"
 
 	"time"
 
@@ -18,7 +20,7 @@ import (
 
 var version string // 通过 ldflags 注入
 //go:embed all:frontend/dist
-var assets embed.FS
+var frontendAssets embed.FS
 
 var encryptionKey = [32]byte{
 	0x57, 0xad, 0xf9, 0xaa, 0x2d, 0xf1, 0x53, 0x28,
@@ -69,39 +71,74 @@ func main() {
 			OnSecondInstanceLaunch: func(data application.SecondInstanceData) {
 				if window != nil {
 					window.EmitEvent("secondInstanceLaunched", data)
-					window.Restore()
+					window.Show()
 					window.Focus()
 				}
 			},
 		},
 		Assets: application.AssetOptions{
-			Handler: application.AssetFileServerFS(assets),
+			Handler: application.AssetFileServerFS(frontendAssets),
 		},
 		Mac: application.MacOptions{
-			ApplicationShouldTerminateAfterLastWindowClosed: true,
+			ApplicationShouldTerminateAfterLastWindowClosed: false,
 		},
 	})
 
-	app.NewWebviewWindowWithOptions(application.WebviewWindowOptions{
-		Title: constInfo.AppName,
-		Width: 1024,
+	// 创建系统托盘并设置标签
+	sysTray := app.NewSystemTray()
+	sysTray.SetLabel(constInfo.AppName)
+
+	window = app.NewWebviewWindowWithOptions(application.WebviewWindowOptions{
+		Title:  constInfo.AppName,
+		Width:  1024,
 		Height: 768,
 		Mac: application.MacWindow{
 			InvisibleTitleBarHeight: 50,
 			Backdrop:                application.MacBackdropTranslucent,
 			TitleBar:                application.MacTitleBarHiddenInset,
 		},
-		BackgroundColour: application.NewRGB(27, 38, 54),
-		URL:              "/",
+		BackgroundColour:    application.NewRGB(27, 38, 54),
+		URL:                 "/",
+		AlwaysOnTop:         true,
+		MinimiseButtonState: application.ButtonEnabled,
+		MaximiseButtonState: application.ButtonDisabled,
+		CloseButtonState:    application.ButtonDisabled,
 	})
+
+	// 将窗口附加到系统托盘 (附加后托盘图标可自动控制窗口显示隐藏)
+	sysTray.AttachWindow(window)
+	sysTray.WindowOffset(100)
+	sysTray.WindowDebounce(200 * time.Millisecond)
+
+	logo, err := assets.GetAsset("images/logo.png")
+	if err != nil {
+		fmt.Printf("Failed to load logo asset: %v\n", err)
+	}
+
+	if runtime.GOOS == "darwin" {
+		sysTray.SetTemplateIcon(logo)
+	} else {
+		sysTray.SetIcon(logo)
+	}
+
+	// 菜单：打开窗口、退出
+	menu := app.NewMenu()
+	menu.Add("打开窗口").OnClick(func(_ *application.Context) {
+		window.Show()
+	})
+	menu.Add("退出").OnClick(func(_ *application.Context) {
+		app.Quit()
+	})
+
+	sysTray.SetMenu(menu)
+
+	// Windows 下启动监听
+	if runtime.GOOS == "windows" {
+		go watchTaskbarCreated(sysTray, window, logo, menu)
+	}
 
 	go func() {
 		runBackgroundTask(appCtx)
-		for {
-			now := time.Now().Format(time.RFC1123)
-			app.EmitEvent("time", now)
-			time.Sleep(time.Second)
-		}
 	}()
 
 	err = app.Run()

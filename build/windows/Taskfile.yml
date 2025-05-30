@@ -9,6 +9,7 @@ tasks:
     deps:
       - task: common:go:mod:tidy
       - task: common:build:frontend
+      - task: common:update:build-assets
         vars:
           PRODUCTION: '{{.PRODUCTION}}'
       - task: common:generate:icons

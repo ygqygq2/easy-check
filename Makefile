@@ -51,7 +51,7 @@ test:
 # 清理目标
 clean:
 	rm -rf bin
-	rm -f easy-check.zip
+	rm -f easy-check*.zip
 
 # 通用打包函数
 define package_binary

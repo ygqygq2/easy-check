@@ -3,26 +3,26 @@
 #
 # The lines below are called `modelines`. See `:help modeline`
 
-name: "v3"
+name: "easy-check-ui"
 arch: ${GOARCH}
 platform: "linux"
-version: "0.1.0"
+version: "v3.0.1"
 section: "default"
 priority: "extra"
 maintainer: ${GIT_COMMITTER_NAME} <${GIT_COMMITTER_EMAIL}>
-description: "My Product Description"
-vendor: "My Company"
+description: "简单网络工具"
+vendor: "ygqygq2"
 homepage: "https://wails.io"
 license: "MIT"
 release: "1"
 
 contents:
-  - src: "./bin/v3"
-    dst: "/usr/local/bin/v3"
+  - src: "./bin/easy-check-ui"
+    dst: "/usr/local/bin/easy-check-ui"
   - src: "./build/appicon.png"
-    dst: "/usr/share/icons/hicolor/128x128/apps/v3.png"
-  - src: "./build/linux/v3.desktop"
-    dst: "/usr/share/applications/v3.desktop"
+    dst: "/usr/share/icons/hicolor/128x128/apps/easy-check-ui.png"
+  - src: "./build/linux/easy-check-ui.desktop"
+    dst: "/usr/share/applications/easy-check-ui.desktop"
 
 depends:
   - gtk3
