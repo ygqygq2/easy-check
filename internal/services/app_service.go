@@ -78,11 +78,18 @@ func (a *AppService) GetSharedConstant() *constants.SharedConstants {
 // CheckForUpdates checks for updates
 func (a *AppService) CheckForUpdates() string {
 	constInfo := constants.GetSharedConstants(a.appCtx)
-	err := update.CheckAndUpdate(a.appCtx, constInfo.UpdateServer)
+	result, err := update.CheckAndUpdate(a.appCtx, constInfo.UpdateServer)
 	if err != nil {
 		return fmt.Sprintf("检查更新失败: %v", err)
 	}
-	return "更新成功！请重新启动应用程序。"
+	if result.Updated {
+		if result.NeedsRestart {
+			return fmt.Sprintf("%s 请重新启动应用程序。", result.Message)
+		}
+		return result.Message
+	}
+
+	return result.Message
 }
 
 // RestartApp restarts the application

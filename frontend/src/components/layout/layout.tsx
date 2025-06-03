@@ -59,10 +59,21 @@ export function Layout({ children }: LayoutProps) {
         {
           value: "update",
           label: "检查更新",
-          onClick: () => {
-            CheckForUpdates().then((res) => {
-              alert(res);
-            });
+          onClick: async () => {
+            try {
+              const res = await CheckForUpdates();
+              toaster.create({
+                title: "检查更新",
+                description: res,
+                type: "info", // 根据需要可以改为 "success" 或 "warning"
+              });
+            } catch (error) {
+              toaster.create({
+                title: "检查更新失败",
+                description: `发生错误: ${error}`,
+                type: "error",
+              });
+            }
           },
         },
         {

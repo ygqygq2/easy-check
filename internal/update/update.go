@@ -29,6 +29,11 @@ type VersionInfo struct {
 	UpdatedAt   string `json:"updatedAt"`
 	DownloadUrl string `json:"downloadUrl"`
 }
+type UpdateResult struct {
+	Updated      bool   // 是否进行了更新
+	NeedsRestart bool   // 是否需要重启
+	Message      string // 状态消息
+}
 
 // 解压 ZIP 文件到指定目录
 func unzip(src []byte, dest string) error {
@@ -103,10 +108,11 @@ func findExecutable(tempDir, goos, arch string) (string, error) {
 }
 
 // CheckAndUpdate 检查更新并执行更新
-func CheckAndUpdate(appCtx *initializer.AppContext, UpdateServer string) error {
+func CheckAndUpdate(appCtx *initializer.AppContext, UpdateServer string) (*UpdateResult, error) {
 	goos := appCtx.PlatformInfo.OS
 	arch := appCtx.PlatformInfo.Arch
 	currentVersion := appCtx.AppVersion
+
 	// 1. 从 latestUrl 获取最新版本信息
 	latestUrl := fmt.Sprintf("%s/api/versions/latest?os=%s&arch=%s", UpdateServer, goos, arch)
 	fmt.Printf("检查最新版本地址: %s\n", latestUrl)
@@ -114,23 +120,23 @@ func CheckAndUpdate(appCtx *initializer.AppContext, UpdateServer string) error {
 	client := &http.Client{}
 	resp, err := client.Get(latestUrl)
 	if err != nil {
-		return fmt.Errorf("无法访问最新版本地址: %v", err)
+		return nil, fmt.Errorf("无法访问最新版本地址: %v", err)
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		return fmt.Errorf("获取最新版本失败，HTTP 状态码: %d", resp.StatusCode)
+		return nil, fmt.Errorf("获取最新版本失败，HTTP 状态码: %d", resp.StatusCode)
 	}
 
 	// 解析最新版本信息
 	var versionInfo VersionInfo
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
-		return fmt.Errorf("读取最新版本响应失败: %v", err)
+		return nil, fmt.Errorf("读取最新版本响应失败: %v", err)
 	}
 	err = json.Unmarshal(body, &versionInfo)
 	if err != nil {
-		return fmt.Errorf("解析最新版本信息失败: %v", err)
+		return nil, fmt.Errorf("解析最新版本信息失败: %v", err)
 	}
 	fmt.Printf("最新版本: %s\n", versionInfo.Name)
 
@@ -145,17 +151,21 @@ func CheckAndUpdate(appCtx *initializer.AppContext, UpdateServer string) error {
 		currentVersion = "0.0.1"
 		currentVer, err = semver.NewVersion(currentVersion)
 		if err != nil {
-			return fmt.Errorf("默认版本号解析失败: %v", err)
+			return nil, fmt.Errorf("默认版本号解析失败: %v", err)
 		}
 	}
 	latestVer, err := semver.NewVersion(latestVersion)
 	if err != nil {
-		return fmt.Errorf("最新版本号格式错误: %v", err)
+		return nil, fmt.Errorf("最新版本号格式错误: %v", err)
 	}
 
 	if !currentVer.LessThan(latestVer) {
 		fmt.Println("当前已是最新版本，无需更新。")
-		return nil
+		return &UpdateResult{
+			Updated:      false,
+			NeedsRestart: false,
+			Message:      "当前已是最新版本，无需更新。",
+		}, nil
 	}
 
 	// 3. 如果当前版本号小于最新版本号，则执行更新
@@ -164,49 +174,49 @@ func CheckAndUpdate(appCtx *initializer.AppContext, UpdateServer string) error {
 
 	resp, err = client.Get(updateURL)
 	if err != nil {
-		return fmt.Errorf("无法访问更新地址: %v", err)
+		return nil, fmt.Errorf("无法访问更新地址: %v", err)
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		return fmt.Errorf("下载更新包失败，HTTP 状态码: %d", resp.StatusCode)
+		return nil, fmt.Errorf("下载更新包失败，HTTP 状态码: %d", resp.StatusCode)
 	}
 
 	// 读取 ZIP 文件内容
 	zipData, err := io.ReadAll(resp.Body)
 	if err != nil {
-		return fmt.Errorf("读取更新包失败: %v", err)
+		return nil, fmt.Errorf("读取更新包失败: %v", err)
 	}
 
 	// 解压 ZIP 文件到临时目录
 	tempDir, err := os.MkdirTemp("", "update")
 	if err != nil {
-		return fmt.Errorf("创建临时目录失败: %v", err)
+		return nil, fmt.Errorf("创建临时目录失败: %v", err)
 	}
 	defer os.RemoveAll(tempDir)
 
 	err = unzip(zipData, tempDir)
 	if err != nil {
-		return fmt.Errorf("解压更新包失败: %v", err)
+		return nil, fmt.Errorf("解压更新包失败: %v", err)
 	}
 
 	// 找到解压后的可执行文件路径
 	executablePath, err := findExecutable(tempDir, goos, arch)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	// 执行更新
 	fmt.Println("开始更新…")
 	executableFile, err := os.Open(executablePath)
 	if err != nil {
-		return fmt.Errorf("打开解压后的可执行文件失败: %v", err)
+		return nil, fmt.Errorf("打开解压后的可执行文件失败: %v", err)
 	}
 	defer executableFile.Close()
 
 	err = selfupdate.Apply(executableFile, selfupdate.Options{})
 	if err != nil {
-		return fmt.Errorf("更新失败: %v", err)
+		return nil, fmt.Errorf("更新失败: %v", err)
 	}
 
 	// 设置需要重启标记
@@ -214,5 +224,9 @@ func CheckAndUpdate(appCtx *initializer.AppContext, UpdateServer string) error {
 
 	// 4. 提示更新成功
 	fmt.Println("更新成功！请重新启动应用程序。")
-	return nil
+	return &UpdateResult{
+		Updated:      true,
+		NeedsRestart: true,
+		Message:      "更新成功！请重新启动应用程序。",
+	}, nil
 }
