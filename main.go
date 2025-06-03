@@ -97,7 +97,6 @@ func main() {
 		},
 		BackgroundColour:    application.NewRGB(27, 38, 54),
 		URL:                 "/",
-		AlwaysOnTop:         true,
 		MinimiseButtonState: application.ButtonEnabled,
 		MaximiseButtonState: application.ButtonDisabled,
 		CloseButtonState:    application.ButtonDisabled,

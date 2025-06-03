@@ -10,7 +10,6 @@ import (
 	"os/exec"
 	"regexp"
 	"strconv"
-	"strings"
 
 	"golang.org/x/sys/windows"
 	"golang.org/x/text/encoding/simplifiedchinese"
@@ -40,17 +39,17 @@ func (p *WindowsPinger) ParsePingOutput(lines []string, count int) (int, float64
 	var latencies []float64
 
 	// 使用正则表达式匹配延迟值
-	reTime := regexp.MustCompile(`time=(\d+)ms`)
+	reLatencyAndTTL := regexp.MustCompile(`[=<](\d+)ms TTL=(\d+)`)
 
 	for _, line := range lines {
-		// 检查TTL是否存在，表示ping成功
-		if strings.Contains(line, "TTL=") {
+		// 同时匹配延迟值和 TTL
+		matches := reLatencyAndTTL.FindStringSubmatch(line)
+		if len(matches) > 2 {
 			successCount++
-			matches := reTime.FindStringSubmatch(line)
-			if len(matches) > 1 {
-				latency, _ := strconv.ParseFloat(matches[1], 64)
-				latencies = append(latencies, latency)
-			}
+			latency, _ := strconv.ParseFloat(matches[1], 64) // 提取延迟值
+			latencies = append(latencies, latency)
+			// TTL 值可以根据需要提取，但这里暂时不使用
+			// ttl, _ := strconv.Atoi(matches[2])
 		}
 	}
 

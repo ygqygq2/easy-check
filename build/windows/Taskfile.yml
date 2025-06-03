@@ -23,7 +23,7 @@ tasks:
     vars:
       OS: '{{.OS | default "windows"}}'
       ARCH: '{{.ARCH | default ARCH}}'
-      BUILD_FLAGS: '{{if eq .PRODUCTION "true"}}-tags production -trimpath -buildvcs=false -ldflags="-X main.version={{.GIT_VERSION}} -w -s -H windowsgui"{{else}}-buildvcs=false -gcflags=all="-l"{{end}}'
+      BUILD_FLAGS: '{{if eq .PRODUCTION "true"}}-tags production -trimpath -buildvcs=false -ldflags="-X main.version={{.GIT_VERSION}} -w -s{{if not (eq .DEBUG "true")}} -H windowsgui{{end}}"{{else}}-buildvcs=false -gcflags=all="-l"{{end}}'
     env:
       GOOS: windows
       CGO_ENABLED: 0
