@@ -48,11 +48,6 @@ func NewAlertStatusManager(dbInstance *badger.DB, logger *logger.Logger, dbConfi
 	return &AlertStatusManager{db: dbInstance, logger: logger, dbConfig: &dbConfig}, nil
 }
 
-// generateKey 生成 Badger 键
-func (d *AlertStatusManager) generateKey(host string) []byte {
-	return []byte(fmt.Sprintf("alert_status:%s", host))
-}
-
 // SetAlertStatus 保存告警状态
 func (d *AlertStatusManager) SetAlertStatus(status AlertStatus, ttlSeconds int) error {
 	if d == nil {
@@ -61,7 +56,7 @@ func (d *AlertStatusManager) SetAlertStatus(status AlertStatus, ttlSeconds int) 
 	if d.db == nil {
 		return d.logger.LogAndError("database instance is nil in AlertStatusManager", "error")
 	}
-	key := d.generateKey(status.Host)
+	key := GenerateAlertStatusKey(status.Host)
 	value, err := json.Marshal(status)
 	if err != nil {
 		return d.logger.LogAndError("failed to marshal alert status: %v", "error", err)
@@ -80,7 +75,7 @@ func (d *AlertStatusManager) SetAlertStatus(status AlertStatus, ttlSeconds int) 
 // GetAlertStatus 获取告警状态
 func (d *AlertStatusManager) GetAlertStatus(host string) (AlertStatus, error) {
 	var status AlertStatus
-	key := d.generateKey(host)
+	key := GenerateAlertStatusKey(host)
 	err := d.db.View(func(txn *badger.Txn) error {
 		item, err := txn.Get(key)
 		if err != nil {
@@ -102,7 +97,7 @@ func (d *AlertStatusManager) GetAlertStatus(host string) (AlertStatus, error) {
 
 // DeleteAlertStatus 删除告警状态
 func (d *AlertStatusManager) DeleteAlertStatus(host string) error {
-	key := d.generateKey(host)
+	key := GenerateAlertStatusKey(host)
 	return d.db.Update(func(txn *badger.Txn) error {
 		return txn.Delete(key)
 	})

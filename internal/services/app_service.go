@@ -123,51 +123,69 @@ func (a *AppService) GetHosts(page int, pageSize int, searchTerm string) *types.
 	}
 }
 
-// GetLatencyWithHosts retrieves latency data for hosts
-func (a *AppService) GetLatencyWithHosts(hosts []string) *types.HostsLatencyResponse {
-	metrics := []string{"min_latency", "avg_latency", "max_latency", "packet_loss"}
-	latencyData := make([]types.HostLatencyData, 0)
+// GetStatusWithHosts retrieves latency data and status for hosts
+func (a *AppService) GetStatusWithHosts(hosts []string) *types.HostsStatusResponse {
+    metrics := []string{"min_latency", "avg_latency", "max_latency", "packet_loss"}
+    latencyData := make([]types.HostStatusData, 0)
+	
 
-	for _, metric := range metrics {
-		data, err := data.GetHostMetrics(a.appCtx.TSDB, hosts, metric)
-		if err != nil {
-			return &types.HostsLatencyResponse{
-				Hosts: nil,
-				Total: 0,
-				Error: fmt.Sprintf("查询指标 %s 失败: %v", metric, err),
-			}
-		}
+    // 获取主机状态
+    statusMap, err := data.GetHostStatus(a.appCtx.DB, hosts)
+    if err != nil {
+        return &types.HostsStatusResponse{
+            Hosts: nil,
+            Total: 0,
+            Error: fmt.Sprintf("查询主机状态失败: %v", err),
+        }
+    }
 
-		for host, value := range data {
-			var existing *types.HostLatencyData
-			for i := range latencyData {
-				if latencyData[i].Host == host {
-					existing = &latencyData[i]
-					break
-				}
-			}
+    for _, metric := range metrics {
+        data, err := data.GetHostMetrics(a.appCtx.TSDB, hosts, metric)
+        if err != nil {
+            return &types.HostsStatusResponse{
+                Hosts: nil,
+                Total: 0,
+                Error: fmt.Sprintf("查询指标 %s 失败: %v", metric, err),
+            }
+        }
 
-			if existing == nil {
-				latencyData = append(latencyData, types.HostLatencyData{Host: host})
-				existing = &latencyData[len(latencyData)-1]
-			}
+        for host, value := range data {
+            var existing *types.HostStatusData
+            for i := range latencyData {
+                if latencyData[i].Host == host {
+                    existing = &latencyData[i]
+                    break
+                }
+            }
 
-			switch metric {
-			case "min_latency":
-				existing.MinLatency = value
-			case "avg_latency":
-				existing.AvgLatency = value
-			case "max_latency":
-				existing.MaxLatency = value
-			case "packet_loss":
-				existing.PacketLoss = value
-			}
-		}
-	}
+            if existing == nil {
+                latencyData = append(latencyData, types.HostStatusData{Host: host})
+                existing = &latencyData[len(latencyData)-1]
+            }
 
-	return &types.HostsLatencyResponse{
-		Hosts: latencyData,
-		Total: len(latencyData),
-		Error: "",
-	}
+            switch metric {
+            case "min_latency":
+                existing.MinLatency = value
+            case "avg_latency":
+                existing.AvgLatency = value
+            case "max_latency":
+                existing.MaxLatency = value
+            case "packet_loss":
+                existing.PacketLoss = value
+            }
+        }
+    }
+
+    // 合并主机状态到返回数据
+    for i := range latencyData {
+        if status, ok := statusMap[latencyData[i].Host]; ok {
+            latencyData[i].Status = string(status)
+        }
+    }
+
+    return &types.HostsStatusResponse{
+        Hosts: latencyData,
+        Total: len(latencyData),
+        Error: "",
+    }
 }

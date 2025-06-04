@@ -4,9 +4,10 @@ export interface Host {
 }
 
 export interface HostStatus {
-  id: string;
-  name: string;
-  latency: number; // 对应 tsdb 中的 avg_latency
+  description: string;
+  latency: number | null; // 对应 tsdb 中的 avg_latency
   status?: "ALERT" | "RECOVERY";
   sent?: boolean;
 }
+
+export type HostStatusMap = Map<string, HostStatus>;

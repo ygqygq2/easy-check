@@ -7,14 +7,14 @@ import {
 } from "@chakra-ui/react";
 
 import { Tooltip } from "@/components/ui/tooltip";
-import { Host } from "@/types/host";
+import { Host, HostStatus, HostStatusMap } from "@/types/host";
 
 interface HostListProps {
   hosts: Host[];
-  latencyData: Record<string, number | null>;
+  statusData: HostStatusMap;
 }
 
-export function HostList({ hosts, latencyData }: HostListProps) {
+export function HostList({ hosts, statusData }: HostListProps) {
   const getColorPalette = (latency: number) => {
     if (latency === 0) return "gray";
     if (latency <= 80) return "green";
@@ -35,51 +35,61 @@ export function HostList({ hosts, latencyData }: HostListProps) {
     return "outline";
   };
 
-  const getDisabled = (latency: number) => {
-    if (latency === 0) return true;
-    return false;
+  const getDisabled = (latency: number) => latency === 0;
+
+  const getFontColor = (status: HostStatus | null) => {
+    if (status?.status === "ALERT") {
+      return "red";
+    }
+    return undefined;
   };
 
   return (
     <SimpleGrid columns={{ base: 1, md: 2 }} mt="4">
-      {hosts.map((host) => (
-        <Stack align="center" direction="row" gap="10" px="4" key={host.host}>
-          <CheckboxCard.Root
-            disabled={getDisabled(latencyData[host.host] || 0)}
-            variant={getVariant(latencyData[host.host] || 0)}
-            colorPalette="teal"
-          >
-            <CheckboxCard.HiddenInput />
-            <CheckboxCard.Control>
-              <CheckboxCard.Indicator />
-              <CheckboxCard.Label>
-                <Progress.Root
-                  value={getValue(latencyData[host.host] || 0)}
-                  width="100%"
-                  colorPalette={getColorPalette(latencyData[host.host] || 0)}
-                >
-                  <HStack gap="2">
-                    <Tooltip content={host.host}>
-                      <Progress.Label maxW={100} mr="2">
-                        {host.host}
-                      </Progress.Label>
-                    </Tooltip>
-                    <Progress.Track flex="1">
-                      <Progress.Range />
-                    </Progress.Track>
-                    <Progress.ValueText>
-                      {latencyData[host.host] === null
-                        ? "加载中"
-                        : latencyData[host.host]?.toFixed(0)}
-                      ms
-                    </Progress.ValueText>
-                  </HStack>
-                </Progress.Root>
-              </CheckboxCard.Label>
-            </CheckboxCard.Control>
-          </CheckboxCard.Root>
-        </Stack>
-      ))}
+      {hosts.map((host) => {
+        const hostStatus = statusData.get(host.host) || null;
+        const latency = hostStatus?.latency || 0;
+
+        return (
+          <Stack align="center" direction="row" gap="10" px="4" key={host.host}>
+            <CheckboxCard.Root
+              disabled={getDisabled(latency)}
+              variant={getVariant(latency)}
+              colorPalette="teal"
+            >
+              <CheckboxCard.HiddenInput />
+              <CheckboxCard.Control>
+                <CheckboxCard.Indicator />
+                <CheckboxCard.Label>
+                  <Progress.Root
+                    value={getValue(latency)}
+                    width="100%"
+                    colorPalette={getColorPalette(latency)}
+                  >
+                    <HStack gap="2">
+                      <Tooltip content={host.host}>
+                        <Progress.Label
+                          maxW={100}
+                          mr="2"
+                          color={getFontColor(hostStatus)}
+                        >
+                          {host.host}
+                        </Progress.Label>
+                      </Tooltip>
+                      <Progress.Track flex="1">
+                        <Progress.Range />
+                      </Progress.Track>
+                      <Progress.ValueText>
+                        {latency === null ? "加载中" : latency.toFixed(0)} ms
+                      </Progress.ValueText>
+                    </HStack>
+                  </Progress.Root>
+                </CheckboxCard.Label>
+              </CheckboxCard.Control>
+            </CheckboxCard.Root>
+          </Stack>
+        );
+      })}
     </SimpleGrid>
   );
 }

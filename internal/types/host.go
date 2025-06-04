@@ -13,17 +13,19 @@ type HostsResponse struct {
 	Error string `json:"error,omitempty"`
 }
 
-type HostLatencyData struct {
+type HostStatusData struct {
 	Host       string  `json:"host"`
 	MinLatency float64 `json:"min_latency"`
 	AvgLatency float64 `json:"avg_latency"`
 	MaxLatency float64 `json:"max_latency"`
 	PacketLoss float64 `json:"packet_loss"`
+	Status     string  `json:"status"`
+	// Sent       bool    `json:"sent"`
 }
 
-// HostsLatencyResponse
-type HostsLatencyResponse struct {
-	Hosts []HostLatencyData `json:"hosts"`
-	Total int               `json:"total"`
-	Error string            `json:"error,omitempty"`
+// HostsStatusResponse
+type HostsStatusResponse struct {
+	Hosts []HostStatusData `json:"hosts"`
+	Total int              `json:"total"`
+	Error string           `json:"error,omitempty"`
 }

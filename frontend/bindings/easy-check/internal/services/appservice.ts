@@ -58,10 +58,10 @@ export function GetHosts(page: number, pageSize: number, searchTerm: string): Pr
 }
 
 /**
- * GetLatencyWithHosts retrieves latency data for hosts
+ * GetSharedConstant retrieves shared constants
  */
-export function GetLatencyWithHosts(hosts: string[]): Promise<types$0.HostsLatencyResponse | null> & { cancel(): void } {
-    let $resultPromise = $Call.ByID(2388114338, hosts) as any;
+export function GetSharedConstant(): Promise<constants$0.SharedConstants | null> & { cancel(): void } {
+    let $resultPromise = $Call.ByID(2539832674) as any;
     let $typingPromise = $resultPromise.then(($result: any) => {
         return $$createType4($result);
     }) as any;
@@ -70,10 +70,10 @@ export function GetLatencyWithHosts(hosts: string[]): Promise<types$0.HostsLaten
 }
 
 /**
- * GetSharedConstant retrieves shared constants
+ * GetStatusWithHosts retrieves latency data and status for hosts
  */
-export function GetSharedConstant(): Promise<constants$0.SharedConstants | null> & { cancel(): void } {
-    let $resultPromise = $Call.ByID(2539832674) as any;
+export function GetStatusWithHosts(hosts: string[]): Promise<types$0.HostsStatusResponse | null> & { cancel(): void } {
+    let $resultPromise = $Call.ByID(2962638184, hosts) as any;
     let $typingPromise = $resultPromise.then(($result: any) => {
         return $$createType6($result);
     }) as any;
@@ -117,7 +117,7 @@ export function ServiceStartup(options: application$0.ServiceOptions): Promise<v
 const $$createType0 = $Create.Map($Create.Any, $Create.Any);
 const $$createType1 = types$0.HostsResponse.createFrom;
 const $$createType2 = $Create.Nullable($$createType1);
-const $$createType3 = types$0.HostsLatencyResponse.createFrom;
+const $$createType3 = constants$0.SharedConstants.createFrom;
 const $$createType4 = $Create.Nullable($$createType3);
-const $$createType5 = constants$0.SharedConstants.createFrom;
+const $$createType5 = types$0.HostsStatusResponse.createFrom;
 const $$createType6 = $Create.Nullable($$createType5);

@@ -68,9 +68,54 @@ func (d *DB) Close() error {
 }
 
 func (d *DB) SaveHosts(hosts []config.Host) error {
-  data, err := json.Marshal(hosts)
-  if err != nil {
-      return err
-  }
-  return d.Set("hosts", string(data))
+	data, err := json.Marshal(hosts)
+	if err != nil {
+		return err
+	}
+	return d.Set("hosts", string(data))
+}
+
+// QueryStatusForHosts 根据主机列表查询对应的 StatusType
+func (d *DB) QueryStatusForHosts(hosts []string) (map[string]StatusType, error) {
+	statusMap := make(map[string]StatusType)
+
+	err := d.Instance.View(func(txn *badger.Txn) error {
+		for _, host := range hosts {
+			key := GenerateAlertStatusKey(host)
+			item, err := txn.Get(key)
+			if err != nil {
+				if err == badger.ErrKeyNotFound {
+					// 如果主机不存在，默认状态为 RECOVERY
+					statusMap[host] = StatusRecovery
+					fmt.Printf("Host %s not found in DB, defaulting to RECOVERY\n", host)
+					continue
+				}
+				return fmt.Errorf("failed to get status for host %s: %w", host, err)
+			}
+
+			var status AlertStatus
+			err = item.Value(func(v []byte) error {
+				return json.Unmarshal(v, &status)
+			})
+			if err != nil {
+				return fmt.Errorf("failed to unmarshal status for host %s: %w", host, err)
+			}
+
+			// 将状态存入结果映射
+			statusMap[host] = status.Status
+			fmt.Printf("Host %s not found in DB, defaulting to RECOVERY\n", host)
+		}
+		return nil
+	})
+
+	if err != nil {
+		return nil, fmt.Errorf("failed to query statuses for hosts: %w", err)
+	}
+
+	return statusMap, nil
+}
+
+// GenerateAlertStatusKey 生成主机对应的键
+func GenerateAlertStatusKey(host string) []byte {
+	return []byte(fmt.Sprintf("alert_status:%s", host))
 }

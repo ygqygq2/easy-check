@@ -33,15 +33,16 @@ export class Host {
     }
 }
 
-export class HostLatencyData {
+export class HostStatusData {
     "host": string;
     "min_latency": number;
     "avg_latency": number;
     "max_latency": number;
     "packet_loss": number;
+    "status": string;
 
-    /** Creates a new HostLatencyData instance. */
-    constructor($$source: Partial<HostLatencyData> = {}) {
+    /** Creates a new HostStatusData instance. */
+    constructor($$source: Partial<HostStatusData> = {}) {
         if (!("host" in $$source)) {
             this["host"] = "";
         }
@@ -57,49 +58,19 @@ export class HostLatencyData {
         if (!("packet_loss" in $$source)) {
             this["packet_loss"] = 0;
         }
-
-        Object.assign(this, $$source);
-    }
-
-    /**
-     * Creates a new HostLatencyData instance from a string or object.
-     */
-    static createFrom($$source: any = {}): HostLatencyData {
-        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
-        return new HostLatencyData($$parsedSource as Partial<HostLatencyData>);
-    }
-}
-
-/**
- * HostsLatencyResponse
- */
-export class HostsLatencyResponse {
-    "hosts": HostLatencyData[];
-    "total": number;
-    "error"?: string;
-
-    /** Creates a new HostsLatencyResponse instance. */
-    constructor($$source: Partial<HostsLatencyResponse> = {}) {
-        if (!("hosts" in $$source)) {
-            this["hosts"] = [];
-        }
-        if (!("total" in $$source)) {
-            this["total"] = 0;
+        if (!("status" in $$source)) {
+            this["status"] = "";
         }
 
         Object.assign(this, $$source);
     }
 
     /**
-     * Creates a new HostsLatencyResponse instance from a string or object.
+     * Creates a new HostStatusData instance from a string or object.
      */
-    static createFrom($$source: any = {}): HostsLatencyResponse {
-        const $$createField0_0 = $$createType1;
+    static createFrom($$source: any = {}): HostStatusData {
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
-        if ("hosts" in $$parsedSource) {
-            $$parsedSource["hosts"] = $$createField0_0($$parsedSource["hosts"]);
-        }
-        return new HostsLatencyResponse($$parsedSource as Partial<HostsLatencyResponse>);
+        return new HostStatusData($$parsedSource as Partial<HostStatusData>);
     }
 }
 
@@ -127,7 +98,7 @@ export class HostsResponse {
      * Creates a new HostsResponse instance from a string or object.
      */
     static createFrom($$source: any = {}): HostsResponse {
-        const $$createField0_0 = $$createType3;
+        const $$createField0_0 = $$createType1;
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
         if ("hosts" in $$parsedSource) {
             $$parsedSource["hosts"] = $$createField0_0($$parsedSource["hosts"]);
@@ -136,8 +107,41 @@ export class HostsResponse {
     }
 }
 
+/**
+ * HostsStatusResponse
+ */
+export class HostsStatusResponse {
+    "hosts": HostStatusData[];
+    "total": number;
+    "error"?: string;
+
+    /** Creates a new HostsStatusResponse instance. */
+    constructor($$source: Partial<HostsStatusResponse> = {}) {
+        if (!("hosts" in $$source)) {
+            this["hosts"] = [];
+        }
+        if (!("total" in $$source)) {
+            this["total"] = 0;
+        }
+
+        Object.assign(this, $$source);
+    }
+
+    /**
+     * Creates a new HostsStatusResponse instance from a string or object.
+     */
+    static createFrom($$source: any = {}): HostsStatusResponse {
+        const $$createField0_0 = $$createType3;
+        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        if ("hosts" in $$parsedSource) {
+            $$parsedSource["hosts"] = $$createField0_0($$parsedSource["hosts"]);
+        }
+        return new HostsStatusResponse($$parsedSource as Partial<HostsStatusResponse>);
+    }
+}
+
 // Private type creation functions
-const $$createType0 = HostLatencyData.createFrom;
+const $$createType0 = Host.createFrom;
 const $$createType1 = $Create.Array($$createType0);
-const $$createType2 = Host.createFrom;
+const $$createType2 = HostStatusData.createFrom;
 const $$createType3 = $Create.Array($$createType2);

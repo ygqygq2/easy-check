@@ -1,12 +1,12 @@
 "use client";
 import {
   GetHosts,
-  GetLatencyWithHosts,
+  GetStatusWithHosts,
 } from "@bindings/easy-check/internal/services/appservice";
 import { Box, Stack } from "@chakra-ui/react";
 import { useEffect, useState } from "react";
 
-import { Host } from "@/types/host";
+import { Host, HostStatusMap } from "@/types/host";
 
 import { PaginationControls } from "../components/PaginationControls";
 import { HostList } from "./home/components/HostList";
@@ -18,9 +18,7 @@ export function Page() {
   const [page, setPage] = useState(1);
   const [hosts, setHosts] = useState<Host[]>([]);
   const [total, setTotal] = useState(0);
-  const [latencyData, setLatencyData] = useState<Record<string, number | null>>(
-    {}
-  );
+  const [statusData, setStatusData] = useState<HostStatusMap>(new Map());
   const [refreshInterval, setRefreshInterval] = useState<number | null>(10000); // 默认10秒刷新
   const [searchTerm, setSearchTerm] = useState("");
   const [displayedHosts, setDisplayedHosts] = useState<Host[]>([]);
@@ -38,11 +36,16 @@ export function Page() {
       setTotal(total);
 
       // 初始化 latencyData 为 null
-      const initialLatencyData: Record<string, number | null> = {};
+      const initialLatencyData: HostStatusMap = new Map();
       hosts.forEach((host) => {
-        initialLatencyData[host.host] = null;
+        initialLatencyData.set(host.host, {
+          description: host.description,
+          latency: null,
+          status: "RECOVERY",
+          sent: false,
+        });
       });
-      setLatencyData(initialLatencyData);
+      setStatusData(initialLatencyData);
 
       // 更新显示的主机列表
       setDisplayedHosts(hosts);
@@ -71,40 +74,43 @@ export function Page() {
   }, [searchTerm, hosts]);
 
   useEffect(() => {
-    const fetchLatency = async () => {
+    const fetchHostsStatus = async () => {
       if (hosts?.length === 0) {
-        setLatencyData({});
+        setStatusData(new Map());
         return;
       }
       try {
         const hostNames = hosts.map((host) => host.host);
         if (hostNames?.length === 0) {
-          setLatencyData({});
+          setStatusData(new Map());
           return;
         }
-        const res = await GetLatencyWithHosts(hostNames);
-        const latencyHosts = res?.hosts || [];
-        const latencyMap: Record<string, number | null> = {};
-        latencyHosts.forEach(
-          (latencyHost: { host: string; avg_latency: number | null }) => {
-            latencyMap[latencyHost.host] = latencyHost.avg_latency;
-          }
-        );
-        setLatencyData(latencyMap);
+        const res = await GetStatusWithHosts(hostNames);
+        const statusHosts = res?.hosts || [];
+        const statusList: HostStatusMap = new Map();
+        statusHosts.forEach((statusHost) => {
+          statusList.set(statusHost.host, {
+            description: statusHost.host,
+            latency: statusHost.avg_latency || null,
+            status: statusHost.status === "ALERT" ? "ALERT" : "RECOVERY",
+            sent: false,
+          });
+        });
+        setStatusData(statusList);
       } catch (err) {
         console.error("Error fetching latency data:", err);
       }
     };
 
     if (hosts.length > 0) {
-      fetchLatency();
+      fetchHostsStatus();
     } else {
-      setLatencyData({});
+      setStatusData(new Map());
     }
 
     let intervalId: NodeJS.Timeout | null = null;
     if (refreshInterval && hosts.length > 0) {
-      intervalId = setInterval(fetchLatency, refreshInterval);
+      intervalId = setInterval(fetchHostsStatus, refreshInterval);
     }
     return () => {
       if (intervalId) clearInterval(intervalId);
@@ -135,7 +141,7 @@ export function Page() {
           onChange={setRefreshInterval}
         />
       </Stack>
-      <HostList hosts={displayedHosts} latencyData={latencyData} />
+      <HostList hosts={displayedHosts} statusData={statusData} />
       <PaginationControls
         page={page}
         total={total}

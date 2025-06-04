@@ -56,3 +56,18 @@ func containsIgnoreCase(str, substr string) bool {
 func GetHostMetrics(tsdb *db.TSDB, hosts []string, metric string) (map[string]float64, error) {
 	return tsdb.QueryLatestMetricsForHosts(hosts, metric)
 }
+
+// GetHostStatus 根据主机列表查询对应的状态
+func GetHostStatus(db *db.DB, hosts []string) (map[string]db.StatusType, error) {
+	if db == nil {
+		return nil, fmt.Errorf("dbManager is nil")
+	}
+
+	// 调用 QueryStatusForHosts 获取主机状态
+	statusMap, err := db.QueryStatusForHosts(hosts)
+	if err != nil {
+		return nil, fmt.Errorf("failed to query host statuses: %w", err)
+	}
+
+	return statusMap, nil
+}
