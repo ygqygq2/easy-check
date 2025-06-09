@@ -87,7 +87,6 @@ func (d *DB) QueryStatusForHosts(hosts []string) (map[string]StatusType, error) 
 				if err == badger.ErrKeyNotFound {
 					// 如果主机不存在，默认状态为 RECOVERY
 					statusMap[host] = StatusRecovery
-					fmt.Printf("Host %s not found in DB, defaulting to RECOVERY\n", host)
 					continue
 				}
 				return fmt.Errorf("failed to get status for host %s: %w", host, err)
@@ -103,7 +102,6 @@ func (d *DB) QueryStatusForHosts(hosts []string) (map[string]StatusType, error) 
 
 			// 将状态存入结果映射
 			statusMap[host] = status.Status
-			fmt.Printf("Host %s not found in DB, defaulting to RECOVERY\n", host)
 		}
 		return nil
 	})

@@ -9,6 +9,8 @@ import smallLogo from "@/assets/images/logo36x36.png";
 import MenuBar from "@/components/MenuBar";
 import { ColorModeButton, useColorModeValue } from "@/components/ui/color-mode";
 
+import LogFileViewer from "../LogFileViewer";
+import LogListComponent from "../LogListComponent";
 import { Toaster, toaster } from "../ui/toaster";
 import YamlEditor from "../YamlEditor";
 
@@ -44,12 +46,23 @@ export function Layout({ children }: LayoutProps) {
         {
           value: "log-list",
           label: "日志列表",
-          onClick: () => alert("日志列表"),
+          onClick: () =>
+            setActiveComponent(
+              <LogListComponent onClose={() => setActiveComponent(children)} />
+            ),
         },
         {
           value: "latest-log",
           label: "最新日志",
-          onClick: () => alert("最新日志"),
+          onClick: () => {
+            setActiveComponent(
+              <LogFileViewer
+                fileName=""
+                onClose={() => setActiveComponent(children)}
+                isLatest={true}
+              />
+            );
+          },
         },
       ],
     },
