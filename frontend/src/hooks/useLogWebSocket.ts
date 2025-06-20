@@ -3,7 +3,11 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { LogEntry } from "../types/LogTypes";
 import { parseLogEntry } from "../utils/logParser";
 
-export function useLogWebSocket(isLatest: boolean, isRealtime: boolean) {
+export function useLogWebSocket(
+  isLatest: boolean,
+  isRealtime: boolean,
+  updateInterval: number
+) {
   const [newLogEntries, setNewLogEntries] = useState<LogEntry[]>([]);
   const wsRef = useRef<WebSocket | null>(null);
   const recentMessagesRef = useRef<Set<string>>(new Set());
@@ -50,14 +54,14 @@ export function useLogWebSocket(isLatest: boolean, isRealtime: boolean) {
       }
     };
 
-    timerRef.current = setInterval(flushBuffer, 1000);
+    timerRef.current = setInterval(flushBuffer, updateInterval * 1000);
 
     return () => {
       if (timerRef.current) {
         clearInterval(timerRef.current);
       }
     };
-  }, [isRealtime, isLatest]);
+  }, [isRealtime, isLatest, updateInterval]);
 
   // WebSocket连接
   useEffect(() => {
@@ -74,8 +78,8 @@ export function useLogWebSocket(isLatest: boolean, isRealtime: boolean) {
       ws.onmessage = (event) => {
         processLogMessages(event.data);
 
-        // 如果包含错误信息，立即刷新缓冲区
-        if (event.data.includes("[error]") && isRealtime) {
+        // 如果有日志，立即刷新缓冲区
+        if (bufferRef.current.length > 0 && isRealtime) {
           setNewLogEntries(bufferRef.current);
           bufferRef.current = [];
         }

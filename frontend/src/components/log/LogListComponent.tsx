@@ -3,10 +3,10 @@ import { Box, Flex, Text, VStack } from "@chakra-ui/react";
 import { Icon } from "@iconify/react";
 import { useEffect, useState } from "react";
 
+import ActionButton from "../ui/ActionButton";
+import { HeaderWithActions } from "../ui/HeaderWithActions";
+import { toaster } from "../ui/toaster";
 import LogFileViewer from "./LogFileViewer";
-import ActionButton from "./ui/ActionButton";
-import { HeaderWithActions } from "./ui/HeaderWithActions";
-import { toaster } from "./ui/toaster";
 
 interface LogListComponentProps {
   onClose: () => void;

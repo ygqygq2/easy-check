@@ -9,8 +9,8 @@ import smallLogo from "@/assets/images/logo36x36.png";
 import MenuBar from "@/components/MenuBar";
 import { ColorModeButton, useColorModeValue } from "@/components/ui/color-mode";
 
-import LogFileViewer from "../LogFileViewer";
-import LogListComponent from "../LogListComponent";
+import LogFileViewer from "../log/LogFileViewer";
+import LogListComponent from "../log/LogListComponent";
 import { Toaster, toaster } from "../ui/toaster";
 import YamlEditor from "../YamlEditor";
 

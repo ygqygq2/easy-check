@@ -1,12 +1,4 @@
-import {
-  HStack,
-  Slider,
-  SliderThumb,
-  SliderTrack,
-  Switch,
-  Text,
-} from "@chakra-ui/react";
-import { useState } from "react";
+import { HStack, Slider, Switch } from "@chakra-ui/react";
 
 import ActionButton from "../ui/ActionButton";
 
@@ -15,6 +7,8 @@ interface LogControlPanelProps {
   onRealtimeChange: (value: boolean) => void;
   isLatest: boolean;
   onClose: () => void;
+  updateInterval: number;
+  onUpdateIntervalChange: (value: number) => void;
 }
 
 export const LogControlPanel = ({
@@ -22,23 +16,24 @@ export const LogControlPanel = ({
   onRealtimeChange,
   isLatest,
   onClose,
+  updateInterval,
+  onUpdateIntervalChange,
 }: LogControlPanelProps) => {
-  const [updateInterval, setUpdateInterval] = useState([10]);
-
   return (
     <HStack gap={4}>
       {isLatest && (
-        <HStack>
+        <HStack gap={4}>
           {isRealtime && (
             <Slider.Root
               min={10}
               max={60}
               step={10}
-              value={updateInterval}
-              onValueChange={(e) => setUpdateInterval(e.value)}
+              value={[updateInterval]}
+              onValueChange={(e) => onUpdateIntervalChange(e.value[0])}
               size="sm"
+              w="200px"
             >
-              <HStack justify="space-between">
+              <HStack>
                 <Slider.Label>更新频率</Slider.Label>
                 <Slider.ValueText />
                 <Slider.Label>s</Slider.Label>

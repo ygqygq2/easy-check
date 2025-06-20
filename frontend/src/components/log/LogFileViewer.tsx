@@ -1,11 +1,11 @@
 import { Box, VStack } from "@chakra-ui/react";
 import { useState } from "react";
 
-import { useLogData } from "../hooks/useLogData";
-import { LogControlPanel } from "./log/LogControlPanel";
-import { VirtualizedLogView } from "./log/VirtualizedLogView";
-import { StatusView } from "./StatusView";
-import { HeaderWithActions } from "./ui/HeaderWithActions";
+import { useLogData } from "../../hooks/useLogData";
+import { StatusView } from "../StatusView";
+import { HeaderWithActions } from "../ui/HeaderWithActions";
+import { LogControlPanel } from "./LogControlPanel";
+import { VirtualizedLogView } from "./VirtualizedLogView";
 
 interface LogFileViewerProps {
   fileName: string;
@@ -19,6 +19,7 @@ function LogFileViewer({
   isLatest = false,
 }: LogFileViewerProps) {
   const [isRealtime, setIsRealtime] = useState<boolean>(true);
+  const [updateInterval, setUpdateInterval] = useState<number>(10);
 
   const {
     logs,
@@ -29,7 +30,7 @@ function LogFileViewer({
     markAllAsRead,
     onScroll,
     userScrolled,
-  } = useLogData(fileName, isLatest, isRealtime);
+  } = useLogData(fileName, isLatest, isRealtime, updateInterval);
 
   return (
     <Box p={4}>
@@ -41,6 +42,8 @@ function LogFileViewer({
             onRealtimeChange={setIsRealtime}
             isLatest={isLatest}
             onClose={onClose}
+            updateInterval={updateInterval}
+            onUpdateIntervalChange={setUpdateInterval}
           />
         }
       />
