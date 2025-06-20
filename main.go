@@ -7,9 +7,11 @@ import (
 	"easy-check/internal/db"
 	"easy-check/internal/initializer"
 	"easy-check/internal/machineid"
+	"easy-check/internal/router"
 	"easy-check/internal/services"
 	"embed"
 	"fmt"
+	"net/http"
 	"os"
 	"runtime"
 
@@ -55,6 +57,15 @@ func main() {
 	}
 	defer appCtx.Logger.Close()
 	fmt.Println("Application context initialized successfully")
+
+	// 注册路由，传入 appCtx
+	router.RegisterRoutes(appCtx)
+	// 启动 HTTP 服务器
+	go func() {
+		if err := http.ListenAndServe("127.0.0.1:32180", nil); err != nil {
+			appCtx.Logger.Fatalf("Server failed: %v", err)
+		}
+	}()
 
 	constInfo := constants.GetSharedConstants(appCtx)
 	appService := services.NewAppService(appCtx)

@@ -76,10 +76,13 @@ func (c *Checker) pingHost(host config.Host) {
 
 	if reason != "" {
 		// 记录失败日志
-		c.Logger.Log(fmt.Sprintf("Ping to [%s] %s failed: packet loss %.2f%%, avg latency %.2fms",
+		c.Logger.Log(fmt.Sprintf("Ping to [%s] %s failed: packet loss %.2f%%, avg latency time=%.2fms",
 			host.Description, host.Host, packetLossRate, avgLatency), "error")
 		c.handlePingFailure(host, reason, output)
 	} else {
+		successRate := 100.0 - packetLossRate
+		c.Logger.Log(fmt.Sprintf("Ping to [%s] %s succeeded: success rate %.2f%%, latency time=%.2fms",
+			host.Description, host.Host, successRate, avgLatency), "info")
 		// 如果 Ping 成功且丢包率在阈值内，处理成功逻辑
 		c.handlePingSuccess(host)
 	}

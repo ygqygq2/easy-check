@@ -1,7 +1,7 @@
 import type { RouteObject } from "react-router-dom";
 import { Outlet } from "react-router-dom";
 
-import { Layout as HomeLayout } from "@/components/layout/layout";
+import { Layout as HomeLayout } from "@/components/layout/Layout";
 
 export const route: RouteObject = {
   path: "/",

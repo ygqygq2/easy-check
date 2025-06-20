@@ -6,6 +6,7 @@ require github.com/wailsapp/wails/v3 v3.0.0-alpha.9
 
 require (
 	github.com/Masterminds/semver v1.5.0
+	github.com/gorilla/websocket v1.5.3
 	github.com/lxn/win v0.0.0-20210218163916-a377121e959e
 	github.com/prometheus/prometheus v0.304.0
 	gopkg.in/yaml.v2 v2.4.0
