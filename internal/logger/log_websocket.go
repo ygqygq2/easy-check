@@ -5,6 +5,8 @@ import (
 	"io"
 	"net/http"
 	"os"
+	"regexp"
+	"strings"
 	"time"
 
 	"github.com/gorilla/websocket"
@@ -31,21 +33,27 @@ func ServeLogWebSocket(logFilePath string, w http.ResponseWriter, r *http.Reques
 	}
 	defer file.Close()
 
-	// 从文件末尾开始读取
 	file.Seek(0, io.SeekEnd)
 	reader := bufio.NewReader(file)
+
+	timePrefix := regexp.MustCompile(`^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2} \[`)
+	var buffer strings.Builder
 
 	for {
 		line, err := reader.ReadString('\n')
 		if err != nil {
-			time.Sleep(1 * time.Second) // 如果没有新内容，等待一段时间
+			if buffer.Len() > 0 {
+				conn.WriteMessage(websocket.TextMessage, []byte(buffer.String()))
+				buffer.Reset()
+			}
+			time.Sleep(1 * time.Second)
 			continue
 		}
 
-		// 将日志内容发送给前端
-		err = conn.WriteMessage(websocket.TextMessage, []byte(line))
-		if err != nil {
-			break
+		if timePrefix.MatchString(line) && buffer.Len() > 0 {
+			conn.WriteMessage(websocket.TextMessage, []byte(buffer.String()))
+			buffer.Reset()
 		}
+		buffer.WriteString(line)
 	}
 }

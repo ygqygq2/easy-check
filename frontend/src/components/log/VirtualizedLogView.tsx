@@ -1,5 +1,5 @@
 import { Box, Text } from "@chakra-ui/react";
-import { useCallback, useRef } from "react";
+import { useCallback, useEffect, useRef } from "react";
 import AutoSizer from "react-virtualized-auto-sizer";
 import { FixedSizeList as List, ListOnScrollProps } from "react-window";
 
@@ -33,6 +33,18 @@ export const VirtualizedLogView = ({
   const listRef = useRef<List>(null);
   const outerDivRef = useRef<HTMLDivElement>(null);
 
+  const scrollToBottom = useCallback(() => {
+    if (listRef.current) {
+      listRef.current.scrollToItem(logs.length - 1, "end"); // 滚动到最后一项
+    }
+  }, [logs]);
+
+  useEffect(() => {
+    if (isRealtime) {
+      scrollToBottom(); // 实时更新时滚动到底部
+    }
+  }, [logs, isRealtime, scrollToBottom]);
+
   const handleScroll = useCallback(
     (props: ListOnScrollProps) => {
       const { scrollOffset, scrollUpdateWasRequested } = props;
@@ -57,19 +69,20 @@ export const VirtualizedLogView = ({
   const renderRow = useCallback(
     ({ index, style }: { index: number; style: React.CSSProperties }) => {
       const log = logs[index];
+      if (log.level === "continuation") {
+        return (
+          <Text style={style} fontSize="sm">
+            {log.message}
+          </Text>
+        );
+      }
       return <LogLine log={log} style={style} />;
     },
     [logs]
   );
 
   return (
-    <Box
-      height="600px"
-      borderWidth="1px"
-      borderRadius="md"
-      bg="gray.50"
-      position="relative"
-    >
+    <Box height="600px" borderWidth="1px" borderRadius="md" position="relative">
       <AutoSizer>
         {({ height, width }: { height: number; width: number }) => (
           <List
@@ -91,7 +104,6 @@ export const VirtualizedLogView = ({
         <Box
           mt={2}
           p={2}
-          bg="yellow.100"
           borderRadius="md"
           position="absolute"
           bottom={4}

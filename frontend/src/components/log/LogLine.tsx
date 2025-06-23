@@ -2,6 +2,7 @@ import { Box, Text } from "@chakra-ui/react";
 import { memo } from "react";
 
 import { LogEntry } from "../../types/LogTypes";
+import { useColorMode } from "../ui/color-mode";
 
 interface LogLineProps {
   log: LogEntry;
@@ -9,19 +10,21 @@ interface LogLineProps {
 }
 
 export const LogLine = memo(({ log, style }: LogLineProps) => {
+  const { colorMode } = useColorMode();
+
   // 根据日志级别设置颜色
   const getColorForLevel = (level: string): string => {
     switch (level) {
       case "error":
-        return "red.600";
+        return colorMode === "dark" ? "red.300" : "red.600";
       case "warn":
-        return "orange.600";
+        return colorMode === "dark" ? "orange.300" : "orange.600";
       case "info":
-        return "gray.800";
+        return colorMode === "dark" ? "gray.300" : "gray.800";
       case "debug":
-        return "gray.500";
+        return colorMode === "dark" ? "gray.400" : "gray.500";
       default:
-        return "gray.800";
+        return "";
     }
   };
 
@@ -29,9 +32,9 @@ export const LogLine = memo(({ log, style }: LogLineProps) => {
   const getBgColorForLevel = (level: string): string => {
     switch (level) {
       case "error":
-        return "red.50";
+        return colorMode === "dark" ? "red.900" : "red.50";
       case "warn":
-        return "orange.50";
+        return colorMode === "dark" ? "orange.900" : "orange.50";
       default:
         return "transparent";
     }
@@ -47,7 +50,6 @@ export const LogLine = memo(({ log, style }: LogLineProps) => {
       py={0.5}
       bg={bgColor}
       borderBottomWidth="1px"
-      borderBottomColor="gray.100"
       fontSize="sm"
     >
       <Text

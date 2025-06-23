@@ -50,7 +50,7 @@ function LogListComponent({ onClose }: LogListComponentProps) {
       />
       <VStack gap={1} align="stretch">
         {logFiles.length === 0 ? (
-          <Text color="gray.500" textAlign="center" fontSize="lg">
+          <Text textAlign="center" fontSize="lg">
             没有日志文件
           </Text>
         ) : (

@@ -1,5 +1,5 @@
 import { Box, VStack } from "@chakra-ui/react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 import { useLogData } from "../../hooks/useLogData";
 import { StatusView } from "../StatusView";
@@ -31,6 +31,12 @@ function LogFileViewer({
     onScroll,
     userScrolled,
   } = useLogData(fileName, isLatest, isRealtime, updateInterval);
+
+  useEffect(() => {
+    if (logs.length > 0 && isRealtime) {
+      scrollToBottom(); // 日志加载完成后滚动到底部
+    }
+  }, [logs, isRealtime]);
 
   return (
     <Box p={4}>
