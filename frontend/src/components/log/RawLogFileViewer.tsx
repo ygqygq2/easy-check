@@ -41,7 +41,7 @@ function RawLogFileViewer({
           borderRadius="md"
           p={4}
           bg={bgColor}
-          maxH="70vh"
+          maxH="80vh"
           overflow="auto"
         >
           <Text

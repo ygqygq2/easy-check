@@ -16,11 +16,29 @@ export class LogService {
       let previousEntry: LogEntry | undefined = undefined;
 
       for (const line of lines) {
-        const entry = parseLogEntry(line, previousEntry);
-        if (entry) {
-          logEntries.push(entry);
-          previousEntry = entry; // 更新上一条日志
+        // 判断是否为带时间戳的日志行
+        const isNewLog = /^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}/.test(line);
+
+        if (isNewLog) {
+          // 新日志行，先把上一条推入数组
+          if (previousEntry) {
+            logEntries.push(previousEntry);
+          }
+          const parsed = parseLogEntry(line);
+          if (parsed) {
+            previousEntry = parsed;
+          } else {
+            previousEntry = undefined;
+          }
+        } else if (previousEntry) {
+          // 续行，拼接到上一条日志
+          previousEntry.message += "\n" + line;
+          previousEntry.raw += "\n" + line;
         }
+      }
+      // 最后一条日志别忘了加进去
+      if (previousEntry) {
+        logEntries.push(previousEntry);
       }
 
       return logEntries;

@@ -16,30 +16,52 @@ export function useLogWebSocket(
 
   // 处理收到的日志消息
   const processLogMessages = useCallback((data: string) => {
-    const lines = data.split("\n").filter(Boolean);
+    const lines = data.split("\n").filter((line) => line.trim() !== "");
 
-    const newEntries: LogEntry[] = lines
-      .map((line) => {
-        // 检查是否重复
-        if (recentMessagesRef.current.has(line)) {
-          return null;
+    const newEntries: LogEntry[] = [];
+    let currentEntry: LogEntry | null = null;
+
+    for (const line of lines) {
+      // 减少重复检查的严格性，只检查完整的日志行
+      const timestampMatch = line.match(
+        /^(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2})/
+      );
+
+      if (timestampMatch) {
+        // 检查是否重复（只对完整日志行进行检查）
+        const logKey = `${timestampMatch[1]}_${line.slice(0, 100)}`;
+        if (recentMessagesRef.current.has(logKey)) {
+          continue;
+        }
+        recentMessagesRef.current.add(logKey);
+
+        // 如果有当前正在处理的日志，先添加到结果中
+        if (currentEntry) {
+          newEntries.push(currentEntry);
         }
 
-        // 添加到最近消息集合
-        recentMessagesRef.current.add(line);
-
-        // 限制最近消息集合大小
-        if (recentMessagesRef.current.size > 200) {
-          const entries = Array.from(recentMessagesRef.current);
-          recentMessagesRef.current = new Set(entries.slice(-100));
+        // 解析新的日志行
+        const entry = parseLogEntry(line);
+        if (entry) {
+          currentEntry = entry;
         }
+      } else {
+        // 这是续行内容，追加到当前日志
+        if (currentEntry) {
+          currentEntry.message += "\n" + line;
+          currentEntry.raw += "\n" + line;
+        }
+      }
+    }
 
-        return parseLogEntry(line);
-      })
-      .filter(Boolean) as LogEntry[];
+    // 处理最后一个日志条目
+    if (currentEntry) {
+      newEntries.push(currentEntry);
+    }
 
+    // 立即处理新日志，不使用缓冲区
     if (newEntries.length > 0) {
-      bufferRef.current = [...bufferRef.current, ...newEntries];
+      setNewLogEntries((prev) => [...prev, ...newEntries]);
     }
   }, []);
 

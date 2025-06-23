@@ -19,7 +19,11 @@ export function useLogData(
   const lastSeenLogIdRef = useRef<string | null>(null);
 
   // 从WebSocket获取新日志数据
-  const { newLogEntries } = useLogWebSocket(isLatest, isRealtime, updateInterval);
+  const { newLogEntries } = useLogWebSocket(
+    isLatest,
+    isRealtime,
+    updateInterval
+  );
 
   // 初始加载日志
   useEffect(() => {

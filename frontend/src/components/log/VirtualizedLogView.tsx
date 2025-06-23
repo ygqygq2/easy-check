@@ -7,7 +7,7 @@ import {
   useRef,
 } from "react";
 import AutoSizer from "react-virtualized-auto-sizer";
-import { FixedSizeList as List, ListOnScrollProps } from "react-window";
+import { ListOnScrollProps, VariableSizeList as List } from "react-window";
 
 import { LogEntry } from "../../types/LogTypes";
 import { LogLine } from "./LogLine";
@@ -110,14 +110,61 @@ export const VirtualizedLogView = forwardRef<
     const renderRow = useCallback(
       ({ index, style }: { index: number; style: React.CSSProperties }) => {
         const log = logs[index];
+
+        // 处理多行内容，保持换行符
+        const content = log.raw || log.message;
+        const lines = content.split("\n");
+
         if (log.level === "continuation") {
           return (
-            <Text style={style} fontSize="sm">
-              {log.message}
-            </Text>
+            <Box
+              style={style}
+              fontSize="sm"
+              whiteSpace="pre-wrap"
+              fontFamily="mono"
+            >
+              {lines.map((line, lineIndex) => (
+                <Text key={lineIndex}>{line}</Text>
+              ))}
+            </Box>
           );
         }
+
+        // 对于普通日志行，如果是多行内容，也要正确处理
+        if (lines.length > 1) {
+          return (
+            <Box style={style}>
+              <LogLine log={{ ...log, message: lines[0] }} style={{}} />
+              {lines.slice(1).map((line, lineIndex) => (
+                <Text
+                  key={lineIndex + 1}
+                  fontSize="sm"
+                  whiteSpace="pre-wrap"
+                  fontFamily="mono"
+                  pl={4}
+                >
+                  {line}
+                </Text>
+              ))}
+            </Box>
+          );
+        }
+
         return <LogLine log={log} style={style} />;
+      },
+      [logs]
+    );
+
+    // 添加计算行高的函数
+    const getItemSize = useCallback(
+      (index: number) => {
+        const log = logs[index];
+        if (!log) return 28;
+
+        // 计算行数
+        const lineCount = (log.raw || log.message).split("\n").length;
+        // 基础高度24px + 每额外行18px
+        return 28 + (lineCount - 1) * 18;
       },
       [logs]
     );
@@ -136,7 +183,7 @@ export const VirtualizedLogView = forwardRef<
               height={height}
               width={width}
               itemCount={logs.length}
-              itemSize={24} // 每行大约24px高
+              itemSize={getItemSize} // 使用动态高度函数
               overscanCount={20} // 提前渲染20行以实现平滑滚动
               onScroll={handleScroll}
               itemKey={itemKey}
@@ -156,7 +203,7 @@ export const VirtualizedLogView = forwardRef<
             left={4}
             right={4}
           >
-            <Text fontSize="sm" color="orange.700" textAlign="center">
+            <Text fontSize="sm" color="orange.400" textAlign="center">
               有 {unreadCount} 条新日志未显示
             </Text>
           </Box>
