@@ -12,7 +12,6 @@ interface LogLineProps {
 export const LogLine = memo(({ log, style }: LogLineProps) => {
   const { colorMode } = useColorMode();
 
-  // 根据日志级别设置颜色
   const getColorForLevel = (level: string): string => {
     switch (level) {
       case "error":
@@ -28,37 +27,24 @@ export const LogLine = memo(({ log, style }: LogLineProps) => {
     }
   };
 
-  // 日志的背景色
-  const getBgColorForLevel = (level: string): string => {
-    switch (level) {
-      case "error":
-        return colorMode === "dark" ? "red.900" : "red.50";
-      case "warn":
-        return colorMode === "dark" ? "orange.900" : "orange.50";
-      default:
-        return "transparent";
-    }
-  };
-
   const color = getColorForLevel(log.level);
-  const bgColor = getBgColorForLevel(log.level);
 
   return (
     <Box
       style={style}
       px={2}
       py={0.5}
-      bg={bgColor}
+      bg={colorMode === "dark" ? "gray.900" : "gray.50"}
       borderBottomWidth="1px"
       fontSize="sm"
     >
       <Text
         color={color}
         fontFamily="monospace"
-        whiteSpace="pre-wrap"
-        wordBreak="break-all"
+        whiteSpace="pre-wrap" // 确保换行符被正确渲染
+        wordBreak="break-word"
       >
-        {log.raw}
+        {log.raw} {/* 使用 log.raw 展示原始日志内容 */}
       </Text>
     </Box>
   );

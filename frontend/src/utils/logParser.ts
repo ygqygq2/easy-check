@@ -9,59 +9,37 @@ import { LogEntry, LogLevel } from "../types/LogTypes";
  * - 因此，唯一 id 用 md5(`${timestamp}-${level}-${message}`)。
  */
 
-export function parseLogEntry(line: string): LogEntry | null {
+export function parseLogEntry(
+  line: string,
+  previousEntry?: LogEntry
+): LogEntry | null {
   // 日志格式: YYYY-MM-DD HH:mm:ss [level] message
-  const timeRegex =
-    /^(\d{4}-\d{2}-\d{2}\s\d{2}:\d{2}:\d{2})\s+\[(info|error|warn|debug)\]\s+(.+)$/i;
-  const match = line.match(timeRegex);
+  const timeRegex = /^\d{4}-\d{2}-\d{2}\s\d{2}:\d{2}:\d{2}/;
+  const levelRegex = /\[(info|error|warn|debug)\]/i;
 
-  if (!match) {
-    // 如果不符合格式，可能是多行日志的一部分
-    return {
-      id: md5(`cont-${line}`),
-      timestamp: null,
-      level: "continuation" as LogLevel,
-      message: line,
-      raw: line,
-    };
+  if (!timeRegex.test(line)) {
+    // 如果不以时间戳开头，附加到上一条日志
+    if (previousEntry) {
+      previousEntry.message += `\n${line}`;
+      previousEntry.raw += `\n${line}`;
+      return null; // 不生成新的日志条目
+    }
+    return null; // 如果没有上一条日志，忽略该行
   }
 
-  const [, timestamp, levelStr, message] = match;
-  const level = levelStr.toLowerCase() as LogLevel;
-  // 用 md5 生成唯一 id
+  // 提取日志级别
+  const levelMatch = line.match(levelRegex);
+  const level = levelMatch ? (levelMatch[1].toLowerCase() as LogLevel) : "info";
+
+  // 解析时间戳和消息内容
+  const [timestamp, ...rest] = line.split(" ");
+  const message = rest.join(" ");
   const id = md5(`${timestamp}-${level}-${message}`);
-
-  // 检查Ping相关日志的特殊格式
-  if (message.includes("Ping to") && message.includes("failed")) {
-    return {
-      id,
-      timestamp: new Date(timestamp),
-      level: "error",
-      message,
-      raw: line,
-      service: message.match(/\[([^\]]+)\]/)?.[1] || "",
-      target: message.match(/\] ([^\s]+)/)?.[1] || "",
-      isFailure: true,
-    };
-  }
-
-  if (message.includes("Ping to") && message.includes("succeeded")) {
-    return {
-      id,
-      timestamp: new Date(timestamp),
-      level: "info",
-      message,
-      raw: line,
-      service: message.match(/\[([^\]]+)\]/)?.[1] || "",
-      target: message.match(/\] ([^\s]+)/)?.[1] || "",
-      isFailure: false,
-    };
-  }
 
   return {
     id,
     timestamp: new Date(timestamp),
-    level,
+    level, // 使用提取的日志级别
     message,
     raw: line,
   };

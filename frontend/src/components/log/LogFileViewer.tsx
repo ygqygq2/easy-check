@@ -46,10 +46,10 @@ function LogFileViewer({
           <LogControlPanel
             isRealtime={isRealtime}
             onRealtimeChange={setIsRealtime}
-            isLatest={isLatest}
-            onClose={onClose}
             updateInterval={updateInterval}
             onUpdateIntervalChange={setUpdateInterval}
+            onClose={onClose}
+            isLatest={isLatest}
           />
         }
       />

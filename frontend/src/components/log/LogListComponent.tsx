@@ -6,7 +6,7 @@ import { useEffect, useState } from "react";
 import ActionButton from "../ui/ActionButton";
 import { HeaderWithActions } from "../ui/HeaderWithActions";
 import { toaster } from "../ui/toaster";
-import LogFileViewer from "./LogFileViewer";
+import RawLogFileViewer from "./RawLogFileViewer";
 
 interface LogListComponentProps {
   onClose: () => void;
@@ -35,7 +35,7 @@ function LogListComponent({ onClose }: LogListComponentProps) {
 
   if (selectedFile) {
     return (
-      <LogFileViewer
+      <RawLogFileViewer
         fileName={selectedFile}
         onClose={() => setSelectedFile(null)}
       />
