@@ -205,5 +205,5 @@ func (wl *WailsLogger) Error(message string) {
 
 // Fatal 实现 Wails Logger 的 Fatal 方法
 func (wl *WailsLogger) Fatal(message string) {
-	wl.Fatal(message)
+	wl.Logger.Fatal(message)
 }
