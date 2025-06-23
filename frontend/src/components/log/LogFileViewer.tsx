@@ -1,11 +1,14 @@
 import { Box, VStack } from "@chakra-ui/react";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import { useLogData } from "../../hooks/useLogData";
 import { StatusView } from "../StatusView";
 import { HeaderWithActions } from "../ui/HeaderWithActions";
 import { LogControlPanel } from "./LogControlPanel";
-import { VirtualizedLogView } from "./VirtualizedLogView";
+import {
+  VirtualizedLogView,
+  VirtualizedLogViewRef,
+} from "./VirtualizedLogView";
 
 interface LogFileViewerProps {
   fileName: string;
@@ -20,23 +23,31 @@ function LogFileViewer({
 }: LogFileViewerProps) {
   const [isRealtime, setIsRealtime] = useState<boolean>(true);
   const [updateInterval, setUpdateInterval] = useState<number>(10);
+  const logViewRef = useRef<VirtualizedLogViewRef>(null);
 
   const {
     logs,
     isLoading,
     unreadCount,
     hasNewContent,
-    scrollToBottom,
     markAllAsRead,
     onScroll,
     userScrolled,
   } = useLogData(fileName, isLatest, isRealtime, updateInterval);
 
+  // 当查看最新日志且日志加载完成时，自动滚动到底部
   useEffect(() => {
-    if (logs.length > 0 && isRealtime) {
-      scrollToBottom(); // 日志加载完成后滚动到底部
+    if (isLatest && !isLoading && logs.length > 0) {
+      // 使用多个 requestAnimationFrame 确保完全渲染
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+          requestAnimationFrame(() => {
+            logViewRef.current?.scrollToBottom();
+          });
+        });
+      });
     }
-  }, [logs, isRealtime]);
+  }, [isLatest, isLoading, logs.length]);
 
   return (
     <Box p={4}>
@@ -58,16 +69,17 @@ function LogFileViewer({
           <StatusView message="正在加载文件内容..." isLoading />
         ) : logs.length > 0 ? (
           <VirtualizedLogView
+            ref={logViewRef}
             logs={logs}
             onScroll={onScroll}
             hasNewContent={hasNewContent && isRealtime}
             unreadCount={unreadCount}
             isRealtime={isRealtime}
             onScrollToBottom={() => {
-              scrollToBottom();
               markAllAsRead();
             }}
             userScrolled={userScrolled}
+            shouldScrollToBottom={isLatest && !userScrolled}
           />
         ) : (
           <StatusView message="文件内容为空" />
