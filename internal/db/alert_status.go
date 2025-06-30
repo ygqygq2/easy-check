@@ -1,6 +1,7 @@
 package db
 
 import (
+	"bytes"
 	"easy-check/internal/config"
 	"easy-check/internal/logger"
 	"encoding/json"
@@ -62,12 +63,16 @@ func (d *AlertStatusManager) SetAlertStatus(status AlertStatus, ttlSeconds int) 
 		return d.logger.LogAndError("failed to marshal alert status: %v", "error", err)
 	}
 
+	// 添加调试日志：打印将要存储的数据
+	d.logger.Log(fmt.Sprintf("DEBUG: Setting alert status for key: %s, value: %s", string(key), string(value)), "debug")
+
 	// 设置带有 TTL 的键值对
 	return d.db.Update(func(txn *badger.Txn) error {
 		entry := badger.NewEntry(key, value).WithTTL(time.Duration(ttlSeconds) * time.Second)
 		if err := txn.SetEntry(entry); err != nil {
 			return d.logger.LogAndError("failed to set alert status with TTL in DB: %v", "error", err)
 		}
+		d.logger.Log(fmt.Sprintf("DEBUG: Successfully set alert status for host: %s", status.Host), "debug")
 		return nil
 	})
 }
@@ -111,6 +116,17 @@ func (d *AlertStatusManager) MarkAsAlert(status AlertStatus) error {
 		// 如果是 Key 不存在的错误，直接插入新状态
 		if err == badger.ErrKeyNotFound {
 			d.logger.Log(fmt.Sprintf("Creating new alert status record for host: %s", status.Host), "debug")
+			
+			// 重要修复：对于新创建的告警记录，如果主机已经处于失败状态较长时间，
+			// 应该避免立即发送告警，而是先标记为已发送，然后在下一个检查周期再决定是否需要重新告警
+			// 这可以通过检查 FailTime 来判断
+			if status.FailTime != "" {
+				// 如果 FailTime 存在，说明这不是第一次失败，可能是 TTL 过期后重新创建的记录
+				// 为了避免重复告警，将 Sent 设置为 true
+				status.Sent = true
+				d.logger.Log(fmt.Sprintf("Setting Sent=true for recreated alert record to avoid duplicate alerts for host: %s", status.Host), "debug")
+			}
+			
 			return d.SetAlertStatus(status, d.dbConfig.Expire)
 		}
 		// 其他错误直接返回
@@ -135,14 +151,30 @@ func (d *AlertStatusManager) GetAllUnsentStatuses(statusType StatusType) ([]*Ale
 		iter := txn.NewIterator(badger.DefaultIteratorOptions)
 		defer iter.Close()
 
-		for iter.Rewind(); iter.Valid(); iter.Next() {
+		// 设置前缀，只处理告警状态相关的键
+		prefix := []byte("alert_status:")
+		iter.Seek(prefix)
+
+		for ; iter.Valid(); iter.Next() {
 			item := iter.Item()
+			key := item.Key()
+			
+			// 如果键不是以 alert_status: 开头，跳过
+			if !bytes.HasPrefix(key, prefix) {
+				continue
+			}
+
 			var status AlertStatus
 			err := item.Value(func(v []byte) error {
-				return json.Unmarshal(v, &status)
+				err := json.Unmarshal(v, &status)
+				if err != nil {
+					d.logger.Log(fmt.Sprintf("DEBUG: JSON unmarshal error for key %s: %v, data: %s", string(key), err, string(v)), "error")
+				}
+				return err
 			})
 			if err != nil {
-				return err
+				d.logger.Log(fmt.Sprintf("DEBUG: Failed to process item with key: %s, error: %v", string(key), err), "error")
+				continue // 跳过有问题的记录，而不是终止整个操作
 			}
 
 			// 过滤条件：sent 为 false 且 status 为指定类型
@@ -152,6 +184,7 @@ func (d *AlertStatusManager) GetAllUnsentStatuses(statusType StatusType) ([]*Ale
 		}
 		return nil
 	})
+	
 	return statuses, err
 }
 

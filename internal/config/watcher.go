@@ -39,20 +39,22 @@ func WatchConfigFile(configPath string, logger *logger.Logger, onChange func(new
 
 				// 创建新的定时器
 				debounceTimer = time.AfterFunc(debounceDelay, func() {
-					logger.Log(fmt.Sprintf("Config file changed: %s", event.Name))
+					logger.Log(fmt.Sprintf("Config file changed: %s", event.Name), "info")
 					newConfig, err := LoadConfig(configPath, logger)
 					if err != nil {
-						logger.Log(fmt.Sprintf("Error reloading configuration: %v", err))
+						logger.Log(fmt.Sprintf("Error reloading configuration: %v", err), "error")
 					} else {
 						onChange(newConfig)
 					}
 				})
+			} else if event.Op&fsnotify.Remove != 0 {
+				logger.Log(fmt.Sprintf("Config file removed: %s. Using previous configuration.", event.Name), "warn")
 			}
 		case err, ok := <-watcher.Errors:
 			if !ok {
 				return
 			}
-			logger.Log(fmt.Sprintf("File watcher error: %v", err))
+			logger.Log(fmt.Sprintf("File watcher error: %v", err), "error")
 		}
 	}
 }

@@ -42,28 +42,46 @@ func unzip(src []byte, dest string) error {
 		return fmt.Errorf("解压失败: %v", err)
 	}
 
+	// 获取目标目录的绝对路径
+	destAbs, err := filepath.Abs(dest)
+	if err != nil {
+		return fmt.Errorf("获取目标目录绝对路径失败: %v", err)
+	}
+
 	for _, file := range reader.File {
-		filePath := filepath.Join(dest, file.Name)
+		// 防止路径遍历攻击
+		destPath := filepath.Join(dest, file.Name)
+		destPathAbs, err := filepath.Abs(destPath)
+		if err != nil {
+			return fmt.Errorf("获取文件绝对路径失败: %v", err)
+		}
+		
+		// 检查路径是否在目标目录内
+		if !strings.HasPrefix(destPathAbs, destAbs+string(os.PathSeparator)) && destPathAbs != destAbs {
+			return fmt.Errorf("检测到路径遍历攻击: %s", file.Name)
+		}
+
 		if file.FileInfo().IsDir() {
 			// 创建目录
-			if err := os.MkdirAll(filePath, os.ModePerm); err != nil {
+			if err := os.MkdirAll(destPath, os.ModePerm); err != nil {
 				return fmt.Errorf("创建目录失败: %v", err)
 			}
 			continue
 		}
 
 		// 创建文件
-		if err := os.MkdirAll(filepath.Dir(filePath), os.ModePerm); err != nil {
+		if err := os.MkdirAll(filepath.Dir(destPath), os.ModePerm); err != nil {
 			return fmt.Errorf("创建文件目录失败: %v", err)
 		}
 
-		outFile, err := os.OpenFile(filePath, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, file.Mode())
+		outFile, err := os.OpenFile(destPath, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, file.Mode())
 		if err != nil {
 			return fmt.Errorf("创建文件失败: %v", err)
 		}
 
 		rc, err := file.Open()
 		if err != nil {
+			outFile.Close()
 			return fmt.Errorf("打开压缩文件失败: %v", err)
 		}
 

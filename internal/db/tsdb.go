@@ -8,6 +8,7 @@ import (
 	"math/rand"
 	"os"
 	"strconv"
+	"sync"
 	"time"
 
 	"github.com/prometheus/prometheus/model/labels"
@@ -17,6 +18,8 @@ import (
 
 type TSDB struct {
 	db *tsdb.DB
+	// 添加写入锁保护并发写入
+	writeMu sync.Mutex
 }
 
 // NewTSDB 初始化 Prometheus TSDB
@@ -87,7 +90,18 @@ func (t *TSDB) Close() error {
 
 // AppendMetrics 批量添加监控数据
 func (t *TSDB) AppendMetrics(metrics map[string]float64, timestamp int64, labelsMap map[string]string) error {
+	// 加锁保护并发写入
+	t.writeMu.Lock()
+	defer t.writeMu.Unlock()
+	
 	app := t.db.Appender(context.Background())
+	defer func() {
+		// 确保在出错时也能正确回滚
+		if err := recover(); err != nil {
+			app.Rollback()
+			panic(err)
+		}
+	}()
 
 	for metric, value := range metrics {
 		// 构建标签，包含指标名称和额外标签
@@ -98,6 +112,7 @@ func (t *TSDB) AppendMetrics(metrics map[string]float64, timestamp int64, labels
 
 		// 写入数据点
 		if _, err := app.Append(0, labels.FromMap(metricLabels), timestamp, value); err != nil {
+			app.Rollback()
 			return fmt.Errorf("failed to append metric %s with value %f: %v", metric, value, err)
 		}
 	}

@@ -12,7 +12,7 @@ import (
 
 var (
 	exitChan     chan os.Signal
-	listeners    []chan<- os.Signal
+	listeners    map[chan os.Signal]bool // 使用map来管理监听器
 	listenerLock sync.Mutex
 	once         sync.Once
 )
@@ -26,14 +26,31 @@ func RegisterExitListener() <-chan os.Signal {
 
 	once.Do(func() {
 		exitChan = make(chan os.Signal, 1)
+		listeners = make(map[chan os.Signal]bool)
 		signal.Notify(exitChan, syscall.SIGINT, syscall.SIGTERM)
 
 		// 启动信号分发器
 		go signalDispatcher()
 	})
 
-	listeners = append(listeners, listenerChan)
+	listeners[listenerChan] = true
 	return listenerChan
+}
+
+// CleanupClosedListeners 清理已关闭的监听器，防止内存泄漏
+func CleanupClosedListeners() {
+	listenerLock.Lock()
+	defer listenerLock.Unlock()
+	
+	for listener := range listeners {
+		select {
+		case <-listener:
+			// channel已关闭，删除
+			delete(listeners, listener)
+		default:
+			// channel还活着，保留
+		}
+	}
 }
 
 // 信号分发器，将收到的信号分发给所有监听者
@@ -42,7 +59,7 @@ func signalDispatcher() {
 		sig := <-exitChan
 
 		listenerLock.Lock()
-		for _, listener := range listeners {
+		for listener := range listeners {
 			select {
 			case listener <- sig:
 				// 信号已发送

@@ -16,6 +16,8 @@ type Checker struct {
 	Logger *logger.Logger
 	DB     *db.AlertStatusManager
 	TSDB   *db.TSDB
+	// 添加配置读写锁
+	configMu sync.RWMutex
 }
 
 func NewChecker(config *config.Config, pinger Pinger, logger *logger.Logger, db *db.AlertStatusManager, tsdb *db.TSDB) *Checker {
@@ -28,10 +30,27 @@ func NewChecker(config *config.Config, pinger Pinger, logger *logger.Logger, db 
 	}
 }
 
+// UpdateConfig 提供线程安全的配置更新方法
+func (c *Checker) UpdateConfig(newConfig *config.Config) {
+	c.configMu.Lock()
+	defer c.configMu.Unlock()
+	c.Config = newConfig
+}
+
+// getConfig 提供线程安全的配置读取
+func (c *Checker) getConfig() *config.Config {
+	c.configMu.RLock()
+	defer c.configMu.RUnlock()
+	return c.Config
+}
+
 func (c *Checker) PingHosts() {
 	var wg sync.WaitGroup
 
-	for _, host := range c.Config.Hosts {
+	// 使用线程安全的配置读取
+	cfg := c.getConfig()
+
+	for _, host := range cfg.Hosts {
 		wg.Add(1)
 		go func(host config.Host) {
 			defer wg.Done()
@@ -44,10 +63,11 @@ func (c *Checker) PingHosts() {
 
 // 判断是否启用失败告警
 func (c *Checker) isFailAlertEnabled(host config.Host) bool {
+	cfg := c.getConfig()
 	if host.FailAlert != nil {
 		return *host.FailAlert // 优先使用主机的配置
 	}
-	return c.Config.Alert.FailAlert // 否则使用全局配置
+	return cfg.Alert.FailAlert // 否则使用全局配置
 }
 
 type PingResult struct {
@@ -58,12 +78,13 @@ type PingResult struct {
 }
 
 func (c *Checker) pingHost(host config.Host) {
-	output, err := c.Pinger.Ping(host.Host, c.Config.Ping.Count, c.Config.Ping.Timeout)
+	cfg := c.getConfig()
+	output, err := c.Pinger.Ping(host.Host, cfg.Ping.Count, cfg.Ping.Timeout)
 
 	// 解析 Ping 输出
 	lines := strings.Split(output, "\n")
-	successCount, minLatency, avgLatency, maxLatency := c.Pinger.ParsePingOutput(lines, c.Config.Ping.Count)
-	packetLossRate := c.calculatePacketLoss(successCount, c.Config.Ping.Count)
+	successCount, minLatency, avgLatency, maxLatency := c.Pinger.ParsePingOutput(lines, cfg.Ping.Count)
+	packetLossRate := c.calculatePacketLoss(successCount, cfg.Ping.Count)
 
 	// 根据 Ping 结果处理逻辑
 	var reason string
@@ -171,8 +192,9 @@ func (c *Checker) writeMetricsToTSDB(host string, metrics map[string]interface{}
 }
 
 func (c *Checker) getFailRateThreshold() float64 {
-	if c.Config.Ping.LossRate > 0 {
-		return float64(c.Config.Ping.LossRate) * 100
+	cfg := c.getConfig()
+	if cfg.Ping.LossRate > 0 {
+		return float64(cfg.Ping.LossRate) * 100
 	}
 	return 20 // 默认值（失败率超过 20% 触发告警）
 }
