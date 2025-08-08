@@ -12,6 +12,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"time"
 
 	"github.com/wailsapp/wails/v3/pkg/application"
 )
@@ -186,6 +187,55 @@ func (a *AppService) GetStatusWithHosts(hosts []string) *types.HostsStatusRespon
 	return &types.HostsStatusResponse{
 		Hosts: latencyData,
 		Total: len(latencyData),
+		Error: "",
+	}
+}
+
+// GetHistoryWithHosts 获取主机历史数据
+func (a *AppService) GetHistoryWithHosts(hosts []string, startTime, endTime int64, step int64) *types.HostsRangeResponse {
+	metrics := []string{"min_latency", "avg_latency", "max_latency", "packet_loss"}
+	
+	startT := time.UnixMilli(startTime)
+	endT := time.UnixMilli(endTime)
+	stepDuration := time.Duration(step) * time.Millisecond
+	
+	var hostRangeData []types.HostRangeData
+	
+	for _, host := range hosts {
+		hostData := types.HostRangeData{
+			Host:   host,
+			Series: make(map[string][]types.TimeSeriesPoint),
+		}
+		
+		for _, metric := range metrics {
+			rangeData, err := data.GetHostRangeMetrics(a.appCtx.TSDB, []string{host}, metric, startT, endT, stepDuration)
+			if err != nil {
+				return &types.HostsRangeResponse{
+					Hosts: nil,
+					Total: 0,
+					Error: fmt.Sprintf("查询主机 %s 指标 %s 历史数据失败: %v", host, metric, err),
+				}
+			}
+			
+			if points, ok := rangeData[host]; ok {
+				// 转换数据格式
+				var seriesPoints []types.TimeSeriesPoint
+				for _, p := range points {
+					seriesPoints = append(seriesPoints, types.TimeSeriesPoint{
+						Timestamp: p.Timestamp,
+						Value:     p.Value,
+					})
+				}
+				hostData.Series[metric] = seriesPoints
+			}
+		}
+		
+		hostRangeData = append(hostRangeData, hostData)
+	}
+	
+	return &types.HostsRangeResponse{
+		Hosts: hostRangeData,
+		Total: len(hostRangeData),
 		Error: "",
 	}
 }

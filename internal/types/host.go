@@ -29,3 +29,22 @@ type HostsStatusResponse struct {
 	Total int              `json:"total"`
 	Error string           `json:"error,omitempty"`
 }
+
+// TimeSeriesPoint 时间序列数据点
+type TimeSeriesPoint struct {
+	Timestamp int64   `json:"timestamp"` // 毫秒时间戳
+	Value     float64 `json:"value"`     // 数据值
+}
+
+// HostRangeData 主机历史数据
+type HostRangeData struct {
+	Host   string            `json:"host"`
+	Series map[string][]TimeSeriesPoint `json:"series"` // metric -> points
+}
+
+// HostsRangeResponse 主机历史数据响应
+type HostsRangeResponse struct {
+	Hosts []HostRangeData `json:"hosts"`
+	Total int             `json:"total"`
+	Error string          `json:"error,omitempty"`
+}

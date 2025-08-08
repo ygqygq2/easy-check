@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"strings"
+	"time"
 )
 
 // HostData 包含主机的状态和性能数据
@@ -55,6 +56,11 @@ func containsIgnoreCase(str, substr string) bool {
 
 func GetHostMetrics(tsdb *db.TSDB, hosts []string, metric string) (map[string]float64, error) {
 	return tsdb.QueryLatestMetricsForHosts(hosts, metric)
+}
+
+// GetHostRangeMetrics 获取主机指标的历史数据
+func GetHostRangeMetrics(tsdb *db.TSDB, hosts []string, metric string, startTime, endTime time.Time, step time.Duration) (map[string][]db.TimeSeriesPoint, error) {
+	return tsdb.QueryRangeMetricsForHosts(hosts, metric, startTime, endTime, step)
 }
 
 // GetHostStatus 根据主机列表查询对应的状态

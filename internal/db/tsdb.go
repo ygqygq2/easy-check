@@ -176,3 +176,66 @@ func (t *TSDB) QueryLatestMetricsForHosts(hosts []string, metric string) (map[st
 
 	return result, nil
 }
+
+// QueryRangeMetricsForHosts 使用 PromQL 查询多个主机的历史监控数据
+func (t *TSDB) QueryRangeMetricsForHosts(hosts []string, metric string, startTime, endTime time.Time, step time.Duration) (map[string][]TimeSeriesPoint, error) {
+	result := make(map[string][]TimeSeriesPoint)
+	engine := promql.NewEngine(promql.EngineOpts{
+		MaxSamples: 50000,
+		Timeout:    30 * time.Second,
+	})
+	queryable := t.db
+
+	// 构造 PromQL 表达式
+	var hostFilter string
+	for i, h := range hosts {
+		if i > 0 {
+			hostFilter += "|"
+		}
+		hostFilter += h
+	}
+	expr := fmt.Sprintf(`%s{host=~"%s"}`, metric, hostFilter)
+
+	// 创建范围查询
+	ctx := context.Background()
+	q, err := engine.NewRangeQuery(ctx, queryable, nil, expr, startTime, endTime, step)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create PromQL range query: %v", err)
+	}
+	defer q.Close()
+
+	// 执行查询
+	res := q.Exec(ctx)
+	if res.Err != nil {
+		return nil, fmt.Errorf("failed to execute PromQL range query: %v", res.Err)
+	}
+
+	// 解析查询结果
+	if matrix, ok := res.Value.(promql.Matrix); ok {
+		for _, series := range matrix {
+			host := series.Metric.Get("host")
+			if host == "" {
+				continue
+			}
+			
+			var points []TimeSeriesPoint
+			for _, point := range series.Floats {
+				points = append(points, TimeSeriesPoint{
+					Timestamp: point.T,
+					Value:     point.F,
+				})
+			}
+			result[host] = points
+		}
+	} else {
+		return nil, fmt.Errorf("unexpected query result type: %T", res.Value)
+	}
+
+	return result, nil
+}
+
+// TimeSeriesPoint 时间序列数据点
+type TimeSeriesPoint struct {
+	Timestamp int64   `json:"timestamp"` // 毫秒时间戳
+	Value     float64 `json:"value"`     // 数据值
+}

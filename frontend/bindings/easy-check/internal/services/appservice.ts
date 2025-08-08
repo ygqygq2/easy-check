@@ -46,12 +46,24 @@ export function GetCurrentInstanceInfo(): Promise<{ [_: string]: any }> & { canc
 }
 
 /**
+ * GetHistoryWithHosts 获取主机历史数据
+ */
+export function GetHistoryWithHosts(hosts: string[], startTime: number, endTime: number, step: number): Promise<types$0.HostsRangeResponse | null> & { cancel(): void } {
+    let $resultPromise = $Call.ByID(2495755216, hosts, startTime, endTime, step) as any;
+    let $typingPromise = $resultPromise.then(($result: any) => {
+        return $$createType2($result);
+    }) as any;
+    $typingPromise.cancel = $resultPromise.cancel.bind($resultPromise);
+    return $typingPromise;
+}
+
+/**
  * GetHosts retrieves the list of hosts
  */
 export function GetHosts(page: number, pageSize: number, searchTerm: string): Promise<types$0.HostsResponse | null> & { cancel(): void } {
     let $resultPromise = $Call.ByID(2747365634, page, pageSize, searchTerm) as any;
     let $typingPromise = $resultPromise.then(($result: any) => {
-        return $$createType2($result);
+        return $$createType4($result);
     }) as any;
     $typingPromise.cancel = $resultPromise.cancel.bind($resultPromise);
     return $typingPromise;
@@ -71,7 +83,7 @@ export function GetLogFileContent(fileName: string, ...isLatest: boolean[]): Pro
 export function GetLogFiles(): Promise<string[]> & { cancel(): void } {
     let $resultPromise = $Call.ByID(2219189890) as any;
     let $typingPromise = $resultPromise.then(($result: any) => {
-        return $$createType3($result);
+        return $$createType5($result);
     }) as any;
     $typingPromise.cancel = $resultPromise.cancel.bind($resultPromise);
     return $typingPromise;
@@ -83,7 +95,7 @@ export function GetLogFiles(): Promise<string[]> & { cancel(): void } {
 export function GetSharedConstant(): Promise<constants$0.SharedConstants | null> & { cancel(): void } {
     let $resultPromise = $Call.ByID(2539832674) as any;
     let $typingPromise = $resultPromise.then(($result: any) => {
-        return $$createType5($result);
+        return $$createType7($result);
     }) as any;
     $typingPromise.cancel = $resultPromise.cancel.bind($resultPromise);
     return $typingPromise;
@@ -95,7 +107,7 @@ export function GetSharedConstant(): Promise<constants$0.SharedConstants | null>
 export function GetStatusWithHosts(hosts: string[]): Promise<types$0.HostsStatusResponse | null> & { cancel(): void } {
     let $resultPromise = $Call.ByID(2962638184, hosts) as any;
     let $typingPromise = $resultPromise.then(($result: any) => {
-        return $$createType7($result);
+        return $$createType9($result);
     }) as any;
     $typingPromise.cancel = $resultPromise.cancel.bind($resultPromise);
     return $typingPromise;
@@ -135,10 +147,12 @@ export function ServiceStartup(options: application$0.ServiceOptions): Promise<v
 
 // Private type creation functions
 const $$createType0 = $Create.Map($Create.Any, $Create.Any);
-const $$createType1 = types$0.HostsResponse.createFrom;
+const $$createType1 = types$0.HostsRangeResponse.createFrom;
 const $$createType2 = $Create.Nullable($$createType1);
-const $$createType3 = $Create.Array($Create.Any);
-const $$createType4 = constants$0.SharedConstants.createFrom;
-const $$createType5 = $Create.Nullable($$createType4);
-const $$createType6 = types$0.HostsStatusResponse.createFrom;
+const $$createType3 = types$0.HostsResponse.createFrom;
+const $$createType4 = $Create.Nullable($$createType3);
+const $$createType5 = $Create.Array($Create.Any);
+const $$createType6 = constants$0.SharedConstants.createFrom;
 const $$createType7 = $Create.Nullable($$createType6);
+const $$createType8 = types$0.HostsStatusResponse.createFrom;
+const $$createType9 = $Create.Nullable($$createType8);

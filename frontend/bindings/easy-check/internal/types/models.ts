@@ -33,6 +33,42 @@ export class Host {
     }
 }
 
+/**
+ * HostRangeData 主机历史数据
+ */
+export class HostRangeData {
+    "host": string;
+
+    /**
+     * metric -> points
+     */
+    "series": { [_: string]: TimeSeriesPoint[] };
+
+    /** Creates a new HostRangeData instance. */
+    constructor($$source: Partial<HostRangeData> = {}) {
+        if (!("host" in $$source)) {
+            this["host"] = "";
+        }
+        if (!("series" in $$source)) {
+            this["series"] = {};
+        }
+
+        Object.assign(this, $$source);
+    }
+
+    /**
+     * Creates a new HostRangeData instance from a string or object.
+     */
+    static createFrom($$source: any = {}): HostRangeData {
+        const $$createField1_0 = $$createType2;
+        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        if ("series" in $$parsedSource) {
+            $$parsedSource["series"] = $$createField1_0($$parsedSource["series"]);
+        }
+        return new HostRangeData($$parsedSource as Partial<HostRangeData>);
+    }
+}
+
 export class HostStatusData {
     "host": string;
     "min_latency": number;
@@ -75,6 +111,39 @@ export class HostStatusData {
 }
 
 /**
+ * HostsRangeResponse 主机历史数据响应
+ */
+export class HostsRangeResponse {
+    "hosts": HostRangeData[];
+    "total": number;
+    "error"?: string;
+
+    /** Creates a new HostsRangeResponse instance. */
+    constructor($$source: Partial<HostsRangeResponse> = {}) {
+        if (!("hosts" in $$source)) {
+            this["hosts"] = [];
+        }
+        if (!("total" in $$source)) {
+            this["total"] = 0;
+        }
+
+        Object.assign(this, $$source);
+    }
+
+    /**
+     * Creates a new HostsRangeResponse instance from a string or object.
+     */
+    static createFrom($$source: any = {}): HostsRangeResponse {
+        const $$createField0_0 = $$createType4;
+        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        if ("hosts" in $$parsedSource) {
+            $$parsedSource["hosts"] = $$createField0_0($$parsedSource["hosts"]);
+        }
+        return new HostsRangeResponse($$parsedSource as Partial<HostsRangeResponse>);
+    }
+}
+
+/**
  * HostsResponse 定义返回给前端的结构体
  */
 export class HostsResponse {
@@ -98,7 +167,7 @@ export class HostsResponse {
      * Creates a new HostsResponse instance from a string or object.
      */
     static createFrom($$source: any = {}): HostsResponse {
-        const $$createField0_0 = $$createType1;
+        const $$createField0_0 = $$createType6;
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
         if ("hosts" in $$parsedSource) {
             $$parsedSource["hosts"] = $$createField0_0($$parsedSource["hosts"]);
@@ -131,7 +200,7 @@ export class HostsStatusResponse {
      * Creates a new HostsStatusResponse instance from a string or object.
      */
     static createFrom($$source: any = {}): HostsStatusResponse {
-        const $$createField0_0 = $$createType3;
+        const $$createField0_0 = $$createType8;
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
         if ("hosts" in $$parsedSource) {
             $$parsedSource["hosts"] = $$createField0_0($$parsedSource["hosts"]);
@@ -140,8 +209,48 @@ export class HostsStatusResponse {
     }
 }
 
+/**
+ * TimeSeriesPoint 时间序列数据点
+ */
+export class TimeSeriesPoint {
+    /**
+     * 毫秒时间戳
+     */
+    "timestamp": number;
+
+    /**
+     * 数据值
+     */
+    "value": number;
+
+    /** Creates a new TimeSeriesPoint instance. */
+    constructor($$source: Partial<TimeSeriesPoint> = {}) {
+        if (!("timestamp" in $$source)) {
+            this["timestamp"] = 0;
+        }
+        if (!("value" in $$source)) {
+            this["value"] = 0;
+        }
+
+        Object.assign(this, $$source);
+    }
+
+    /**
+     * Creates a new TimeSeriesPoint instance from a string or object.
+     */
+    static createFrom($$source: any = {}): TimeSeriesPoint {
+        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        return new TimeSeriesPoint($$parsedSource as Partial<TimeSeriesPoint>);
+    }
+}
+
 // Private type creation functions
-const $$createType0 = Host.createFrom;
+const $$createType0 = TimeSeriesPoint.createFrom;
 const $$createType1 = $Create.Array($$createType0);
-const $$createType2 = HostStatusData.createFrom;
-const $$createType3 = $Create.Array($$createType2);
+const $$createType2 = $Create.Map($Create.Any, $$createType1);
+const $$createType3 = HostRangeData.createFrom;
+const $$createType4 = $Create.Array($$createType3);
+const $$createType5 = Host.createFrom;
+const $$createType6 = $Create.Array($$createType5);
+const $$createType7 = HostStatusData.createFrom;
+const $$createType8 = $Create.Array($$createType7);
