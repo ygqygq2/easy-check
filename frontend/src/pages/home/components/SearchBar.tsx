@@ -19,8 +19,8 @@ export function SearchBar({
   );
 
   return (
-    <HStack w="50%">
-      <InputGroup endElement={searchIcon} mr={4} css={{ "& > div": { px: 0 } }}>
+    <HStack flex="1" maxW="400px">
+      <InputGroup endElement={searchIcon} css={{ "& > div": { px: 0 } }}>
         <Input
           placeholder="搜索主机名称或 IP 地址"
           value={searchTerm}

@@ -73,7 +73,7 @@ export function HostList({
         const isSelected = selectedHosts.includes(host.host);
 
         return (
-          <Stack align="center" direction="row" gap="10" px="4" key={host.host}>
+          <Stack align="center" direction="row" gap="10" px="2" key={host.host}>
             <CheckboxCard.Root
               disabled={isDisabled}
               variant={isSelected ? "solid" : getVariant(latency)}

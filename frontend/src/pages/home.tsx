@@ -3,7 +3,7 @@ import {
   GetHosts,
   GetStatusWithHosts,
 } from "@bindings/easy-check/internal/services/appservice";
-import { Grid, GridItem, Stack } from "@chakra-ui/react";
+import { Box, Grid, GridItem, Stack } from "@chakra-ui/react";
 import { useEffect, useState } from "react";
 
 import TrendPanel from "@/components/trend/TrendPanel";
@@ -198,19 +198,15 @@ export function Page() {
   };
 
   return (
-    <Grid
-      templateRows={{ base: "auto 1fr", md: "1fr 1fr" }}
-      h="100%"
-      p="3"
-      gap="3"
-    >
-      <GridItem overflow="hidden">
+    <Box h="100vh" display="flex" flexDirection="column" p="2" gap="2">
+      <Box flexShrink={0}>
         <Stack
-          mx="2"
           direction="row"
           gap="3"
           align="center"
           justify="space-between"
+          mb="2"
+          px="2"
         >
           <SearchBar
             searchTerm={searchTerm}
@@ -234,10 +230,10 @@ export function Page() {
           pageSize={pageSize}
           onPageChange={setPage}
         />
-      </GridItem>
-      <GridItem minH={{ base: 280, md: 360 }}>
+      </Box>
+      <Box flex="1" minH={0} maxH="300px">
         <TrendPanel selectedHosts={selectedHosts} seriesMap={historyMap} />
-      </GridItem>
-    </Grid>
+      </Box>
+    </Box>
   );
 }

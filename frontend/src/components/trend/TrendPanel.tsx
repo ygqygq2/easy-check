@@ -1,7 +1,6 @@
 import { useMemo } from "react";
-import { Box, Grid, GridItem, HStack, Text } from "@chakra-ui/react";
+import { Box, HStack, Text } from "@chakra-ui/react";
 import PingLatencyChart from "./PingLatencyChart";
-import PacketLossChart from "./PacketLossChart";
 import { HostSeriesMap } from "@/types/series";
 
 const COLORS = ["#3182ce", "#38a169", "#d69e2e", "#e53e3e", "#805ad5"];
@@ -45,10 +44,11 @@ export default function TrendPanel({ selectedHosts, seriesMap }: Props) {
     selectedHosts.forEach((h, i) => (m[h] = COLORS[i % COLORS.length]));
     return m;
   }, [selectedHosts]);
+  const hasData = merged.length > 0;
 
   return (
     <Box w="100%" h="100%" display="flex" flexDirection="column">
-      <HStack gap="4" px="2" py="2">
+      <HStack gap="4" px="2" py="1">
         <Text>历史趋势（最近10分钟）</Text>
         <Text fontSize="sm" color="gray.500">
           已选 {selectedHosts.length} 台（最多 5 台）
@@ -64,23 +64,24 @@ export default function TrendPanel({ selectedHosts, seriesMap }: Props) {
         >
           请选择主机以查看历史趋势
         </Box>
+      ) : !hasData ? (
+        <Box
+          flex="1"
+          display="flex"
+          alignItems="center"
+          justifyContent="center"
+          color="gray.500"
+        >
+          暂无数据，等待刷新...
+        </Box>
       ) : (
-        <Grid templateRows="2fr 1fr" h="100%" gap="2">
-          <GridItem minH={{ base: 160, md: 220 }}>
-            <PingLatencyChart
-              data={merged}
-              selectedHosts={selectedHosts}
-              colorMap={colorMap}
-            />
-          </GridItem>
-          <GridItem minH={{ base: 120, md: 140 }}>
-            <PacketLossChart
-              data={merged}
-              selectedHosts={selectedHosts}
-              colorMap={colorMap}
-            />
-          </GridItem>
-        </Grid>
+        <Box flex="1" minH={0}>
+          <PingLatencyChart
+            data={merged}
+            selectedHosts={selectedHosts}
+            colorMap={colorMap}
+          />
+        </Box>
       )}
     </Box>
   );

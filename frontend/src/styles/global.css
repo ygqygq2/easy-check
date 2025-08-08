@@ -1,8 +1,12 @@
-html, body, #root, #app {
-	height: 100%;
+html,
+body,
+#root,
+#app {
+  height: 100%;
 }
 
-html, body {
-	margin: 0;
-	overflow: hidden; /* 禁止页面级滚动条 */
+html,
+body {
+  margin: 0;
+  overflow: hidden;
 }
