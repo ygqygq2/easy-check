@@ -6,6 +6,22 @@ hosts:
   - host: "114.114.114.114"
     description: "公共 DNS"
     fail_alert: true # 是否启用失败告警，默认值可在 alert.fail_alert 设置，为 true 即失败时发送告警
+  - host: "www.aliyun.com"
+    description: "阿里云"
+  - host: "www.taobao.com"
+    description: "淘宝"
+  - host: "www.jd.com"
+    description: "京东"
+  - host: "www.bilibili.com"
+    description: "哔哩哔哩"
+  - host: "www.sina.com.cn"
+    description: "新浪"
+  - host: "www.163.com"
+    description: "网易"
+  - host: "www.sohu.com"
+    description: "搜狐"
+  - host: "www.iqiyi.com"
+    description: "爱奇艺"
 
 ping:
   count: 8 # ping的次数

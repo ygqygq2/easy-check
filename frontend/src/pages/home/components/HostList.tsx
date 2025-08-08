@@ -4,6 +4,7 @@ import {
   Progress,
   SimpleGrid,
   Stack,
+  Text,
 } from "@chakra-ui/react";
 
 import { Tooltip } from "@/components/ui/tooltip";
@@ -12,17 +13,28 @@ import { Host, HostStatus, HostStatusMap } from "@/types/host";
 interface HostListProps {
   hosts: Host[];
   statusData: HostStatusMap;
+  selectedHosts: string[];
+  onToggleHost?: (host: string) => void;
 }
 
-export function HostList({ hosts, statusData }: HostListProps) {
-  const getColorPalette = (latency: number) => {
-    if (latency === 0) return "gray";
+export function HostList({
+  hosts,
+  statusData,
+  selectedHosts,
+  onToggleHost,
+}: HostListProps) {
+  // 固定主机名显示宽度，使进度条起点对齐
+  const labelWidth = { base: "100px", md: "120px" };
+
+  const getColorPalette = (latency: number | null) => {
+    if (latency === null) return "gray";
     if (latency <= 80) return "green";
     if (latency <= 200) return "yellow";
     return "red";
   };
 
-  const getValue = (latency: number) => {
+  const getValue = (latency: number | null) => {
+    if (latency === null) return 0;
     if (latency <= 10) return latency / 4;
     if (latency <= 40) return latency / 4;
     if (latency <= 80) return latency / 3;
@@ -30,12 +42,10 @@ export function HostList({ hosts, statusData }: HostListProps) {
     return latency / 2;
   };
 
-  const getVariant = (latency: number) => {
-    if (latency === 0) return "subtle";
+  const getVariant = (latency: number | null) => {
+    if (latency === null) return "subtle";
     return "outline";
   };
-
-  const getDisabled = (latency: number) => latency === 0;
 
   const getFontColor = (status: HostStatus | null) => {
     if (status?.status === "ALERT") {
@@ -44,46 +54,84 @@ export function HostList({ hosts, statusData }: HostListProps) {
     return undefined;
   };
 
+  const ellipsisStyle = {
+    overflow: "hidden",
+    textOverflow: "ellipsis",
+    whiteSpace: "nowrap",
+  } as const;
+
   return (
     <SimpleGrid columns={{ base: 1, md: 2 }} mt="4">
       {hosts.map((host) => {
         const hostStatus = statusData.get(host.host) || null;
-        const latency = hostStatus?.latency || 0;
+        const latency: number | null =
+          hostStatus && typeof hostStatus.latency === "number"
+            ? hostStatus.latency
+            : null;
+        const isAlert = hostStatus?.status === "ALERT";
+        const isDisabled = latency === null || isAlert;
+        const isSelected = selectedHosts.includes(host.host);
 
         return (
           <Stack align="center" direction="row" gap="10" px="4" key={host.host}>
             <CheckboxCard.Root
-              disabled={getDisabled(latency)}
-              variant={getVariant(latency)}
-              colorPalette="teal"
+              disabled={isDisabled}
+              variant={isSelected ? "solid" : getVariant(latency)}
+              colorPalette={isSelected ? "teal" : "teal"}
+              checked={isSelected}
+              onCheckedChange={() => {
+                if (isDisabled) return;
+                onToggleHost?.(host.host);
+              }}
             >
               <CheckboxCard.HiddenInput />
               <CheckboxCard.Control>
                 <CheckboxCard.Indicator />
                 <CheckboxCard.Label>
-                  <Progress.Root
-                    value={getValue(latency)}
-                    width="100%"
-                    colorPalette={getColorPalette(latency)}
-                  >
-                    <HStack gap="2">
+                  {isDisabled ? (
+                    <HStack gap="2" w="100%" justifyContent="space-between">
                       <Tooltip content={host.host}>
-                        <Progress.Label
-                          maxW={100}
+                        <Text
+                          w={labelWidth as any}
                           mr="2"
                           color={getFontColor(hostStatus)}
+                          style={ellipsisStyle}
                         >
                           {host.host}
-                        </Progress.Label>
+                        </Text>
                       </Tooltip>
-                      <Progress.Track flex="1">
-                        <Progress.Range />
-                      </Progress.Track>
-                      <Progress.ValueText>
-                        {latency === null ? "加载中" : latency.toFixed(0)} ms
-                      </Progress.ValueText>
+                      <Text color={isAlert ? "red" : "gray.500"}>
+                        {isAlert ? "不可用" : "加载中"}
+                      </Text>
                     </HStack>
-                  </Progress.Root>
+                  ) : (
+                    <Progress.Root
+                      value={getValue(latency)}
+                      width="100%"
+                      colorPalette={getColorPalette(latency)}
+                    >
+                      <HStack gap="2">
+                        <Tooltip content={host.host}>
+                          <Progress.Label
+                            w={labelWidth as any}
+                            mr="2"
+                            color={getFontColor(hostStatus)}
+                            style={ellipsisStyle}
+                          >
+                            {host.host}
+                          </Progress.Label>
+                        </Tooltip>
+                        <Progress.Track flex="1">
+                          <Progress.Range />
+                        </Progress.Track>
+                        <Progress.ValueText>
+                          {latency === null
+                            ? "加载中"
+                            : `${latency.toFixed(0)} ms`}
+                        </Progress.ValueText>
+                      </HStack>
+                    </Progress.Root>
+                  )}
                 </CheckboxCard.Label>
               </CheckboxCard.Control>
             </CheckboxCard.Root>

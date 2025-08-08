@@ -3,10 +3,13 @@ import {
   GetHosts,
   GetStatusWithHosts,
 } from "@bindings/easy-check/internal/services/appservice";
-import { Box, Stack } from "@chakra-ui/react";
+import { Grid, GridItem, Stack } from "@chakra-ui/react";
 import { useEffect, useState } from "react";
 
+import TrendPanel from "@/components/trend/TrendPanel";
+import { toaster } from "@/components/ui/toaster";
 import { Host, HostStatusMap } from "@/types/host";
+import { HostSeriesMap, SeriesPoint } from "@/types/series";
 
 import { PaginationControls } from "../components/PaginationControls";
 import { HostList } from "./home/components/HostList";
@@ -14,7 +17,7 @@ import { RefreshIntervalSelector } from "./home/components/RefreshIntervalSelect
 import { SearchBar } from "./home/components/SearchBar";
 
 export function Page() {
-  const pageSize = 20;
+  const pageSize = 10;
   const [page, setPage] = useState(1);
   const [hosts, setHosts] = useState<Host[]>([]);
   const [total, setTotal] = useState(0);
@@ -22,6 +25,8 @@ export function Page() {
   const [refreshInterval, setRefreshInterval] = useState<number | null>(10000); // 默认10秒刷新
   const [searchTerm, setSearchTerm] = useState("");
   const [displayedHosts, setDisplayedHosts] = useState<Host[]>([]);
+  const [selectedHosts, setSelectedHosts] = useState<string[]>([]);
+  const [historyMap, setHistoryMap] = useState<HostSeriesMap>({});
 
   const fetchAndSetHosts = async (page: number, searchTerm: string) => {
     try {
@@ -88,6 +93,9 @@ export function Page() {
         const res = await GetStatusWithHosts(hostNames);
         const statusHosts = res?.hosts || [];
         const statusList: HostStatusMap = new Map();
+        const now = Date.now();
+        const windowMs = 10 * 60 * 1000; // 10分钟窗口
+        const nextHistory: HostSeriesMap = { ...historyMap };
         statusHosts.forEach((statusHost) => {
           statusList.set(statusHost.host, {
             description: statusHost.host,
@@ -95,8 +103,42 @@ export function Page() {
             status: statusHost.status === "ALERT" ? "ALERT" : "RECOVERY",
             sent: false,
           });
+
+          // 追加历史点（min/avg/max/loss）
+          const point: SeriesPoint = {
+            ts: now,
+            min:
+              typeof statusHost.min_latency === "number"
+                ? statusHost.min_latency
+                : undefined,
+            avg:
+              typeof statusHost.avg_latency === "number"
+                ? statusHost.avg_latency
+                : undefined,
+            max:
+              typeof statusHost.max_latency === "number"
+                ? statusHost.max_latency
+                : undefined,
+            loss:
+              typeof statusHost.packet_loss === "number"
+                ? statusHost.packet_loss
+                : undefined,
+          };
+          const arr = nextHistory[statusHost.host]
+            ? [...nextHistory[statusHost.host]]
+            : [];
+          if (arr.length === 0 || arr[arr.length - 1].ts !== now) {
+            arr.push(point);
+          } else {
+            arr[arr.length - 1] = point;
+          }
+          const cutoff = now - windowMs;
+          nextHistory[statusHost.host] = arr
+            .filter((p) => p.ts >= cutoff)
+            .slice(-400);
         });
         setStatusData(statusList);
+        setHistoryMap(nextHistory);
       } catch (err) {
         console.error("Error fetching latency data:", err);
       }
@@ -117,37 +159,85 @@ export function Page() {
     };
   }, [hosts, refreshInterval]);
 
+  // 选择主机（最多5个），自动打开趋势图
+  const toggleHost = (host: string) => {
+    // 额外防护：若该主机处于 ALERT 或无数据，不允许选中
+    const s = statusData.get(host);
+    const disabled =
+      !s || s.status === "ALERT" || typeof s.latency !== "number";
+    if (disabled) {
+      toaster.create({
+        title: "该主机当前不可选",
+        description: s?.status === "ALERT" ? "主机告警中" : "暂无数据",
+        type: "warning",
+      });
+      return;
+    }
+    setSelectedHosts((prev) => {
+      const exists = prev.includes(host);
+      let next = exists ? prev.filter((h) => h !== host) : [...prev, host];
+      if (next.length > 5) {
+        toaster.create({
+          title: "最多选择5个主机",
+          description: "已达到选择上限",
+          type: "warning",
+        });
+        next = next.slice(0, 5);
+      }
+      // 自动打开趋势图（至少选择1个时）
+      return next;
+    });
+  };
+
+  // 当取消选择为0时，关闭弹窗
+  // 无需弹窗联动
+
   const handleBackendSearch = async (searchTerm: string) => {
     setPage(1); // 重置到第一页
     await fetchAndSetHosts(1, searchTerm);
   };
 
   return (
-    <Box p="4">
-      <Stack
-        mx="4"
-        direction="row"
-        gap="4"
-        align="center"
-        justify="space-between"
-      >
-        <SearchBar
-          searchTerm={searchTerm}
-          setSearchTerm={setSearchTerm}
-          onSearch={() => handleBackendSearch(searchTerm)}
+    <Grid
+      templateRows={{ base: "auto 1fr", md: "1fr 1fr" }}
+      h="100%"
+      p="3"
+      gap="3"
+    >
+      <GridItem overflow="hidden">
+        <Stack
+          mx="2"
+          direction="row"
+          gap="3"
+          align="center"
+          justify="space-between"
+        >
+          <SearchBar
+            searchTerm={searchTerm}
+            setSearchTerm={setSearchTerm}
+            onSearch={() => handleBackendSearch(searchTerm)}
+          />
+          <RefreshIntervalSelector
+            refreshInterval={refreshInterval}
+            onChange={setRefreshInterval}
+          />
+        </Stack>
+        <HostList
+          hosts={displayedHosts}
+          statusData={statusData}
+          selectedHosts={selectedHosts}
+          onToggleHost={toggleHost}
         />
-        <RefreshIntervalSelector
-          refreshInterval={refreshInterval}
-          onChange={setRefreshInterval}
+        <PaginationControls
+          page={page}
+          total={total}
+          pageSize={pageSize}
+          onPageChange={setPage}
         />
-      </Stack>
-      <HostList hosts={displayedHosts} statusData={statusData} />
-      <PaginationControls
-        page={page}
-        total={total}
-        pageSize={pageSize}
-        onPageChange={setPage}
-      />
-    </Box>
+      </GridItem>
+      <GridItem minH={{ base: 280, md: 360 }}>
+        <TrendPanel selectedHosts={selectedHosts} seriesMap={historyMap} />
+      </GridItem>
+    </Grid>
   );
 }

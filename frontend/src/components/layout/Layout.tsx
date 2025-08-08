@@ -114,7 +114,7 @@ export function Layout({ children }: LayoutProps) {
   ];
 
   return (
-    <Box>
+    <Box minH="100vh" display="flex" flexDirection="column" overflow="hidden">
       <Flex
         as="nav"
         bg={navBg}
@@ -132,7 +132,9 @@ export function Layout({ children }: LayoutProps) {
         </Flex>
         <ColorModeButton />
       </Flex>
-      <Box>{activeComponent}</Box>
+      <Box flex="1" overflow="hidden">
+        {activeComponent}
+      </Box>
       <Toaster />
     </Box>
   );
