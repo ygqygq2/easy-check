@@ -67,6 +67,9 @@ export function Page() {
     if (!searchTerm) {
       setDisplayedHosts(hosts || []);
     } else {
+      // 在搜索时清空选中的主机，避免选中不可见主机导致的渲染循环
+      setSelectedHosts([]);
+
       const lowercasedFilter = searchTerm.toLowerCase();
       const filtered = (hosts || []).filter(
         (host) =>
@@ -94,7 +97,7 @@ export function Page() {
         const statusHosts = res?.hosts || [];
         const statusList: HostStatusMap = new Map();
         const now = Date.now();
-        const windowMs = 10 * 60 * 1000; // 10分钟窗口
+        const windowMs = 30 * 24 * 60 * 60 * 1000; // 30天窗口，支持最长时间范围
         const nextHistory: HostSeriesMap = { ...historyMap };
         statusHosts.forEach((statusHost) => {
           statusList.set(statusHost.host, {
@@ -135,7 +138,7 @@ export function Page() {
           const cutoff = now - windowMs;
           nextHistory[statusHost.host] = arr
             .filter((p) => p.ts >= cutoff)
-            .slice(-400);
+            .slice(-10000); // 增加到10000个点，支持长时间数据
         });
         setStatusData(statusList);
         setHistoryMap(nextHistory);

@@ -1,6 +1,7 @@
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { Box, HStack, Text } from "@chakra-ui/react";
 import PingLatencyChart from "./PingLatencyChart";
+import TimeRangeSelector, { TimeRange, TIME_RANGES } from "./TimeRangeSelector";
 import { HostSeriesMap } from "@/types/series";
 
 const COLORS = ["#3182ce", "#38a169", "#d69e2e", "#e53e3e", "#805ad5"];
@@ -38,7 +39,50 @@ function useMerged(seriesMap: HostSeriesMap, hosts: string[]) {
 }
 
 export default function TrendPanel({ selectedHosts, seriesMap }: Props) {
-  const merged = useMerged(seriesMap, selectedHosts);
+  const [selectedTimeRange, setSelectedTimeRange] = useState<TimeRange>(
+    TIME_RANGES[0]
+  ); // 默认最近10分钟
+
+  // 根据选择的时间范围过滤和采样数据
+  const filteredSeriesMap = useMemo(() => {
+    const cutoff = Date.now() - selectedTimeRange.minutes * 60 * 1000;
+    const filtered: HostSeriesMap = {};
+
+    // 根据时间范围确定最大数据点数，避免性能问题
+    const getMaxDataPoints = (minutes: number) => {
+      if (minutes <= 60) return 200; // 1小时内：200个点
+      if (minutes <= 720) return 300; // 12小时内：300个点
+      if (minutes <= 1440) return 400; // 24小时内：400个点
+      if (minutes <= 10080) return 500; // 7天内：500个点
+      return 600; // 更长时间：600个点
+    };
+
+    const maxPoints = getMaxDataPoints(selectedTimeRange.minutes);
+
+    Object.keys(seriesMap).forEach((host) => {
+      const hostData = (seriesMap[host] || []).filter(
+        (point) => point.ts >= cutoff
+      );
+
+      // 如果数据点过多，进行采样
+      if (hostData.length <= maxPoints) {
+        filtered[host] = hostData;
+      } else {
+        // 均匀采样算法
+        const sampledData = [];
+        const step = hostData.length / maxPoints;
+        for (let i = 0; i < maxPoints; i++) {
+          const index = Math.floor(i * step);
+          sampledData.push(hostData[index]);
+        }
+        filtered[host] = sampledData;
+      }
+    });
+
+    return filtered;
+  }, [seriesMap, selectedTimeRange]);
+
+  const merged = useMerged(filteredSeriesMap, selectedHosts);
   const colorMap = useMemo(() => {
     const m: Record<string, string> = {};
     selectedHosts.forEach((h, i) => (m[h] = COLORS[i % COLORS.length]));
@@ -48,11 +92,17 @@ export default function TrendPanel({ selectedHosts, seriesMap }: Props) {
 
   return (
     <Box w="100%" h="100%" display="flex" flexDirection="column">
-      <HStack gap="4" px="2" py="1">
-        <Text>历史趋势（最近10分钟）</Text>
-        <Text fontSize="sm" color="gray.500">
-          已选 {selectedHosts.length} 台（最多 5 台）
-        </Text>
+      <HStack gap="4" px="2" py="1" justify="space-between">
+        <HStack gap="4">
+          <Text>历史趋势</Text>
+          <Text fontSize="sm" color="gray.500">
+            已选 {selectedHosts.length} 台（最多 5 台）
+          </Text>
+        </HStack>
+        <TimeRangeSelector
+          selectedRange={selectedTimeRange}
+          onRangeChange={setSelectedTimeRange}
+        />
       </HStack>
       {selectedHosts.length === 0 ? (
         <Box
@@ -80,6 +130,7 @@ export default function TrendPanel({ selectedHosts, seriesMap }: Props) {
             data={merged}
             selectedHosts={selectedHosts}
             colorMap={colorMap}
+            timeRangeMinutes={selectedTimeRange.minutes}
           />
         </Box>
       )}
