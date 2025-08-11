@@ -1,79 +1,22 @@
 import { memo, useMemo } from "react";
-import { Box, HStack, Text, Wrap, WrapItem } from "@chakra-ui/react";
+import { Box } from "@chakra-ui/react";
 import {
   ComposedChart,
   Area,
   Line,
+  Scatter,
   XAxis,
   YAxis,
   CartesianGrid,
   Tooltip,
   ResponsiveContainer,
-  TooltipProps,
+  Cell,
 } from "recharts";
 import { SeriesPoint } from "@/types/series";
 import { useColorModeValue } from "@/components/ui/color-mode";
-
-// 简化的 Tooltip 组件
-const SimpleTooltip = ({ active, payload, label }: any) => {
-  const tooltipBg = useColorModeValue(
-    "rgba(255,255,255,0.95)",
-    "rgba(45,55,72,0.95)"
-  );
-  const tooltipBorder = useColorModeValue("#e2e8f0", "#4a5568");
-
-  if (!active || !payload || !payload.length) return null;
-
-  // 只显示平均延迟和丢包率，过滤掉延迟范围
-  const items = payload
-    .filter((item: any) => item.strokeWidth > 0)
-    .filter((item: any) => {
-      const dataKey = item.dataKey as string;
-      return dataKey.includes(":avg") || dataKey.includes(":loss");
-    });
-
-  return (
-    <div
-      style={{
-        fontSize: "12px",
-        backgroundColor: tooltipBg,
-        border: `1px solid ${tooltipBorder}`,
-        borderRadius: "4px",
-        boxShadow: "0 2px 8px rgba(0,0,0,0.1)",
-        padding: "8px",
-      }}
-    >
-      <p style={{ margin: "0 0 4px 0" }}>
-        {new Date(Number(label)).toLocaleString("zh-CN", { hour12: false })}
-      </p>
-      {items.map((item: any, index: number) => {
-        const dataKey = item.dataKey as string;
-        const numValue = Number(item.value);
-        const hostName = dataKey.split(":")[0];
-        const isLoss = dataKey.includes(":loss");
-        const displayName = `${hostName} ${isLoss ? "丢包率" : "平均延迟"}`;
-        const displayValue = `${numValue.toFixed(2)}${isLoss ? "%" : "ms"}`;
-
-        return (
-          <p
-            key={index}
-            style={{
-              margin: "2px 0",
-              color: item.color,
-              display: "flex",
-              justifyContent: "space-between",
-            }}
-          >
-            <span>{displayName}:</span>
-            <span style={{ marginLeft: "8px", fontWeight: "bold" }}>
-              {displayValue}
-            </span>
-          </p>
-        );
-      })}
-    </div>
-  );
-};
+import { getPacketLossColor } from "./smokeping-colors";
+import SimpleTooltip from "./SimpleTooltip";
+import ChartLegend from "./ChartLegend";
 
 interface Props {
   data: SeriesPoint[];
@@ -184,53 +127,75 @@ const PingLatencyChart = memo(function PingLatencyChart({
                   type="monotone"
                   dataKey={`${h}:avg`}
                   stroke={colorMap[h]}
-                  dot={showDots ? { r: 2 } : false}
+                  dot={false}
                   strokeWidth={2}
                   isAnimationActive={false}
                   connectNulls
                   yAxisId="left"
                 />
-                {/* 丢包率线 */}
-                <Line
-                  key={`${h}-loss`}
-                  type="monotone"
-                  dataKey={`${h}:loss`}
-                  stroke={colorMap[h]}
-                  strokeDasharray="2 2"
-                  dot={showDots ? { r: 1 } : false}
-                  strokeWidth={1.5}
-                  isAnimationActive={false}
-                  connectNulls
-                  yAxisId="right"
-                />
               </>
+            ))}
+            {/* 丢包率散点图 - 只在有丢包时显示 */}
+            {selectedHosts.map((host) => (
+              <Scatter
+                key={`${host}-scatter`}
+                dataKey="avg"
+                data={data
+                  .map((point: any) => ({
+                    ts: point.ts,
+                    avg: point[`${host}:avg`],
+                    loss: point[`${host}:loss`],
+                  }))
+                  .filter(
+                    (point) =>
+                      point.avg !== undefined &&
+                      point.loss !== undefined &&
+                      point.loss > 0 // 只显示有丢包的点
+                  )}
+                fill="#8884d8"
+                shape="square"
+                yAxisId="left"
+              >
+                {data
+                  .filter((point: any) => {
+                    const loss = point[`${host}:loss`];
+                    const avg = point[`${host}:avg`];
+                    return avg !== undefined && loss !== undefined && loss > 0;
+                  })
+                  .map((point: any, index: number) => {
+                    const loss = point[`${host}:loss`];
+                    const color = getPacketLossColor(loss, colorMap[host]);
+                    return (
+                      <Cell
+                        key={`scatter-${host}-${index}`}
+                        fill={color}
+                        stroke={color}
+                        strokeWidth={0.5}
+                        r={3} // 减小方框尺寸
+                      />
+                    );
+                  })}
+              </Scatter>
+            ))}
+            {/* 添加隐藏的丢包率线条用于工具提示 */}
+            {selectedHosts.map((host) => (
+              <Line
+                key={`${host}-loss-tooltip`}
+                type="monotone"
+                dataKey={`${host}:loss`}
+                stroke="transparent"
+                strokeWidth={0}
+                dot={false}
+                isAnimationActive={false}
+                connectNulls={false}
+                yAxisId="right"
+              />
             ))}
           </ComposedChart>
         </ResponsiveContainer>
       </Box>
       {/* 自定义图例（在 X 轴下方，固定高度） */}
-      {selectedHosts.length > 0 && (
-        <Box mt="1" px="2" flexShrink={0}>
-          <Wrap gap="12px">
-            {selectedHosts.map((h) => (
-              <WrapItem key={`legend-${h}`}>
-                <HStack gap="1.5">
-                  <Box
-                    w="10px"
-                    h="10px"
-                    borderRadius="full"
-                    bg={colorMap[h]}
-                    boxShadow="inset 0 0 0 1px rgba(0,0,0,0.25)"
-                  />
-                  <Text fontSize="xs" color="gray.600">
-                    {h}
-                  </Text>
-                </HStack>
-              </WrapItem>
-            ))}
-          </Wrap>
-        </Box>
-      )}
+      <ChartLegend selectedHosts={selectedHosts} colorMap={colorMap} />
     </Box>
   );
 });
