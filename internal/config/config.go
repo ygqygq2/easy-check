@@ -17,10 +17,10 @@ type Host struct {
 
 // PingConfig Ping相关配置
 type PingConfig struct {
-	Count    int `yaml:"count"`
-	Timeout  int `yaml:"timeout"`
-	Interval int `yaml:"interval"`
-	LossRate int `yaml:"loss_rate"`
+	Count    int     `yaml:"count"`
+	Timeout  int     `yaml:"timeout"`
+	Interval int     `yaml:"interval"`
+	LossRate float64 `yaml:"loss_rate"`
 }
 
 // LogConfig 日志配置

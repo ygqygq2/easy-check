@@ -1,8 +1,9 @@
-import { useMemo, useState } from "react";
+import { useMemo, useState, useEffect } from "react";
 import { Box, HStack, Text } from "@chakra-ui/react";
 import PingLatencyChart from "./PingLatencyChart";
 import TimeRangeSelector, { TimeRange, TIME_RANGES } from "./TimeRangeSelector";
 import { HostSeriesMap } from "@/types/series";
+import { useHistoryData } from "@/hooks/useHistoryData";
 
 const COLORS = ["#3182ce", "#38a169", "#d69e2e", "#e53e3e", "#805ad5"];
 
@@ -40,6 +41,22 @@ export default function TrendPanel({ selectedHosts, seriesMap }: Props) {
   const [selectedTimeRange, setSelectedTimeRange] = useState<TimeRange>(
     TIME_RANGES[0]
   ); // 默认最近10分钟
+
+  const { loadHistoryForHost } = useHistoryData();
+
+  // 当时间范围变化时，为所有选中的主机重新加载对应时间范围的历史数据
+  useEffect(() => {
+    const loadDataForTimeRange = async () => {
+      const promises = selectedHosts.map((host) =>
+        loadHistoryForHost(host, selectedTimeRange.minutes)
+      );
+      await Promise.all(promises);
+    };
+
+    if (selectedHosts.length > 0) {
+      loadDataForTimeRange();
+    }
+  }, [selectedTimeRange, selectedHosts, loadHistoryForHost]);
 
   // 根据选择的时间范围过滤和采样数据
   const filteredSeriesMap = useMemo(() => {

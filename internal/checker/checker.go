@@ -194,7 +194,16 @@ func (c *Checker) writeMetricsToTSDB(host string, metrics map[string]interface{}
 func (c *Checker) getFailRateThreshold() float64 {
 	cfg := c.getConfig()
 	if cfg.Ping.LossRate > 0 {
-		return float64(cfg.Ping.LossRate) * 100
+		// 如果配置的是小数形式（如0.2表示20%），则乘以100转换为百分比
+		// 如果配置的已经是百分比形式（如20表示20%），则直接使用
+		lossRate := float64(cfg.Ping.LossRate)
+		if lossRate <= 1.0 {
+			// 小数形式，需要转换为百分比
+			return lossRate * 100
+		} else {
+			// 已经是百分比形式，直接使用
+			return lossRate
+		}
 	}
-	return 20 // 默认值（失败率超过 20% 触发告警）
+	return 20.0 // 默认值（失败率超过 20% 触发告警）
 }
