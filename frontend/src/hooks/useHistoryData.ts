@@ -60,12 +60,92 @@ export const useHistoryData = () => {
     });
   }, []);
 
-  // 为新选中的主机加载历史数据
-  const loadHistoryForHost = useCallback(
+  // 检测缓存中的数据缺失并从数据库补全
+  const fillMissingData = useCallback(
     async (hostName: string, timeRangeMinutes = 30) => {
+      const existingData = historyMap[hostName] || [];
+
+      if (existingData.length === 0) {
+        // 如果完全没有数据，直接加载历史数据
+        return loadHistoryForHost(hostName, timeRangeMinutes);
+      }
+
+      const now = Date.now();
+      const startTime = now - timeRangeMinutes * 60 * 1000;
+
+      // 找出缺失的时间段
+      const missingRanges: Array<{ start: number; end: number }> = [];
+
+      // 检查从开始时间到第一个数据点之间是否有缺失
+      const firstDataPoint = existingData[0];
+      if (firstDataPoint.ts > startTime + 2 * 60 * 1000) {
+        // 超过2分钟的间隔
+        missingRanges.push({
+          start: startTime,
+          end: firstDataPoint.ts - 60 * 1000, // 留1分钟缓冲
+        });
+      }
+
+      // 检查数据点之间的间隔
+      for (let i = 1; i < existingData.length; i++) {
+        const prevPoint = existingData[i - 1];
+        const currentPoint = existingData[i];
+        const gap = currentPoint.ts - prevPoint.ts;
+
+        // 如果间隔超过3分钟，认为有数据缺失
+        if (gap > 3 * 60 * 1000) {
+          missingRanges.push({
+            start: prevPoint.ts + 60 * 1000,
+            end: currentPoint.ts - 60 * 1000,
+          });
+        }
+      }
+
+      // 检查最后一个数据点到现在是否有缺失
+      const lastDataPoint = existingData[existingData.length - 1];
+      if (now - lastDataPoint.ts > 2 * 60 * 1000) {
+        missingRanges.push({
+          start: lastDataPoint.ts + 60 * 1000,
+          end: now,
+        });
+      }
+
+      // 为每个缺失的时间段补全数据
+      for (const range of missingRanges) {
+        try {
+          console.log(
+            `Filling missing data for ${hostName} from ${new Date(
+              range.start
+            ).toLocaleTimeString()} to ${new Date(
+              range.end
+            ).toLocaleTimeString()}`
+          );
+
+          await loadHistoryForHost(
+            hostName,
+            Math.ceil((range.end - range.start) / (60 * 1000)), // 转换为分钟
+            range.start,
+            range.end
+          );
+        } catch (error) {
+          console.error(`Failed to fill missing data for ${hostName}:`, error);
+        }
+      }
+    },
+    [historyMap]
+  );
+
+  // 智能加载历史数据，支持指定时间范围
+  const loadHistoryForHost = useCallback(
+    async (
+      hostName: string,
+      timeRangeMinutes = 30,
+      customStartTime?: number,
+      customEndTime?: number
+    ) => {
       try {
-        const now = Date.now();
-        const startTime = now - timeRangeMinutes * 60 * 1000;
+        const now = customEndTime || Date.now();
+        const startTime = customStartTime || now - timeRangeMinutes * 60 * 1000;
         const endTime = now;
 
         // 根据时间范围计算步长（秒）
@@ -129,25 +209,33 @@ export const useHistoryData = () => {
               ...Object.values(pointsMap).sort((a, b) => a.ts - b.ts)
             );
 
-            // 应用滑动窗口限制 - 根据实际的时间范围计算最大数据点数
-            const maxPoints = calculateMaxDataPoints(timeRangeMinutes);
-            let finalData = historicalPoints;
-            if (finalData.length > maxPoints) {
-              finalData = finalData.slice(-maxPoints);
+            if (historicalPoints.length > 0) {
+              setHistoryMap((prev) => {
+                const existingData = prev[hostName] || [];
+
+                // 合并新数据和现有数据，去重并排序
+                const allPoints = [...existingData, ...historicalPoints];
+                const uniquePoints = Array.from(
+                  new Map(allPoints.map((point) => [point.ts, point])).values()
+                ).sort((a, b) => a.ts - b.ts);
+
+                // 应用滑动窗口限制
+                const maxPoints = calculateMaxDataPoints(timeRangeMinutes);
+                let finalData = uniquePoints;
+                if (finalData.length > maxPoints) {
+                  finalData = finalData.slice(-maxPoints);
+                }
+
+                return {
+                  ...prev,
+                  [hostName]: finalData,
+                };
+              });
+
+              console.log(
+                `Loaded/merged ${historicalPoints.length} history points for host: ${hostName}`
+              );
             }
-
-            setHistoryMap((prev) => ({
-              ...prev,
-              [hostName]: finalData,
-            }));
-
-            console.log(
-              `Loaded ${
-                finalData.length
-              } history points for host: ${hostName} (expected ~${calculateExpectedDataPoints(
-                timeRangeMinutes
-              )} for ${timeRangeMinutes}min window)`
-            );
           }
         }
       } catch (err) {
@@ -169,6 +257,7 @@ export const useHistoryData = () => {
     historyMap,
     addDataPoint,
     loadHistoryForHost,
+    fillMissingData, // 新增：智能数据补全函数
     clearHistoryForHost,
   };
 };

@@ -26,7 +26,8 @@ export function Page() {
   const [displayedHosts, setDisplayedHosts] = useState<Host[]>([]);
 
   // 使用自定义 hooks 管理历史数据和主机状态
-  const { historyMap, addDataPoint, loadHistoryForHost } = useHistoryData();
+  const { historyMap, addDataPoint, loadHistoryForHost, fillMissingData } =
+    useHistoryData();
 
   // 首先定义 selectedHosts
   const {
@@ -36,12 +37,21 @@ export function Page() {
     updateStatusData,
   } = useHostSelection(
     new Map(), // 初始状态，将在 statusData 获取后更新
-    (hostName) => {
-      // 当选中主机时，如果历史数据不足，则加载历史数据
+    async (hostName) => {
+      // 当选中主机时，智能补全数据：先从缓存拿，再补全缺失的部分
+      console.log(`Host selected: ${hostName}, checking data completeness...`);
+
       const existingData = historyMap[hostName] || [];
-      if (existingData.length < 5) {
-        console.log(`Loading history for newly selected host: ${hostName}`);
-        loadHistoryForHost(hostName);
+      if (existingData.length === 0) {
+        // 完全没有数据，加载完整历史
+        console.log(`No cached data for ${hostName}, loading full history...`);
+        await loadHistoryForHost(hostName);
+      } else {
+        // 有缓存数据，智能补全缺失的时间段
+        console.log(
+          `Found ${existingData.length} cached points for ${hostName}, filling missing data...`
+        );
+        await fillMissingData(hostName);
       }
     },
     (hostName) => {
