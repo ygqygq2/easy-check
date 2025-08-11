@@ -29,25 +29,27 @@ export const useHostSelection = (
 
       setSelectedHosts((prev) => {
         const exists = prev.includes(host);
-        let next = exists ? prev.filter((h) => h !== host) : [...prev, host];
 
-        if (next.length > 5) {
-          toaster.create({
-            title: "最多选择5个主机",
-            description: "已达到选择上限",
-            type: "warning",
-          });
-          next = next.slice(0, 5);
-        }
-
-        // 通知外部组件主机选择状态变化
-        if (!exists && next.includes(host)) {
-          onHostSelected(host);
-        } else if (exists && !next.includes(host)) {
+        if (exists) {
+          // 取消选择
+          const next = prev.filter((h) => h !== host);
           onHostDeselected(host);
-        }
+          return next;
+        } else {
+          // 添加选择
+          if (prev.length >= 5) {
+            toaster.create({
+              title: "最多选择5个主机",
+              description: "已达到选择上限",
+              type: "warning",
+            });
+            return prev; // 不添加新主机，保持原有选择
+          }
 
-        return next;
+          const next = [...prev, host];
+          onHostSelected(host);
+          return next;
+        }
       });
     },
     [statusData, onHostSelected, onHostDeselected]
