@@ -47,19 +47,20 @@ export const useHistoryData = () => {
           newData[newData.length - 1] = point;
         }
 
-        // 实现滑动窗口：根据最大可能的时间窗口动态计算最大数据点数
-        // 使用最大时间窗口（7天）作为内存缓存窗口，从配置获取数据间隔
+        // 实现滑动窗口：内存层面保留 24h * 2 的数据（较轻），避免短窗口时点数太少导致图形“拉直”
         const intervalSeconds = getPingInterval();
-        const maxTimeWindowMinutes = 7 * 24 * 60; // 7天作为最大缓存窗口
+        const baseWindowMinutes = 24 * 60 * 2; // 48 小时内存缓存上限
         const maxPoints = calculateMaxDataPoints(
-          maxTimeWindowMinutes,
+          baseWindowMinutes,
           intervalSeconds
         );
         let finalData = newData;
         if (finalData.length > maxPoints) {
-          // 保留85%的数据点，留出更大的缓冲区
-          const keepCount = Math.floor(maxPoints * 0.85);
-          finalData = finalData.slice(-keepCount);
+          // 仅删除超出部分，删除粒度控制在 5 分钟（更平滑）
+          const fiveMinPoints = Math.ceil((5 * 60) / intervalSeconds);
+          const excess = finalData.length - maxPoints;
+          const deleteCount = Math.min(excess, fiveMinPoints);
+          finalData = finalData.slice(deleteCount);
         }
 
         return {
@@ -224,8 +225,13 @@ export const useHistoryData = () => {
 
                 // 应用滑动窗口限制
                 const intervalSeconds = getPingInterval();
+                // 为历史加载设置更高的上限（短窗口 * 6），避免后续实时补点后分辨率骤降导致视觉直线
+                const historyRetentionMinutes = Math.max(
+                  timeRangeMinutes * 6,
+                  timeRangeMinutes
+                );
                 const maxPoints = calculateMaxDataPoints(
-                  timeRangeMinutes,
+                  historyRetentionMinutes,
                   intervalSeconds
                 );
                 let finalData = uniquePoints;

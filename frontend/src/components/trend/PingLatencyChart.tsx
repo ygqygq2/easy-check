@@ -43,13 +43,68 @@ const PingLatencyChart = memo(function PingLatencyChart({
   );
   const tooltipBorder = useColorModeValue("#e2e8f0", "#4a5568");
 
-  // 根据时间范围计算X轴domain - 基于当前时间动态更新
+  // X 轴 domain 规则：
+  // - 主要目标：保持一个稳定且可预期的窗口，避免 start==end 造成 Recharts 计算异常
+  // - 若数据跨度 >= 选定窗口：显示 [dataMax-window, dataMax]
+  // - 若数据跨度 < 选定窗口：仍显示完整窗口 [dataMax-window, dataMax]（允许左侧留空）
+  //   之前“去掉左侧空白”的策略在只有 1 个点或极少点时会让 domain 折叠为同一点，引发当前截图中的 X 轴异常
+  // - 为了兼顾“数据基本填满窗口”且不浪费太多空白：当数据跨度覆盖窗口 60% 以上时再贴左端
   const xAxisDomain = useMemo(() => {
-    const now = Date.now();
-    const start = now - timeRangeMinutes * 60 * 1000;
+    const windowMs = timeRangeMinutes * 60 * 1000;
+    if (!data || data.length === 0) {
+      const end = Date.now();
+      return [end - windowMs, end];
+    }
+    const tsList = data
+      .map((d: any) => d.ts)
+      .filter((v) => typeof v === "number" && v > 0);
+    if (tsList.length === 0) {
+      const end = Date.now();
+      return [end - windowMs, end];
+    }
+    const dataMin = Math.min(...tsList);
+    const dataMax = Math.max(...tsList);
+    const span = dataMax - dataMin;
+    const fullStart = dataMax - windowMs;
+    // 如果跨度覆盖 >=60% 窗口并且最早数据点在 fullStart 之后，则可以贴到 dataMin 以减少空白
+    if (span >= windowMs * 0.6 && dataMin > fullStart) {
+      return [dataMin, dataMax];
+    }
+    // 否则使用标准窗口，保证不出现 start==end
+    return [fullStart, dataMax];
+  }, [timeRangeMinutes, data]);
 
-    return [start, now];
-  }, [timeRangeMinutes, data]); // 依赖data变化来触发重计算
+  // 计算延迟 Y 轴 domain，避免所有值相等时 Recharts 产生异常刻度（之前出现 1428571429 / 8571428571 这类数字）
+  const latencyDomain = useMemo(() => {
+    if (!data || data.length === 0 || selectedHosts.length === 0) return [0, 1];
+    let minV = Infinity;
+    let maxV = -Infinity;
+    for (const row of data as any[]) {
+      for (const h of selectedHosts) {
+        const avg = row[`${h}:avg`];
+        const range = row[`${h}:range`];
+        if (Array.isArray(range) && range.length === 2) {
+          if (typeof range[0] === "number") minV = Math.min(minV, range[0]);
+          if (typeof range[1] === "number") maxV = Math.max(maxV, range[1]);
+        }
+        if (typeof avg === "number") {
+          minV = Math.min(minV, avg);
+          maxV = Math.max(maxV, avg);
+        }
+      }
+    }
+    if (minV === Infinity || maxV === -Infinity) return [0, 1];
+    // 处理所有值相同或跨度极小
+    if (maxV - minV < 0.001) {
+      const v = maxV;
+      const pad = v === 0 ? 1 : Math.max(1, v * 0.2);
+      return [Math.max(0, v - pad), v + pad];
+    }
+    return [
+      Math.floor(Math.max(0, minV - (maxV - minV) * 0.1)),
+      Math.ceil(maxV + (maxV - minV) * 0.1),
+    ];
+  }, [data, selectedHosts]);
   return (
     <Box w="100%" h="100%" display="flex" flexDirection="column">
       <style>
@@ -76,18 +131,26 @@ const PingLatencyChart = memo(function PingLatencyChart({
               dataKey="ts"
               type="number"
               domain={xAxisDomain}
-              tickCount={15}
+              scale="time"
+              interval="preserveStartEnd" // 让首尾刻度保留，避免被压缩
+              minTickGap={32}
               tickFormatter={(v) =>
-                new Date(v).toLocaleTimeString("zh-CN", { hour12: false })
+                new Date(v).toLocaleTimeString("zh-CN", {
+                  hour12: false,
+                  hour: "2-digit",
+                  minute: "2-digit",
+                  second: "2-digit",
+                })
               }
               tickSize={8}
               axisLine={{ strokeWidth: 1 }}
+              allowDataOverflow={false}
             />
             {/* 左侧Y轴：延迟 */}
             <YAxis
               yAxisId="left"
               unit=" ms"
-              domain={["dataMin", "dataMax"]}
+              domain={latencyDomain as any}
               allowDecimals={false}
               width={50}
               tickSize={8}
@@ -171,8 +234,8 @@ const PingLatencyChart = memo(function PingLatencyChart({
                         key={`scatter-${host}-${index}`}
                         fill={color}
                         stroke={color}
-                        strokeWidth={0.5}
-                        r={3} // 减小方框尺寸
+                        strokeWidth={0.3}
+                        r={2}
                       />
                     );
                   })}
