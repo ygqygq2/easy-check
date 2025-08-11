@@ -47,20 +47,19 @@ export const useHistoryData = () => {
           newData[newData.length - 1] = point;
         }
 
-        // 实现滑动窗口：根据时间窗口动态计算最大数据点数
-        // 使用60分钟作为默认窗口，从配置获取数据间隔
+        // 实现滑动窗口：根据最大可能的时间窗口动态计算最大数据点数
+        // 使用最大时间窗口（7天）作为内存缓存窗口，从配置获取数据间隔
         const intervalSeconds = getPingInterval();
-        const maxPoints = calculateMaxDataPoints(60, intervalSeconds);
+        const maxTimeWindowMinutes = 7 * 24 * 60; // 7天作为最大缓存窗口
+        const maxPoints = calculateMaxDataPoints(
+          maxTimeWindowMinutes,
+          intervalSeconds
+        );
         let finalData = newData;
         if (finalData.length > maxPoints) {
-          // 计算需要保留的数据点数（保留90%，留出缓冲区）
-          const keepCount = Math.floor(maxPoints * 0.9);
-          const removedCount = finalData.length - keepCount;
+          // 保留85%的数据点，留出更大的缓冲区
+          const keepCount = Math.floor(maxPoints * 0.85);
           finalData = finalData.slice(-keepCount);
-
-          console.log(
-            `Sliding window applied for ${hostName}: removed ${removedCount} old points, kept ${keepCount} points (interval: ${intervalSeconds}s)`
-          );
         }
 
         return {
@@ -125,14 +124,6 @@ export const useHistoryData = () => {
       // 为每个缺失的时间段补全数据
       for (const range of missingRanges) {
         try {
-          console.log(
-            `Filling missing data for ${hostName} from ${new Date(
-              range.start
-            ).toLocaleTimeString()} to ${new Date(
-              range.end
-            ).toLocaleTimeString()}`
-          );
-
           await loadHistoryForHost(
             hostName,
             Math.ceil((range.end - range.start) / (60 * 1000)), // 转换为分钟
@@ -247,10 +238,6 @@ export const useHistoryData = () => {
                   [hostName]: finalData,
                 };
               });
-
-              console.log(
-                `Loaded/merged ${historicalPoints.length} history points for host: ${hostName}`
-              );
             }
           }
         }

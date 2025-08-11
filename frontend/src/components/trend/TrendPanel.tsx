@@ -19,6 +19,7 @@ function useMerged(seriesMap: HostSeriesMap, hosts: string[]) {
     const tsSet = new Set<number>();
     hosts.forEach((h) => (seriesMap[h] || []).forEach((p) => tsSet.add(p.ts)));
     const allTs = Array.from(tsSet).sort((a, b) => a - b);
+
     return allTs.map((ts) => {
       const row: any = { ts };
       hosts.forEach((h) => {
@@ -32,6 +33,7 @@ function useMerged(seriesMap: HostSeriesMap, hosts: string[]) {
           }
         }
       });
+
       return row;
     });
   }, [seriesMap, hosts]);
@@ -95,9 +97,10 @@ export default function TrendPanel({ selectedHosts, seriesMap }: Props) {
     });
 
     return filtered;
-  }, [seriesMap, selectedTimeRange]);
+  }, [seriesMap, selectedTimeRange]); // seriesMap变化时自动触发重新过滤
 
   const merged = useMerged(filteredSeriesMap, selectedHosts);
+
   const colorMap = useMemo(() => {
     const m: Record<string, string> = {};
     selectedHosts.forEach((h, i) => (m[h] = COLORS[i % COLORS.length]));

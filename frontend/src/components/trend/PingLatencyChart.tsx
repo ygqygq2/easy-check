@@ -43,12 +43,13 @@ const PingLatencyChart = memo(function PingLatencyChart({
   );
   const tooltipBorder = useColorModeValue("#e2e8f0", "#4a5568");
 
-  // 根据时间范围计算X轴domain
+  // 根据时间范围计算X轴domain - 基于当前时间动态更新
   const xAxisDomain = useMemo(() => {
     const now = Date.now();
     const start = now - timeRangeMinutes * 60 * 1000;
+
     return [start, now];
-  }, [timeRangeMinutes]);
+  }, [timeRangeMinutes, data]); // 依赖data变化来触发重计算
   return (
     <Box w="100%" h="100%" display="flex" flexDirection="column">
       <style>
