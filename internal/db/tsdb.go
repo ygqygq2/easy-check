@@ -5,9 +5,12 @@ import (
 	"easy-check/internal/config"
 	"easy-check/internal/utils"
 	"fmt"
-	"math/rand"
+	"io"
 	"os"
+	"path/filepath"
+	"sort"
 	"strconv"
+	"strings"
 	"sync"
 	"time"
 
@@ -25,18 +28,26 @@ type TSDB struct {
 // NewTSDB 初始化 Prometheus TSDB
 func NewTSDB(isDev bool, dbConfig *config.DbConfig) (*TSDB, error) {
 	var tsdbPath string
+	var path string
+	
 	if isDev {
-		// 开发模式下使用随机路径
-		r := rand.New(rand.NewSource(time.Now().UnixNano()))
-		randomSuffix := r.Intn(10000)
-		tsdbPath = fmt.Sprintf("tsdb-dev-%d", randomSuffix)
+		// 开发模式：使用时间戳命名，保证新目录总是最新的
+		basePath := utils.AddDirectorySuffix(dbConfig.Path)
+		timestamp := time.Now().Format("20060102-150405")
+		tsdbPath = fmt.Sprintf("tsdb-dev-%s", timestamp)
+		path = basePath + tsdbPath
+		
+		if err := copyFromLatestDevDirectory(basePath, path); err != nil {
+			// 复制失败不应该阻止启动，只记录警告
+			fmt.Printf("Warning: Failed to copy data from latest dev directory: %v\n", err)
+		}
 	} else {
 		// 生产模式下使用固定路径
 		tsdbPath = "tsdb"
+		path = utils.AddDirectorySuffix(dbConfig.Path) + tsdbPath
 	}
 
 	// 确保路径存在
-	path := utils.AddDirectorySuffix(dbConfig.Path) + tsdbPath
 	if _, err := os.Stat(path); os.IsNotExist(err) {
 		if err := os.MkdirAll(path, 0755); err != nil {
 			return nil, fmt.Errorf("failed to create TSDB directory: %v", err)
@@ -238,4 +249,101 @@ func (t *TSDB) QueryRangeMetricsForHosts(hosts []string, metric string, startTim
 type TimeSeriesPoint struct {
 	Timestamp int64   `json:"timestamp"` // 毫秒时间戳
 	Value     float64 `json:"value"`     // 数据值
+}
+
+// copyFromLatestDevDirectory 从最新的开发目录复制数据到新目录
+func copyFromLatestDevDirectory(basePath, newPath string) error {
+	// 查找最新的开发目录
+	latestDir, err := findLatestDevDirectory(basePath)
+	if err != nil || latestDir == "" {
+		return fmt.Errorf("no previous dev directory found")
+	}
+	
+	latestPath := filepath.Join(basePath, latestDir)
+	
+	// 检查源目录是否存在且可读
+	if _, err := os.Stat(latestPath); os.IsNotExist(err) {
+		return fmt.Errorf("source directory does not exist: %s", latestPath)
+	}
+	
+	// 创建目标目录
+	if err := os.MkdirAll(newPath, 0755); err != nil {
+		return fmt.Errorf("failed to create target directory: %v", err)
+	}
+	
+	// 复制目录内容
+	return copyDirectory(latestPath, newPath)
+}
+
+// findLatestDevDirectory 找到最新的开发目录
+func findLatestDevDirectory(basePath string) (string, error) {
+	entries, err := os.ReadDir(basePath)
+	if err != nil {
+		return "", err
+	}
+	
+	var devDirs []string
+	for _, entry := range entries {
+		if entry.IsDir() && strings.HasPrefix(entry.Name(), "tsdb-dev-") {
+			devDirs = append(devDirs, entry.Name())
+		}
+	}
+	
+	if len(devDirs) == 0 {
+		return "", fmt.Errorf("no dev directories found")
+	}
+	
+	// 按名称排序，最新的在最后
+	sort.Strings(devDirs)
+	return devDirs[len(devDirs)-1], nil
+}
+
+// copyDirectory 递归复制目录
+func copyDirectory(src, dst string) error {
+	return filepath.Walk(src, func(path string, info os.FileInfo, err error) error {
+		if err != nil {
+			return err
+		}
+		
+		// 计算目标路径
+		relPath, err := filepath.Rel(src, path)
+		if err != nil {
+			return err
+		}
+		dstPath := filepath.Join(dst, relPath)
+		
+		if info.IsDir() {
+			return os.MkdirAll(dstPath, info.Mode())
+		}
+		
+		return copyFile(path, dstPath)
+	})
+}
+
+// copyFile 复制单个文件
+func copyFile(src, dst string) error {
+	sourceFile, err := os.Open(src)
+	if err != nil {
+		return err
+	}
+	defer sourceFile.Close()
+	
+	destFile, err := os.Create(dst)
+	if err != nil {
+		return err
+	}
+	defer destFile.Close()
+	
+	_, err = io.Copy(destFile, sourceFile)
+	if err != nil {
+		return err
+	}
+	
+	// 复制文件权限
+	sourceInfo, err := os.Stat(src)
+	if err != nil {
+		return err
+	}
+	
+	return os.Chmod(dst, sourceInfo.Mode())
 }

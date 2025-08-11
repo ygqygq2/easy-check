@@ -61,6 +61,119 @@ func (a *AppService) GetConfig() (string, error) {
 	return content, nil
 }
 
+// FrontendConfig 前端需要的配置信息结构体
+type FrontendConfig struct {
+	PingInterval   int `json:"pingInterval"`   // ping间隔时间
+	GlobalInterval int `json:"globalInterval"` // 全局间隔时间
+	HostsCount     int `json:"hostsCount"`     // 主机数量
+}
+
+// GetFrontendConfig 获取前端需要的配置信息
+// 只返回前端实际使用的配置项，而不是完整的配置文件
+func (a *AppService) GetFrontendConfig() (*FrontendConfig, error) {
+	if a.appCtx == nil || a.appCtx.Config == nil {
+		return nil, fmt.Errorf("配置未初始化")
+	}
+
+	config := a.appCtx.Config
+	
+	// 获取ping间隔，如果ping.interval未设置则使用全局interval
+	pingInterval := config.Interval
+	if config.Ping.Interval > 0 {
+		pingInterval = config.Ping.Interval
+	}
+
+	return &FrontendConfig{
+		PingInterval:   pingInterval,
+		GlobalInterval: config.Interval,
+		HostsCount:     len(config.Hosts),
+	}, nil
+}
+
+// GetConfigValue 根据YAML路径获取配置值
+// 支持路径如: "ping.interval", "interval", "ping.count" 等
+func (a *AppService) GetConfigValue(path string) (interface{}, error) {
+	if a.appCtx == nil || a.appCtx.Config == nil {
+		return nil, fmt.Errorf("配置未初始化")
+	}
+
+	config := a.appCtx.Config
+	
+	// 解析配置路径
+	switch path {
+	case "ping.interval":
+		if config.Ping.Interval > 0 {
+			return config.Ping.Interval, nil
+		}
+		return config.Interval, nil // fallback到全局interval
+	case "ping.count":
+		return config.Ping.Count, nil
+	case "ping.timeout":
+		return config.Ping.Timeout, nil
+	case "ping.loss_rate":
+		return config.Ping.LossRate, nil
+	case "interval":
+		return config.Interval, nil
+	case "hosts.count":
+		return len(config.Hosts), nil
+	case "db.retention":
+		return config.Db.Retention, nil
+	case "log.console_level":
+		return config.Log.ConsoleLevel, nil
+	case "log.file_level":
+		return config.Log.FileLevel, nil
+	default:
+		return nil, fmt.Errorf("不支持的配置路径: %s", path)
+	}
+}
+
+// AppInfo 应用程序信息结构体
+type AppInfo struct {
+	AppName         string       `json:"appName"`         // 应用名称
+	AppVersion      string       `json:"appVersion"`      // 应用版本
+	Author          string       `json:"author"`          // 作者
+	Copyright       string       `json:"copyright"`       // 版权信息
+	License         string       `json:"license"`         // 许可证
+	Repository      string       `json:"repository"`      // 代码仓库
+	Description     string       `json:"description"`     // 应用描述
+	BuildTime       string       `json:"buildTime"`       // 构建时间
+	GoVersion       string       `json:"goVersion"`       // Go版本
+	PlatformInfo    PlatformInfo `json:"platformInfo"`    // 平台信息
+	UpdateServer    string       `json:"updateServer"`    // 更新服务器
+	NeedsRestart    bool         `json:"needsRestart"`    // 是否需要重启
+}
+
+// PlatformInfo 平台信息结构体
+type PlatformInfo struct {
+	OS   string `json:"os"`   // 操作系统
+	Arch string `json:"arch"` // 架构
+}
+
+// GetAppInfo 获取应用程序信息（类似VSCode的关于页面）
+func (a *AppService) GetAppInfo() (*AppInfo, error) {
+	if a.appCtx == nil {
+		return nil, fmt.Errorf("应用上下文未初始化")
+	}
+
+	return &AppInfo{
+		AppName:     "Easy Check",
+		AppVersion:  a.appCtx.AppVersion,
+		Author:      "Chinge Yang (ygqygq2)",
+		Copyright:   "Copyright (c) 2025 Chinge Yang",
+		License:     "MIT License",
+		Repository:  "https://github.com/ygqygq2/easy-check",
+		Description: "简单网络检测工具 - 定期检测网络连接状态，支持多种告警方式",
+		BuildTime:   "2025-08-11", // TODO: 可以通过ldflags注入实际构建时间
+		GoVersion:   "go1.21+",    // TODO: 可以通过runtime.Version()获取
+		PlatformInfo: PlatformInfo{
+			OS:   a.appCtx.PlatformInfo.OS,
+			Arch: a.appCtx.PlatformInfo.Arch,
+		},
+		UpdateServer: "https://easy-check-server.ygqygq2.com",
+		NeedsRestart: a.appCtx.NeedsRestart,
+	}, nil
+}
+
 // SaveConfig saves the configuration file content
 func (a *AppService) SaveConfig(content string) error {
 	err := config.SaveConfigToFile(a.appCtx.ConfigPath, content, a.appCtx.Logger)
@@ -197,7 +310,7 @@ func (a *AppService) GetHistoryWithHosts(hosts []string, startTime, endTime int6
 	
 	startT := time.UnixMilli(startTime)
 	endT := time.UnixMilli(endTime)
-	stepDuration := time.Duration(step) * time.Millisecond
+	stepDuration := time.Duration(step) * time.Second // step 是秒数，不是毫秒
 	
 	var hostRangeData []types.HostRangeData
 	

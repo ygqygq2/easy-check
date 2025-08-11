@@ -9,6 +9,7 @@ import smallLogo from "@/assets/images/logo36x36.png";
 import MenuBar from "@/components/MenuBar";
 import { ColorModeButton, useColorModeValue } from "@/components/ui/color-mode";
 
+import About from "../About";
 import LogFileViewer from "../log/LogFileViewer";
 import LogListComponent from "../log/LogListComponent";
 import { Toaster, toaster } from "../ui/toaster";
@@ -102,11 +103,9 @@ export function Layout({ children }: LayoutProps) {
           value: "about",
           label: "关于",
           onClick: () => {
-            toaster.create({
-              title: "Toaster 测试",
-              description: "这是一个测试通知，Toaster 正常工作！",
-              type: "info",
-            });
+            setActiveComponent(
+              <About onClose={() => setActiveComponent(children)} />
+            );
           },
         },
       ],

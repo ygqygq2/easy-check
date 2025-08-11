@@ -5,3 +5,5 @@ import * as AppService from "./appservice.js";
 export {
     AppService
 };
+
+export * from "./models.js";

@@ -1,64 +1,76 @@
 import { useState, useCallback } from "react";
 import { GetHistoryWithHosts } from "@bindings/easy-check/internal/services/appservice";
 import { HostSeriesMap, SeriesPoint } from "@/types/series";
-
-// 配置常量
-const PING_INTERVAL_SECONDS = 30; // 从配置文件中的 ping.interval，每30秒产生一个数据点
-const DEFAULT_TIME_WINDOW_MINUTES = 60; // 默认保留1小时的数据
+import { useConfig } from "./useConfig";
 
 // 根据时间窗口计算该时间范围内应该有多少个数据点
-const calculateExpectedDataPoints = (timeWindowMinutes: number) => {
-  // 每分钟的数据点数 = 60 / PING_INTERVAL_SECONDS
-  const pointsPerMinute = 60 / PING_INTERVAL_SECONDS;
+const calculateExpectedDataPoints = (
+  timeWindowMinutes: number,
+  intervalSeconds: number
+) => {
+  const pointsPerMinute = 60 / intervalSeconds;
   return Math.ceil(pointsPerMinute * timeWindowMinutes);
 };
 
 // 计算滑动窗口的最大数据点数（包含缓冲区）
 const calculateMaxDataPoints = (
-  timeWindowMinutes: number = DEFAULT_TIME_WINDOW_MINUTES
+  timeWindowMinutes: number,
+  intervalSeconds: number
 ) => {
-  const expectedPoints = calculateExpectedDataPoints(timeWindowMinutes);
+  const expectedPoints = calculateExpectedDataPoints(
+    timeWindowMinutes,
+    intervalSeconds
+  );
   // 为避免频繁删除，增加20%的缓冲区
   return Math.ceil(expectedPoints * 1.2);
 };
 
 export const useHistoryData = () => {
   const [historyMap, setHistoryMap] = useState<HostSeriesMap>({});
+  const { getPingInterval } = useConfig();
 
   // 添加新数据点的函数（滑动窗口机制）
-  const addDataPoint = useCallback((hostName: string, point: SeriesPoint) => {
-    setHistoryMap((prev) => {
-      const existingData = prev[hostName] || [];
-      const newData = [...existingData];
+  const addDataPoint = useCallback(
+    (hostName: string, point: SeriesPoint) => {
+      setHistoryMap((prev) => {
+        const existingData = prev[hostName] || [];
+        const newData = [...existingData];
 
-      // 检查是否是重复的时间戳（避免重复添加）
-      if (newData.length === 0 || newData[newData.length - 1].ts !== point.ts) {
-        newData.push(point);
-      } else {
-        // 更新最后一个点的数据
-        newData[newData.length - 1] = point;
-      }
+        // 检查是否是重复的时间戳（避免重复添加）
+        if (
+          newData.length === 0 ||
+          newData[newData.length - 1].ts !== point.ts
+        ) {
+          newData.push(point);
+        } else {
+          // 更新最后一个点的数据
+          newData[newData.length - 1] = point;
+        }
 
-      // 实现滑动窗口：根据时间窗口动态计算最大数据点数
-      const maxPoints = calculateMaxDataPoints();
-      let finalData = newData;
-      if (finalData.length > maxPoints) {
-        // 计算需要保留的数据点数（保留90%，留出缓冲区）
-        const keepCount = Math.floor(maxPoints * 0.9);
-        const removedCount = finalData.length - keepCount;
-        finalData = finalData.slice(-keepCount);
+        // 实现滑动窗口：根据时间窗口动态计算最大数据点数
+        // 使用60分钟作为默认窗口，从配置获取数据间隔
+        const intervalSeconds = getPingInterval();
+        const maxPoints = calculateMaxDataPoints(60, intervalSeconds);
+        let finalData = newData;
+        if (finalData.length > maxPoints) {
+          // 计算需要保留的数据点数（保留90%，留出缓冲区）
+          const keepCount = Math.floor(maxPoints * 0.9);
+          const removedCount = finalData.length - keepCount;
+          finalData = finalData.slice(-keepCount);
 
-        console.log(
-          `Sliding window applied for ${hostName}: removed ${removedCount} old points, kept ${keepCount} points`
-        );
-      }
+          console.log(
+            `Sliding window applied for ${hostName}: removed ${removedCount} old points, kept ${keepCount} points (interval: ${intervalSeconds}s)`
+          );
+        }
 
-      return {
-        ...prev,
-        [hostName]: finalData,
-      };
-    });
-  }, []);
+        return {
+          ...prev,
+          [hostName]: finalData,
+        };
+      });
+    },
+    [getPingInterval]
+  );
 
   // 检测缓存中的数据缺失并从数据库补全
   const fillMissingData = useCallback(
@@ -220,7 +232,11 @@ export const useHistoryData = () => {
                 ).sort((a, b) => a.ts - b.ts);
 
                 // 应用滑动窗口限制
-                const maxPoints = calculateMaxDataPoints(timeRangeMinutes);
+                const intervalSeconds = getPingInterval();
+                const maxPoints = calculateMaxDataPoints(
+                  timeRangeMinutes,
+                  intervalSeconds
+                );
                 let finalData = uniquePoints;
                 if (finalData.length > maxPoints) {
                   finalData = finalData.slice(-maxPoints);
@@ -242,7 +258,7 @@ export const useHistoryData = () => {
         console.error(`Error loading history data for host ${hostName}:`, err);
       }
     },
-    []
+    [getPingInterval]
   );
 
   // 清除主机的历史数据
@@ -257,7 +273,7 @@ export const useHistoryData = () => {
     historyMap,
     addDataPoint,
     loadHistoryForHost,
-    fillMissingData, // 新增：智能数据补全函数
+    fillMissingData,
     clearHistoryForHost,
   };
 };

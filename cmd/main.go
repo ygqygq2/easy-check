@@ -118,10 +118,38 @@ func main() {
 	<-exitChan
 
 	// 清理资源
+	appCtx.Logger.Log("Received shutdown signal, starting graceful shutdown...", "info")
+	
+	// 停止定期检查
 	close(stopChan)
+	
+	// 关闭 TSDB
+	if appCtx.TSDB != nil {
+		if err := appCtx.TSDB.Close(); err != nil {
+			appCtx.Logger.Log(fmt.Sprintf("Failed to close TSDB: %v", err), "error")
+		} else {
+			appCtx.Logger.Log("TSDB closed successfully", "info")
+		}
+	}
+	
+	// 关闭数据库
+	if appCtx.DB != nil && appCtx.DB.Instance != nil {
+		if err := appCtx.DB.Instance.Close(); err != nil {
+			appCtx.Logger.Log(fmt.Sprintf("Failed to close database: %v", err), "error")
+		} else {
+			appCtx.Logger.Log("Database closed successfully", "info")
+		}
+	}
+	
+	// 关闭通知器
 	if appCtx.Notifier != nil {
 		appCtx.Notifier.Close()
+		appCtx.Logger.Log("Notifier closed successfully", "info")
 	}
-	appCtx.Logger.Log("Application shutting down", "info")
+	
+	appCtx.Logger.Log("Application shutdown completed", "info")
+	
+	// 给一点时间让日志完成写入
+	time.Sleep(100 * time.Millisecond)
 	os.Exit(0)
 }
