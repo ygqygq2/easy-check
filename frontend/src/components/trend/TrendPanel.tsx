@@ -23,13 +23,11 @@ function useMerged(seriesMap: HostSeriesMap, hosts: string[]) {
       hosts.forEach((h) => {
         const p = (seriesMap[h] || []).find((x) => x.ts === ts);
         if (p) {
-          if (typeof p.min === "number") row[`${h}:min`] = p.min;
           if (typeof p.avg === "number") row[`${h}:avg`] = p.avg;
-          if (typeof p.max === "number") row[`${h}:max`] = p.max;
           if (typeof p.loss === "number") row[`${h}:loss`] = p.loss;
+          // 为每个主机添加延迟范围数据 [min, max]
           if (typeof p.min === "number" && typeof p.max === "number") {
-            const range = p.max - p.min;
-            if (range >= 0) row[`${h}:range`] = range;
+            row[`${h}:range`] = [p.min, p.max];
           }
         }
       });

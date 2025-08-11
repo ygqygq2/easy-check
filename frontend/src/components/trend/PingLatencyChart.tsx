@@ -1,7 +1,7 @@
 import { memo, useMemo } from "react";
 import { Box, HStack, Text, Wrap, WrapItem } from "@chakra-ui/react";
 import {
-  LineChart,
+  ComposedChart,
   Area,
   Line,
   XAxis,
@@ -24,7 +24,7 @@ const SimpleTooltip = ({ active, payload, label }: any) => {
 
   if (!active || !payload || !payload.length) return null;
 
-  // 只显示平均延迟和丢包率
+  // 只显示平均延迟和丢包率，过滤掉延迟范围
   const items = payload
     .filter((item: any) => item.strokeWidth > 0)
     .filter((item: any) => {
@@ -123,7 +123,7 @@ const PingLatencyChart = memo(function PingLatencyChart({
       </style>
       <Box flex="1" minH={0}>
         <ResponsiveContainer width="100%" height="100%">
-          <LineChart
+          <ComposedChart
             data={data}
             margin={{ top: 10, right: 30, bottom: 10, left: 30 }}
           >
@@ -132,6 +132,7 @@ const PingLatencyChart = memo(function PingLatencyChart({
               dataKey="ts"
               type="number"
               domain={xAxisDomain}
+              tickCount={15}
               tickFormatter={(v) =>
                 new Date(v).toLocaleTimeString("zh-CN", { hour12: false })
               }
@@ -160,45 +161,24 @@ const PingLatencyChart = memo(function PingLatencyChart({
               axisLine={{ strokeWidth: 1 }}
             />
             <Tooltip content={<SimpleTooltip />} />
-            {/* min-max 带状阴影 + min/max 细线 + avg 粗线 */}
+            {/* 延迟范围阴影区域和平均线 */}
             {selectedHosts.map((h) => (
               <>
-                {/* 延迟数据：带状阴影 - 隐藏在tooltip中的显示 */}
+                {/* 延迟范围阴影 */}
                 <Area
-                  key={`${h}-min-area`}
+                  key={`${h}-range`}
                   type="monotone"
-                  dataKey={`${h}:min`}
-                  stroke={undefined}
+                  dataKey={`${h}:range`}
+                  stroke="none"
                   fill={colorMap[h]}
-                  fillOpacity={0.15}
+                  fillOpacity={0.2}
                   isAnimationActive={false}
                   connectNulls
-                  yAxisId="left"
-                />
-                <Area
-                  key={`${h}-max-area`}
-                  type="monotone"
-                  dataKey={`${h}:max`}
-                  stroke={undefined}
-                  fill={colorMap[h]}
-                  fillOpacity={0.15}
-                  isAnimationActive={false}
-                  connectNulls
-                  yAxisId="left"
-                />
-                {/* 延迟数据：线条 */}
-                <Line
-                  key={`${h}-min`}
-                  type="monotone"
-                  dataKey={`${h}:min`}
-                  stroke={colorMap[h]}
-                  strokeDasharray="4 4"
                   dot={false}
-                  strokeWidth={1}
-                  isAnimationActive={false}
-                  connectNulls
+                  activeDot={false}
                   yAxisId="left"
                 />
+                {/* 平均延迟线 */}
                 <Line
                   key={`${h}-avg`}
                   type="monotone"
@@ -210,19 +190,7 @@ const PingLatencyChart = memo(function PingLatencyChart({
                   connectNulls
                   yAxisId="left"
                 />
-                <Line
-                  key={`${h}-max`}
-                  type="monotone"
-                  dataKey={`${h}:max`}
-                  stroke={colorMap[h]}
-                  strokeDasharray="4 4"
-                  dot={false}
-                  strokeWidth={1}
-                  isAnimationActive={false}
-                  connectNulls
-                  yAxisId="left"
-                />
-                {/* 丢包率数据：线条 */}
+                {/* 丢包率线 */}
                 <Line
                   key={`${h}-loss`}
                   type="monotone"
@@ -237,7 +205,7 @@ const PingLatencyChart = memo(function PingLatencyChart({
                 />
               </>
             ))}
-          </LineChart>
+          </ComposedChart>
         </ResponsiveContainer>
       </Box>
       {/* 自定义图例（在 X 轴下方，固定高度） */}
