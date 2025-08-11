@@ -22,6 +22,8 @@ hosts:
     description: "搜狐"
   - host: "www.iqiyi.com"
     description: "爱奇艺"
+  - host: "www.hao123.com"
+    description: "hao123"
 
 ping:
   count: 8 # ping的次数

@@ -15,9 +15,14 @@ export function PaginationControls({
   pageSize,
   onPageChange,
 }: PaginationControlsProps) {
+  const totalPages = Math.ceil(total / pageSize);
+  console.log(
+    `PaginationControls: page=${page}, total=${total}, pageSize=${pageSize}, totalPages=${totalPages}`
+  );
+
   return (
     <Pagination.Root
-      count={Math.ceil(total / pageSize)}
+      count={total}
       pageSize={pageSize}
       page={page}
       onPageChange={(e) => onPageChange(e.page)}
