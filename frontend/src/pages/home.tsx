@@ -26,8 +26,13 @@ export function Page() {
   const [displayedHosts, setDisplayedHosts] = useState<Host[]>([]);
 
   // 使用自定义 hooks 管理历史数据和主机状态
-  const { historyMap, addDataPoint, loadHistoryForHost, fillMissingData } =
-    useHistoryData();
+  const {
+    historyMap,
+    lastStepSeconds,
+    addDataPoint,
+    loadHistoryForHost,
+    fillMissingData,
+  } = useHistoryData();
 
   // 首先定义 selectedHosts
   const {
@@ -148,7 +153,12 @@ export function Page() {
         />
       </Box>
       <Box flex="1" minH={0} maxH="300px">
-        <TrendPanel selectedHosts={selectedHosts} seriesMap={historyMap} />
+        <TrendPanel
+          selectedHosts={selectedHosts}
+          seriesMap={historyMap}
+          onLoadHistory={loadHistoryForHost}
+          stepSeconds={lastStepSeconds}
+        />
       </Box>
     </Box>
   );

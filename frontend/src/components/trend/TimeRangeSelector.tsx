@@ -1,4 +1,4 @@
-import { NativeSelect, Stack, Text } from "@chakra-ui/react";
+import { NativeSelect, Stack, Text, HStack, Button } from "@chakra-ui/react";
 
 export interface TimeRange {
   label: string;
@@ -20,11 +20,15 @@ export const TIME_RANGES: TimeRange[] = [
 interface TimeRangeSelectorProps {
   selectedRange: TimeRange;
   onRangeChange: (range: TimeRange) => void;
+  customRange?: { start: number; end: number } | null;
+  onClearCustomRange?: () => void;
 }
 
 export default function TimeRangeSelector({
   selectedRange,
   onRangeChange,
+  customRange,
+  onClearCustomRange,
 }: TimeRangeSelectorProps) {
   const handleChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const minutes = parseInt(e.target.value, 10);
@@ -37,6 +41,17 @@ export default function TimeRangeSelector({
   return (
     <Stack direction="row" align="center" justify="flex-end">
       <Text>时间段</Text>
+      {customRange ? (
+        <HStack gap="2">
+          <Text fontSize="xs" color="gray.600">
+            {new Date(customRange.start).toLocaleString()} —{" "}
+            {new Date(customRange.end).toLocaleString()}
+          </Text>
+          <Button size="xs" variant="outline" onClick={onClearCustomRange}>
+            重置
+          </Button>
+        </HStack>
+      ) : null}
       <NativeSelect.Root size="sm" width="140px">
         <NativeSelect.Field
           value={selectedRange.minutes}

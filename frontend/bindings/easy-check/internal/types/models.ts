@@ -118,6 +118,11 @@ export class HostsRangeResponse {
     "total": number;
     "error"?: string;
 
+    /**
+     * 实际使用的步长（秒）
+     */
+    "step_seconds"?: number;
+
     /** Creates a new HostsRangeResponse instance. */
     constructor($$source: Partial<HostsRangeResponse> = {}) {
         if (!("hosts" in $$source)) {

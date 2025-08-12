@@ -1,4 +1,4 @@
-import { memo, useMemo } from "react";
+import { memo, useMemo, useState, useCallback, useRef } from "react";
 import { Box } from "@chakra-ui/react";
 import {
   ComposedChart,
@@ -11,12 +11,14 @@ import {
   Tooltip,
   ResponsiveContainer,
   Cell,
+  ReferenceArea,
 } from "recharts";
 import { SeriesPoint } from "@/types/series";
 import { useColorModeValue } from "@/components/ui/color-mode";
 import { getPacketLossColor } from "./smokeping-colors";
 import SimpleTooltip from "./SimpleTooltip";
 import ChartLegend from "./ChartLegend";
+import { useTooltipOptimization } from "@/hooks/useTooltipOptimization";
 
 interface Props {
   data: SeriesPoint[];
@@ -25,6 +27,12 @@ interface Props {
   colorMap: Record<string, string>;
   // 时间范围（分钟）
   timeRangeMinutes: number;
+  // 可选：自定义时间范围（毫秒），用于放大视图
+  customRange?: { start: number; end: number } | null;
+  // 当前分辨率（秒），用于生成更合理的刻度
+  stepSeconds?: number | null;
+  // 放大回调（使用鼠标拖动触发）
+  onZoom?: (range: { start: number; end: number }) => void;
 }
 
 const PingLatencyChart = memo(function PingLatencyChart({
@@ -32,16 +40,18 @@ const PingLatencyChart = memo(function PingLatencyChart({
   selectedHosts,
   colorMap,
   timeRangeMinutes,
+  customRange,
+  stepSeconds,
+  onZoom,
 }: Props) {
+  const [dragStart, setDragStart] = useState<number | null>(null);
+  const [dragEnd, setDragEnd] = useState<number | null>(null);
+
+  const chartRef = useRef<HTMLDivElement>(null);
   const showDots = (data?.length || 0) < 3;
 
   // 主题相关的颜色
   const axisColor = useColorModeValue("gray.600", "gray.400");
-  const tooltipBg = useColorModeValue(
-    "rgba(255,255,255,0.95)",
-    "rgba(45,55,72,0.95)"
-  );
-  const tooltipBorder = useColorModeValue("#e2e8f0", "#4a5568");
 
   // X 轴 domain 规则：
   // - 主要目标：保持一个稳定且可预期的窗口，避免 start==end 造成 Recharts 计算异常
@@ -50,6 +60,9 @@ const PingLatencyChart = memo(function PingLatencyChart({
   //   之前“去掉左侧空白”的策略在只有 1 个点或极少点时会让 domain 折叠为同一点，引发当前截图中的 X 轴异常
   // - 为了兼顾“数据基本填满窗口”且不浪费太多空白：当数据跨度覆盖窗口 60% 以上时再贴左端
   const xAxisDomain = useMemo(() => {
+    if (customRange && customRange.start && customRange.end) {
+      return [customRange.start, customRange.end] as [number, number];
+    }
     const windowMs = timeRangeMinutes * 60 * 1000;
     if (!data || data.length === 0) {
       const end = Date.now();
@@ -66,13 +79,100 @@ const PingLatencyChart = memo(function PingLatencyChart({
     const dataMax = Math.max(...tsList);
     const span = dataMax - dataMin;
     const fullStart = dataMax - windowMs;
-    // 如果跨度覆盖 >=60% 窗口并且最早数据点在 fullStart 之后，则可以贴到 dataMin 以减少空白
     if (span >= windowMs * 0.6 && dataMin > fullStart) {
       return [dataMin, dataMax];
     }
-    // 否则使用标准窗口，保证不出现 start==end
     return [fullStart, dataMax];
-  }, [timeRangeMinutes, data]);
+  }, [timeRangeMinutes, data, customRange]);
+
+  // 使用优化的 tooltip hook
+  const {
+    tooltipState,
+    handleMouseMove: optimizedMouseMove,
+    handleMouseLeave: optimizedMouseLeave,
+  } = useTooltipOptimization({
+    data: data || [],
+    selectedHosts,
+    xAxisDomain: xAxisDomain as [number, number],
+    debounceMs: 16, // ~60fps
+  });
+
+  // 基于步长生成更友好的刻度
+  const xTicks = useMemo(() => {
+    const [start, end] = xAxisDomain as [number, number];
+    const spanSec = Math.max(1, Math.floor((end - start) / 1000));
+    const desired = 8; // 期望 8 个刻度
+    let base = Math.max(1, Math.floor(spanSec / desired));
+    if (stepSeconds && stepSeconds > 0) {
+      const k = Math.max(1, Math.round(base / stepSeconds));
+      base = k * stepSeconds;
+    }
+    const ticks: number[] = [];
+    const startSec = Math.floor(start / 1000 / base) * base;
+    const endSec = Math.ceil(end / 1000 / base) * base;
+    for (let t = startSec; t <= endSec; t += base) {
+      ticks.push(t * 1000);
+      if (ticks.length > 60) break;
+    }
+    return ticks;
+  }, [xAxisDomain, stepSeconds]);
+
+  // 优化的鼠标移动处理
+  const handleChartMouseMove = useCallback(
+    (e: MouseEvent) => {
+      if (!chartRef.current) return;
+
+      const chartRect = chartRef.current.getBoundingClientRect();
+      const mouseX = e.clientX - chartRect.left;
+      const mouseY = e.clientY - chartRect.top;
+
+      // 考虑图表的 margin
+      const margin = { top: 10, right: 30, bottom: 10, left: 30 };
+      const chartWidth = chartRect.width - margin.left - margin.right;
+      const adjustedMouseX = mouseX - margin.left;
+
+      // 确保鼠标在有效区域内
+      if (
+        adjustedMouseX >= 0 &&
+        adjustedMouseX <= chartWidth &&
+        mouseY >= margin.top &&
+        mouseY <= chartRect.height - margin.bottom
+      ) {
+        optimizedMouseMove(adjustedMouseX, mouseY, chartWidth);
+      } else {
+        optimizedMouseLeave();
+      }
+    },
+    [optimizedMouseMove, optimizedMouseLeave]
+  );
+
+  const onChartMouseDown = useCallback((e: any) => {
+    if (e && typeof e.activeLabel === "number") {
+      setDragStart(e.activeLabel);
+      setDragEnd(null);
+    }
+  }, []);
+
+  const onChartMouseMove = useCallback(
+    (e: any) => {
+      if (dragStart && e && typeof e.activeLabel === "number") {
+        setDragEnd(e.activeLabel);
+      }
+    },
+    [dragStart]
+  );
+
+  const onChartMouseUp = useCallback(() => {
+    if (dragStart && dragEnd && onZoom) {
+      const start = Math.min(dragStart, dragEnd);
+      const end = Math.max(dragStart, dragEnd);
+      if (end - start > 5 * 1000) {
+        onZoom({ start, end });
+      }
+    }
+    setDragStart(null);
+    setDragEnd(null);
+  }, [dragStart, dragEnd, onZoom]);
 
   // 计算延迟 Y 轴 domain，避免所有值相等时 Recharts 产生异常刻度（之前出现 1428571429 / 8571428571 这类数字）
   const latencyDomain = useMemo(() => {
@@ -120,143 +220,200 @@ const PingLatencyChart = memo(function PingLatencyChart({
           }
         `}
       </style>
-      <Box flex="1" minH={0}>
-        <ResponsiveContainer width="100%" height="100%">
-          <ComposedChart
-            data={data}
-            margin={{ top: 10, right: 30, bottom: 10, left: 30 }}
-          >
-            <CartesianGrid strokeDasharray="3 3" />
-            <XAxis
-              dataKey="ts"
-              type="number"
-              domain={xAxisDomain}
-              scale="time"
-              interval="preserveStartEnd" // 让首尾刻度保留，避免被压缩
-              minTickGap={32}
-              tickFormatter={(v) =>
-                new Date(v).toLocaleTimeString("zh-CN", {
-                  hour12: false,
-                  hour: "2-digit",
-                  minute: "2-digit",
-                  second: "2-digit",
-                })
-              }
-              tickSize={8}
-              axisLine={{ strokeWidth: 1 }}
-              allowDataOverflow={false}
-            />
-            {/* 左侧Y轴：延迟 */}
-            <YAxis
-              yAxisId="left"
-              unit=" ms"
-              domain={latencyDomain as any}
-              allowDecimals={false}
-              width={50}
-              tickSize={8}
-              axisLine={{ strokeWidth: 1 }}
-            />
-            {/* 右侧Y轴：丢包率 */}
-            <YAxis
-              yAxisId="right"
-              orientation="right"
-              unit="%"
-              domain={[0, "dataMax"]}
-              allowDecimals={false}
-              width={50}
-              tickSize={8}
-              axisLine={{ strokeWidth: 1 }}
-            />
-            <Tooltip content={<SimpleTooltip />} />
-            {/* 延迟范围阴影区域和平均线 */}
-            {selectedHosts.map((h) => (
-              <>
-                {/* 延迟范围阴影 */}
-                <Area
-                  key={`${h}-range`}
-                  type="monotone"
-                  dataKey={`${h}:range`}
-                  stroke="none"
-                  fill={colorMap[h]}
-                  fillOpacity={0.2}
-                  isAnimationActive={false}
-                  connectNulls
-                  dot={false}
-                  activeDot={false}
-                  yAxisId="left"
-                />
-                {/* 平均延迟线 */}
-                <Line
-                  key={`${h}-avg`}
-                  type="monotone"
-                  dataKey={`${h}:avg`}
-                  stroke={colorMap[h]}
-                  dot={false}
-                  strokeWidth={2}
-                  isAnimationActive={false}
-                  connectNulls
-                  yAxisId="left"
-                />
-              </>
-            ))}
-            {/* 丢包率散点图 - 只在有丢包时显示 */}
-            {selectedHosts.map((host) => (
-              <Scatter
-                key={`${host}-scatter`}
-                dataKey="avg"
-                data={data
-                  .map((point: any) => ({
-                    ts: point.ts,
-                    avg: point[`${host}:avg`],
-                    loss: point[`${host}:loss`],
-                  }))
-                  .filter(
-                    (point) =>
-                      point.avg !== undefined &&
-                      point.loss !== undefined &&
-                      point.loss > 0 // 只显示有丢包的点
-                  )}
-                fill="#8884d8"
-                shape="square"
-                yAxisId="left"
-              >
-                {data
-                  .filter((point: any) => {
-                    const loss = point[`${host}:loss`];
-                    const avg = point[`${host}:avg`];
-                    return avg !== undefined && loss !== undefined && loss > 0;
-                  })
-                  .map((point: any, index: number) => {
-                    const loss = point[`${host}:loss`];
-                    const color = getPacketLossColor(loss, colorMap[host]);
-                    return (
-                      <Cell
-                        key={`scatter-${host}-${index}`}
-                        fill={color}
-                        stroke={color}
-                        strokeWidth={0.3}
-                        r={2}
-                      />
-                    );
-                  })}
-              </Scatter>
-            ))}
-            {/* 添加隐藏的丢包率线条用于工具提示 */}
-            {selectedHosts.map((host) => (
-              <Line
-                key={`${host}-loss-tooltip`}
-                type="monotone"
-                dataKey={`${host}:loss`}
-                stroke="transparent"
-                strokeWidth={0}
-                dot={false}
-                isAnimationActive={false}
-                connectNulls={false}
-                yAxisId="right"
+      <Box flex="1" minH={0} position="relative">
+        <div
+          ref={chartRef}
+          style={{ width: "100%", height: "100%", position: "relative" }}
+          onMouseMove={handleChartMouseMove as any}
+          onMouseLeave={optimizedMouseLeave}
+        >
+          <ResponsiveContainer width="100%" height="100%">
+            <ComposedChart
+              data={data}
+              margin={{ top: 10, right: 30, bottom: 10, left: 30 }}
+              onMouseDown={onChartMouseDown}
+              onMouseMove={onChartMouseMove}
+              onMouseUp={onChartMouseUp}
+            >
+              <CartesianGrid strokeDasharray="3 3" />
+              <XAxis
+                dataKey="ts"
+                type="number"
+                domain={xAxisDomain}
+                scale="time"
+                ticks={xTicks}
+                interval={0}
+                minTickGap={32}
+                tickFormatter={(v) => {
+                  const d = new Date(v);
+                  const [start, end] = xAxisDomain as [number, number];
+                  const crossDays =
+                    new Date(start).toDateString() !==
+                    new Date(end).toDateString();
+                  if (crossDays) {
+                    return d.toLocaleString("zh-CN", {
+                      month: "2-digit",
+                      day: "2-digit",
+                      hour12: false,
+                      hour: "2-digit",
+                      minute: "2-digit",
+                    });
+                  }
+                  return d.toLocaleTimeString("zh-CN", {
+                    hour12: false,
+                    hour: "2-digit",
+                    minute: "2-digit",
+                    second: "2-digit",
+                  });
+                }}
+                tickSize={8}
+                axisLine={{ strokeWidth: 1 }}
+                allowDataOverflow={false}
               />
-            ))}
-          </ComposedChart>
-        </ResponsiveContainer>
+              {/* 拖拽选择区域可视化 */}
+              {dragStart !== null && dragEnd !== null && (
+                <ReferenceArea
+                  x1={dragStart}
+                  x2={dragEnd}
+                  strokeOpacity={0.3}
+                />
+              )}
+              {/* 左侧Y轴：延迟 */}
+              <YAxis
+                yAxisId="left"
+                unit=" ms"
+                domain={latencyDomain as any}
+                allowDecimals={false}
+                width={50}
+                tickSize={8}
+                axisLine={{ strokeWidth: 1 }}
+              />
+              {/* 右侧Y轴：丢包率 */}
+              <YAxis
+                yAxisId="right"
+                orientation="right"
+                unit="%"
+                domain={[0, "dataMax"]}
+                allowDecimals={false}
+                width={50}
+                tickSize={8}
+                axisLine={{ strokeWidth: 1 }}
+              />
+              {/* 禁用默认 Tooltip，我们使用自定义的 */}
+              <Tooltip content={() => null} />
+              {/* 延迟范围阴影区域和平均线 */}
+              {selectedHosts.map((h) => (
+                <>
+                  {/* 延迟范围阴影 */}
+                  <Area
+                    key={`${h}-range`}
+                    type="monotone"
+                    dataKey={`${h}:range`}
+                    stroke="none"
+                    fill={colorMap[h]}
+                    fillOpacity={0.2}
+                    isAnimationActive={false}
+                    connectNulls
+                    dot={false}
+                    activeDot={false}
+                    yAxisId="left"
+                  />
+                  {/* 平均延迟线 */}
+                  <Line
+                    key={`${h}-avg`}
+                    type="monotone"
+                    dataKey={`${h}:avg`}
+                    stroke={colorMap[h]}
+                    dot={false}
+                    strokeWidth={2}
+                    isAnimationActive={false}
+                    connectNulls
+                    yAxisId="left"
+                  />
+                </>
+              ))}
+              {/* 丢包率散点图 - 只在有丢包时显示 */}
+              {selectedHosts.map((host) => (
+                <Scatter
+                  key={`${host}-scatter`}
+                  dataKey="avg"
+                  data={data
+                    .map((point: any) => ({
+                      ts: point.ts,
+                      avg: point[`${host}:avg`],
+                      loss: point[`${host}:loss`],
+                    }))
+                    .filter(
+                      (point) =>
+                        point.avg !== undefined &&
+                        point.loss !== undefined &&
+                        point.loss > 0 // 只显示有丢包的点
+                    )}
+                  fill="#8884d8"
+                  shape="square"
+                  yAxisId="left"
+                >
+                  {data
+                    .filter((point: any) => {
+                      const loss = point[`${host}:loss`];
+                      const avg = point[`${host}:avg`];
+                      return (
+                        avg !== undefined && loss !== undefined && loss > 0
+                      );
+                    })
+                    .map((point: any, index: number) => {
+                      const loss = point[`${host}:loss`];
+                      const color = getPacketLossColor(loss, colorMap[host]);
+                      return (
+                        <Cell
+                          key={`scatter-${host}-${index}`}
+                          fill={color}
+                          stroke={color}
+                          strokeWidth={0.3}
+                          r={2}
+                        />
+                      );
+                    })}
+                </Scatter>
+              ))}
+              {/* 添加隐藏的丢包率线条用于工具提示 */}
+              {selectedHosts.map((host) => (
+                <Line
+                  key={`${host}-loss-tooltip`}
+                  type="monotone"
+                  dataKey={`${host}:loss`}
+                  stroke="transparent"
+                  strokeWidth={0}
+                  dot={false}
+                  isAnimationActive={false}
+                  connectNulls={false}
+                  yAxisId="right"
+                />
+              ))}
+            </ComposedChart>
+          </ResponsiveContainer>
+        </div>
+
+        {/* 自定义 Tooltip */}
+        {tooltipState?.visible && (
+          <div
+            style={{
+              position: "absolute",
+              left: tooltipState.x + 10,
+              top: tooltipState.y - 10,
+              pointerEvents: "none",
+              zIndex: 1000,
+            }}
+          >
+            <SimpleTooltip
+              active={true}
+              label={tooltipState.timestamp}
+              data={data}
+              selectedHosts={selectedHosts}
+              payload={[]}
+            />
+          </div>
+        )}
       </Box>
       {/* 自定义图例（在 X 轴下方，固定高度） */}
       <ChartLegend selectedHosts={selectedHosts} colorMap={colorMap} />

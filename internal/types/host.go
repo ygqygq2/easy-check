@@ -47,4 +47,5 @@ type HostsRangeResponse struct {
 	Hosts []HostRangeData `json:"hosts"`
 	Total int             `json:"total"`
 	Error string          `json:"error,omitempty"`
+	StepSeconds int64     `json:"step_seconds,omitempty"` // 实际使用的步长（秒）
 }

@@ -307,50 +307,130 @@ func (a *AppService) GetStatusWithHosts(hosts []string) *types.HostsStatusRespon
 // GetHistoryWithHosts 获取主机历史数据
 func (a *AppService) GetHistoryWithHosts(hosts []string, startTime, endTime int64, step int64) *types.HostsRangeResponse {
 	metrics := []string{"min_latency", "avg_latency", "max_latency", "packet_loss"}
-	
-	startT := time.UnixMilli(startTime)
-	endT := time.UnixMilli(endTime)
-	stepDuration := time.Duration(step) * time.Second // step 是秒数，不是毫秒
-	
-	var hostRangeData []types.HostRangeData
-	
-	for _, host := range hosts {
-		hostData := types.HostRangeData{
-			Host:   host,
-			Series: make(map[string][]types.TimeSeriesPoint),
+
+	if endTime <= startTime {
+		return &types.HostsRangeResponse{Hosts: nil, Total: 0, Error: "endTime must be > startTime"}
+	}
+
+	// 动态步长：如果前端传来的 step<=0 或过小，则按范围与预期点数估算
+	// 自适应 maxPoints：按主机数限制总点数上限，将每条序列的 maxPoints = clamp(totalCap/len(hosts), 300, 1200)
+	// 这里把传入的 step 当作“最小允许步长”兼容旧调用（旧前端会传硬编码值）
+	rangeMs := endTime - startTime
+	const totalPointsCap = 3000 // 所有主机总点数目标上限（近似）
+	perSeriesMin := int64(300)
+	perSeriesMax := int64(1200)
+	hostsLen := int64(len(hosts))
+	if hostsLen == 0 {
+		hostsLen = 1
+	}
+	effMaxPoints := totalPointsCap / hostsLen
+	if effMaxPoints < perSeriesMin {
+		effMaxPoints = perSeriesMin
+	}
+	if effMaxPoints > perSeriesMax {
+		effMaxPoints = perSeriesMax
+	}
+
+	computedStep := pickStep(rangeMs, effMaxPoints, a.getPingIntervalSeconds())
+	if step > 0 && step > computedStep { // 旧前端给的较大步长，沿用较大值以避免更多点
+		computedStep = step
+	}
+
+	// 边界对齐到步长网格（避免“半桶”），end 向上对齐但不超过 now
+	nowMs := time.Now().UnixMilli()
+	// 转为秒做取整
+	startSec := startTime / 1000
+	endSec := endTime / 1000
+	stepSec := computedStep
+	if stepSec <= 0 {
+		stepSec = a.getPingIntervalSeconds()
+		if stepSec <= 0 {
+			stepSec = 1
 		}
-		
+	}
+	alignedStartSec := (startSec / stepSec) * stepSec // 向下取整
+	alignedEndSec := ((endSec + stepSec - 1) / stepSec) * stepSec // 向上取整
+	if alignedEndSec*1000 > nowMs { // 不超过当前时间
+		alignedEndSec = (nowMs / 1000 / stepSec) * stepSec
+	}
+	// 若对齐后 end<=start，强制至少一个步长
+	if alignedEndSec <= alignedStartSec {
+		alignedEndSec = alignedStartSec + stepSec
+	}
+
+	startT := time.Unix(alignedStartSec, 0)
+	endT := time.Unix(alignedEndSec, 0)
+	stepDuration := time.Duration(stepSec) * time.Second
+
+	var hostRangeData []types.HostRangeData
+	for _, host := range hosts {
+		hostData := types.HostRangeData{Host: host, Series: make(map[string][]types.TimeSeriesPoint)}
 		for _, metric := range metrics {
 			rangeData, err := data.GetHostRangeMetrics(a.appCtx.TSDB, []string{host}, metric, startT, endT, stepDuration)
 			if err != nil {
-				return &types.HostsRangeResponse{
-					Hosts: nil,
-					Total: 0,
-					Error: fmt.Sprintf("查询主机 %s 指标 %s 历史数据失败: %v", host, metric, err),
-				}
+				return &types.HostsRangeResponse{Hosts: nil, Total: 0, Error: fmt.Sprintf("查询主机 %s 指标 %s 历史数据失败: %v", host, metric, err), StepSeconds: computedStep}
 			}
-			
 			if points, ok := rangeData[host]; ok {
-				// 转换数据格式
-				var seriesPoints []types.TimeSeriesPoint
+				seriesPoints := make([]types.TimeSeriesPoint, 0, len(points))
 				for _, p := range points {
-					seriesPoints = append(seriesPoints, types.TimeSeriesPoint{
-						Timestamp: p.Timestamp,
-						Value:     p.Value,
-					})
+					seriesPoints = append(seriesPoints, types.TimeSeriesPoint{Timestamp: p.Timestamp, Value: p.Value})
 				}
 				hostData.Series[metric] = seriesPoints
 			}
 		}
-		
 		hostRangeData = append(hostRangeData, hostData)
 	}
-	
-	return &types.HostsRangeResponse{
-		Hosts: hostRangeData,
-		Total: len(hostRangeData),
-		Error: "",
+
+	return &types.HostsRangeResponse{Hosts: hostRangeData, Total: len(hostRangeData), Error: "", StepSeconds: stepSec}
+}
+
+// 获取当前有效的 ping 间隔（秒）
+func (a *AppService) getPingIntervalSeconds() int64 {
+	cfg := a.appCtx.Config
+	if cfg != nil && cfg.Ping.Interval > 0 {
+		return int64(cfg.Ping.Interval)
 	}
+	if cfg != nil && cfg.Interval > 0 { // 兜底全局 interval
+		return int64(cfg.Interval)
+	}
+	return 30 // 默认 30s
+}
+
+// 计算步长，借鉴 Grafana：range / maxPoints 并对齐阶梯
+func pickStep(rangeMs int64, maxPoints int64, scrapeIntervalSec int64) int64 {
+	if rangeMs <= 0 {
+		return scrapeIntervalSec
+	}
+	targetSec := (rangeMs / 1000) / maxPoints
+	if (rangeMs/1000)%maxPoints != 0 { // 向上取整
+		targetSec += 1
+	}
+	if targetSec < 1 {
+		targetSec = 1
+	}
+	// 与抓取间隔和最小间隔比较
+	if targetSec < scrapeIntervalSec {
+		targetSec = scrapeIntervalSec
+	}
+	ladder := []int64{1, 2, 5, 10, 15, 30, 60, 120, 300, 600, 900, 1800, 3600, 7200, 21600, 43200, 86400}
+	chosen := ladder[len(ladder)-1]
+	for _, v := range ladder {
+		if v >= targetSec {
+			chosen = v
+			break
+		}
+	}
+	// 安全点数限制，再校正（避免返回 > 1.5*maxPoints 的点数）
+	if (rangeMs/1000)/chosen > int64(float64(maxPoints)*1.5) {
+		// 尝试升一个阶梯
+		for i, v := range ladder {
+			if v == chosen && i+1 < len(ladder) {
+				chosen = ladder[i+1]
+				break
+			}
+		}
+	}
+	return chosen
 }
 
 // GetLogFiles retrieves the list of log files

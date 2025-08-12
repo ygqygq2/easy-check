@@ -1,76 +1,32 @@
 import { useState, useCallback } from "react";
 import { GetHistoryWithHosts } from "@bindings/easy-check/internal/services/appservice";
 import { HostSeriesMap, SeriesPoint } from "@/types/series";
-import { useConfig } from "./useConfig";
-
-// 根据时间窗口计算该时间范围内应该有多少个数据点
-const calculateExpectedDataPoints = (
-  timeWindowMinutes: number,
-  intervalSeconds: number
-) => {
-  const pointsPerMinute = 60 / intervalSeconds;
-  return Math.ceil(pointsPerMinute * timeWindowMinutes);
-};
-
-// 计算滑动窗口的最大数据点数（包含缓冲区）
-const calculateMaxDataPoints = (
-  timeWindowMinutes: number,
-  intervalSeconds: number
-) => {
-  const expectedPoints = calculateExpectedDataPoints(
-    timeWindowMinutes,
-    intervalSeconds
-  );
-  // 为避免频繁删除，增加20%的缓冲区
-  return Math.ceil(expectedPoints * 1.2);
-};
+// 已采用服务端步长与范围控制，移除旧的客户端点数/步长计算逻辑。
 
 export const useHistoryData = () => {
   const [historyMap, setHistoryMap] = useState<HostSeriesMap>({});
-  const { getPingInterval } = useConfig();
+  const [lastStepSeconds, setLastStepSeconds] = useState<number | null>(null);
 
-  // 添加新数据点的函数（滑动窗口机制）
-  const addDataPoint = useCallback(
-    (hostName: string, point: SeriesPoint) => {
-      setHistoryMap((prev) => {
-        const existingData = prev[hostName] || [];
-        const newData = [...existingData];
+  // 添加新数据点：不再强制 48h 裁剪，保留全部已加载历史（后续可引入 LRU 或分段缓存）
+  const addDataPoint = useCallback((hostName: string, point: SeriesPoint) => {
+    setHistoryMap((prev) => {
+      const existingData = prev[hostName] || [];
+      const newData = [...existingData];
 
-        // 检查是否是重复的时间戳（避免重复添加）
-        if (
-          newData.length === 0 ||
-          newData[newData.length - 1].ts !== point.ts
-        ) {
-          newData.push(point);
-        } else {
-          // 更新最后一个点的数据
-          newData[newData.length - 1] = point;
-        }
+      // 检查是否是重复的时间戳（避免重复添加）
+      if (newData.length === 0 || newData[newData.length - 1].ts !== point.ts) {
+        newData.push(point);
+      } else {
+        // 更新最后一个点的数据
+        newData[newData.length - 1] = point;
+      }
 
-        // 实现滑动窗口：内存层面保留 24h * 2 的数据（较轻），避免短窗口时点数太少导致图形“拉直”
-        const intervalSeconds = getPingInterval();
-        const baseWindowMinutes = 24 * 60 * 2; // 48 小时内存缓存上限
-        const maxPoints = calculateMaxDataPoints(
-          baseWindowMinutes,
-          intervalSeconds
-        );
-        let finalData = newData;
-        if (finalData.length > maxPoints) {
-          // 仅删除超出部分，删除粒度控制在 5 分钟（更平滑）
-          const fiveMinPoints = Math.ceil((5 * 60) / intervalSeconds);
-          const excess = finalData.length - maxPoints;
-          const deleteCount = Math.min(excess, fiveMinPoints);
-          finalData = finalData.slice(deleteCount);
-        }
-
-        return {
-          ...prev,
-          [hostName]: finalData,
-        };
-      });
-    },
-    [getPingInterval]
-  );
+      return {
+        ...prev,
+        [hostName]: newData,
+      };
+    });
+  }, []);
 
   // 检测缓存中的数据缺失并从数据库补全
   const fillMissingData = useCallback(
@@ -152,21 +108,16 @@ export const useHistoryData = () => {
         const startTime = customStartTime || now - timeRangeMinutes * 60 * 1000;
         const endTime = now;
 
-        // 根据时间范围计算步长（秒）
-        let step = 60; // 默认1分钟
-        if (timeRangeMinutes <= 60) step = 60;
-        else if (timeRangeMinutes <= 360) step = 300;
-        else if (timeRangeMinutes <= 1440) step = 900;
-        else if (timeRangeMinutes <= 10080) step = 3600;
-        else step = 7200;
-
         const historyRes = await GetHistoryWithHosts(
           [hostName],
           startTime,
           endTime,
-          step
+          0 // 让服务端决定分辨率
         );
 
+        if (historyRes?.step_seconds) {
+          setLastStepSeconds(historyRes.step_seconds);
+        }
         if (historyRes?.hosts && historyRes.hosts.length > 0) {
           const hostData = historyRes.hosts[0];
           const historicalPoints: SeriesPoint[] = [];
@@ -223,25 +174,9 @@ export const useHistoryData = () => {
                   new Map(allPoints.map((point) => [point.ts, point])).values()
                 ).sort((a, b) => a.ts - b.ts);
 
-                // 应用滑动窗口限制
-                const intervalSeconds = getPingInterval();
-                // 为历史加载设置更高的上限（短窗口 * 6），避免后续实时补点后分辨率骤降导致视觉直线
-                const historyRetentionMinutes = Math.max(
-                  timeRangeMinutes * 6,
-                  timeRangeMinutes
-                );
-                const maxPoints = calculateMaxDataPoints(
-                  historyRetentionMinutes,
-                  intervalSeconds
-                );
-                let finalData = uniquePoints;
-                if (finalData.length > maxPoints) {
-                  finalData = finalData.slice(-maxPoints);
-                }
-
                 return {
                   ...prev,
-                  [hostName]: finalData,
+                  [hostName]: uniquePoints,
                 };
               });
             }
@@ -251,7 +186,7 @@ export const useHistoryData = () => {
         console.error(`Error loading history data for host ${hostName}:`, err);
       }
     },
-    [getPingInterval]
+    []
   );
 
   // 清除主机的历史数据
@@ -264,6 +199,7 @@ export const useHistoryData = () => {
 
   return {
     historyMap,
+    lastStepSeconds,
     addDataPoint,
     loadHistoryForHost,
     fillMissingData,
