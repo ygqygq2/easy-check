@@ -28,7 +28,13 @@ function RawLogFileViewer({
   }, [fileName]);
 
   return (
-    <Box p={4}>
+    <Box
+      p="1rem"
+      height="100%"
+      display="flex"
+      flexDirection="column"
+      overflow="hidden"
+    >
       <HeaderWithActions
         title={`查看日志文件: ${fileName}`}
         actions={<ActionButton label="关闭" onClick={onClose} />}
@@ -37,18 +43,21 @@ function RawLogFileViewer({
         <StatusView message="正在加载文件内容..." isLoading />
       ) : (
         <Box
+          flex="1"
           borderWidth="1px"
           borderRadius="md"
-          p={4}
           bg={bgColor}
-          maxH="80vh"
-          overflow="auto"
+          overflowY="auto"
+          mt="0.75rem"
+          minHeight={0}
+          p="1rem"
         >
           <Text
             fontFamily="monospace"
             whiteSpace="pre-wrap"
-            fontSize="sm"
+            fontSize="0.875rem"
             color={textColor}
+            lineHeight="1.4"
           >
             {content}
           </Text>

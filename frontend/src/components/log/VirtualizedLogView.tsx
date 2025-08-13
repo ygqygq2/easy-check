@@ -171,28 +171,31 @@ export const VirtualizedLogView = forwardRef<
 
     return (
       <Box
-        height="600px"
+        height="100%"
         borderWidth="1px"
         borderRadius="md"
         position="relative"
+        overflow="hidden"
       >
-        <AutoSizer>
-          {({ height, width }: { height: number; width: number }) => (
-            <List
-              ref={listRef}
-              height={height}
-              width={width}
-              itemCount={logs.length}
-              itemSize={getItemSize} // 使用动态高度函数
-              overscanCount={20} // 提前渲染20行以实现平滑滚动
-              onScroll={handleScroll}
-              itemKey={itemKey}
-              outerRef={outerDivRef}
-            >
-              {renderRow}
-            </List>
-          )}
-        </AutoSizer>
+        <Box height="100%" p="0.5rem" pb="1rem">
+          <AutoSizer>
+            {({ height, width }: { height: number; width: number }) => (
+              <List
+                ref={listRef}
+                height={height}
+                width={width}
+                itemCount={logs.length}
+                itemSize={getItemSize} // 使用动态高度函数
+                overscanCount={20} // 提前渲染20行以实现平滑滚动
+                onScroll={handleScroll}
+                itemKey={itemKey}
+                outerRef={outerDivRef}
+              >
+                {renderRow}
+              </List>
+            )}
+          </AutoSizer>
+        </Box>
         {!isRealtime && unreadCount > 0 && (
           <Box
             mt={2}

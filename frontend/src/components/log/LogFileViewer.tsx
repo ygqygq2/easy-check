@@ -50,7 +50,13 @@ function LogFileViewer({
   }, [isLatest, isLoading, logs.length]);
 
   return (
-    <Box p={4}>
+    <Box
+      p="1rem"
+      height="100%"
+      display="flex"
+      flexDirection="column"
+      overflow="hidden"
+    >
       <HeaderWithActions
         title={`查看日志文件: ${fileName}`}
         actions={
@@ -64,7 +70,7 @@ function LogFileViewer({
           />
         }
       />
-      <VStack align="stretch" gap={2}>
+      <Box flex="1" mt="0.75rem" overflow="hidden" minHeight={0}>
         {isLoading ? (
           <StatusView message="正在加载文件内容..." isLoading />
         ) : logs.length > 0 ? (
@@ -84,7 +90,7 @@ function LogFileViewer({
         ) : (
           <StatusView message="文件内容为空" />
         )}
-      </VStack>
+      </Box>
     </Box>
   );
 }

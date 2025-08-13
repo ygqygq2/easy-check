@@ -12,6 +12,8 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"sort"
+	"strings"
 	"time"
 
 	"github.com/wailsapp/wails/v3/pkg/application"
@@ -453,7 +455,42 @@ func (a *AppService) GetLogFiles() ([]string, error) {
 		}
 	}
 
+	// 按文件名排序（包含时间戳的文件名会按时间排序）
+	sort.Slice(logFiles, func(i, j int) bool {
+		// 优先按照文件名中的时间戳排序
+		timeI := extractTimeFromFileName(logFiles[i])
+		timeJ := extractTimeFromFileName(logFiles[j])
+		
+		if !timeI.IsZero() && !timeJ.IsZero() {
+			return timeI.After(timeJ) // 新的文件排在前面
+		}
+		
+		// 如果没有时间戳，按文件名排序
+		return strings.Compare(logFiles[i], logFiles[j]) > 0
+	})
+
 	return logFiles, nil
+}
+
+// extractTimeFromFileName 从文件名中提取时间戳
+func extractTimeFromFileName(fileName string) time.Time {
+	// 匹配 check-log-2025-08-11T15-51-47.344.txt 格式
+	if strings.HasPrefix(fileName, "check-log-") && strings.HasSuffix(fileName, ".txt") {
+		// 提取时间部分
+		timeStr := strings.TrimPrefix(fileName, "check-log-")
+		timeStr = strings.TrimSuffix(timeStr, ".txt")
+		
+		// 替换T和连字符为标准时间格式
+		timeStr = strings.Replace(timeStr, "T", " ", 1)
+		timeStr = strings.ReplaceAll(timeStr, "-", ":")
+		
+		// 尝试解析时间
+		if t, err := time.Parse("2006:01:02 15:04:05.000", timeStr); err == nil {
+			return t
+		}
+	}
+	
+	return time.Time{}
 }
 
 // GetLogFileContent retrieves the content of a specific log file

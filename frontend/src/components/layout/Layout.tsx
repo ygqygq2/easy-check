@@ -113,7 +113,7 @@ export function Layout({ children }: LayoutProps) {
   ];
 
   return (
-    <Box minH="100vh" display="flex" flexDirection="column" overflow="hidden">
+    <Box height="100vh" display="flex" flexDirection="column" overflow="hidden">
       <Flex
         as="nav"
         bg={navBg}
@@ -122,6 +122,7 @@ export function Layout({ children }: LayoutProps) {
         py={2}
         align="center"
         justify="space-between"
+        flexShrink={0}
       >
         <Flex align="center">
           <Box className="small-logo" mr={4}>
@@ -131,7 +132,7 @@ export function Layout({ children }: LayoutProps) {
         </Flex>
         <ColorModeButton />
       </Flex>
-      <Box flex="1" overflow="hidden">
+      <Box flex="1" overflow="hidden" minHeight={0}>
         {activeComponent}
       </Box>
       <Toaster />
