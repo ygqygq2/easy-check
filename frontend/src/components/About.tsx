@@ -33,7 +33,6 @@ const About = ({ onClose }: AboutProps) => {
       `${appInfo.appName}`,
       `版本: ${appInfo.appVersion}`,
       `作者: ${appInfo.author}`,
-      `构建时间: ${appInfo.buildTime}`,
       `平台: ${appInfo.platformInfo.os}/${appInfo.platformInfo.arch}`,
       `代码仓库: ${appInfo.repository}`,
     ].join("\n");
@@ -80,7 +79,6 @@ const About = ({ onClose }: AboutProps) => {
       {/* 中间：紧凑的信息列表 */}
       <Box flex={1} fontSize="sm" lineHeight="1.6">
         <Text>版本: {appInfo.appVersion}</Text>
-        <Text>构建时间: {appInfo.buildTime}</Text>
         <Text>作者: {appInfo.author}</Text>
         <Text>
           平台: {appInfo.platformInfo.os}/{appInfo.platformInfo.arch}

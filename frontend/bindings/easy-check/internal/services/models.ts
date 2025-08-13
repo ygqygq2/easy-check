@@ -45,11 +45,6 @@ export class AppInfo {
     "description": string;
 
     /**
-     * 构建时间
-     */
-    "buildTime": string;
-
-    /**
      * Go版本
      */
     "goVersion": string;
@@ -92,9 +87,6 @@ export class AppInfo {
         if (!("description" in $$source)) {
             this["description"] = "";
         }
-        if (!("buildTime" in $$source)) {
-            this["buildTime"] = "";
-        }
         if (!("goVersion" in $$source)) {
             this["goVersion"] = "";
         }
@@ -115,10 +107,10 @@ export class AppInfo {
      * Creates a new AppInfo instance from a string or object.
      */
     static createFrom($$source: any = {}): AppInfo {
-        const $$createField9_0 = $$createType0;
+        const $$createField8_0 = $$createType0;
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
         if ("platformInfo" in $$parsedSource) {
-            $$parsedSource["platformInfo"] = $$createField9_0($$parsedSource["platformInfo"]);
+            $$parsedSource["platformInfo"] = $$createField8_0($$parsedSource["platformInfo"]);
         }
         return new AppInfo($$parsedSource as Partial<AppInfo>);
     }

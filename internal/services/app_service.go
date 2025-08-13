@@ -137,7 +137,6 @@ type AppInfo struct {
 	License         string       `json:"license"`         // 许可证
 	Repository      string       `json:"repository"`      // 代码仓库
 	Description     string       `json:"description"`     // 应用描述
-	BuildTime       string       `json:"buildTime"`       // 构建时间
 	GoVersion       string       `json:"goVersion"`       // Go版本
 	PlatformInfo    PlatformInfo `json:"platformInfo"`    // 平台信息
 	UpdateServer    string       `json:"updateServer"`    // 更新服务器
@@ -164,7 +163,6 @@ func (a *AppService) GetAppInfo() (*AppInfo, error) {
 		License:     "MIT License",
 		Repository:  "https://github.com/ygqygq2/easy-check",
 		Description: "简单网络检测工具 - 定期检测网络连接状态，支持多种告警方式",
-		BuildTime:   "2025-08-11", // TODO: 可以通过ldflags注入实际构建时间
 		GoVersion:   "go1.21+",    // TODO: 可以通过runtime.Version()获取
 		PlatformInfo: PlatformInfo{
 			OS:   a.appCtx.PlatformInfo.OS,
