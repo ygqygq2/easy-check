@@ -1,13 +1,13 @@
+import { Box, HStack, Text } from "@chakra-ui/react";
 import { useMemo } from "react";
-import { HStack, Text, Box } from "@chakra-ui/react";
 import {
-  LineChart,
+  Legend,
   Line,
+  LineChart,
+  ResponsiveContainer,
+  Tooltip as RTooltip,
   XAxis,
   YAxis,
-  Tooltip as RTooltip,
-  Legend,
-  ResponsiveContainer,
 } from "recharts";
 
 type SeriesPoint = { ts: number; [host: string]: number };
@@ -29,7 +29,7 @@ export function TrendModal({ selectedHosts, dataMap }: TrendModalProps) {
     });
     const allTs = Array.from(tsSet).sort((a, b) => a - b);
     return allTs.map((ts) => {
-      const entry: SeriesPoint = { ts } as any;
+      const entry: SeriesPoint & Record<string, unknown> = { ts };
       selectedHosts.forEach((h) => {
         const v = (dataMap[h] || []).find((p) => p.ts === ts)?.value;
         if (typeof v === "number") entry[h] = v;
@@ -70,7 +70,7 @@ export function TrendModal({ selectedHosts, dataMap }: TrendModalProps) {
             <YAxis unit=" ms" />
             <RTooltip
               labelFormatter={(l) => new Date(Number(l)).toLocaleTimeString()}
-              formatter={(value: any) => [`${value} ms`, "latency"]}
+              formatter={(value: number) => [`${value} ms`, "latency"]}
             />
             <Legend />
             {selectedHosts.map((h, idx) => (

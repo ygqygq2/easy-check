@@ -1,8 +1,18 @@
 {
   "Codegeex.RepoIndex": true,
-  // 配置 eslint 为默认格式化程序
-  "editor.defaultFormatter": "dbaeumer.vscode-eslint",
+  // 配置 Prettier 为默认格式化程序
+  "editor.defaultFormatter": "esbenp.prettier-vscode",
+  "editor.formatOnSave": true,
+  "prettier.requireConfig": false,
+  // 禁用 ESLint 格式化
+  "eslint.format.enable": false,
   "[typescriptreact]": {
+    "editor.defaultFormatter": "esbenp.prettier-vscode"
+  },
+  "[typescript]": {
+    "editor.defaultFormatter": "esbenp.prettier-vscode"
+  },
+  "[javascript]": {
     "editor.defaultFormatter": "esbenp.prettier-vscode"
   },
   "[plaintext]": {

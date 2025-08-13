@@ -2,7 +2,7 @@ import {
   GetConfig,
   SaveConfig,
 } from "@bindings/easy-check/internal/services/appservice";
-import { Box, Flex, Text } from "@chakra-ui/react";
+import { Box } from "@chakra-ui/react";
 import { useEffect, useState } from "react";
 import MonacoEditor from "react-monaco-editor";
 

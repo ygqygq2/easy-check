@@ -1,4 +1,5 @@
 import { Box, HStack, Text, Wrap, WrapItem } from "@chakra-ui/react";
+
 import { PACKET_LOSS_LEGEND } from "./smokeping-colors";
 
 interface ChartLegendProps {

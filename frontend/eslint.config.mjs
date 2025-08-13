@@ -13,12 +13,7 @@ export default tseslint.config(...react, {
         allowTaggedTemplates: true,
       },
     ],
-    "prettier/prettier": [
-      "warn",
-      {
-        trailingComma: "es5",
-        singleAttributePerLine: false,
-      },
-    ],
+    // 完全禁用 prettier 规则，让 Prettier 独立处理格式化
+    "prettier/prettier": "off",
   },
 });

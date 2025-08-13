@@ -1,14 +1,13 @@
 "use client";
 import { GetHosts } from "@bindings/easy-check/internal/services/appservice";
-import { Box, Grid, GridItem, Stack } from "@chakra-ui/react";
+import { Box, Stack } from "@chakra-ui/react";
 import { useEffect, useState } from "react";
 
 import TrendPanel from "@/components/trend/TrendPanel";
-import { toaster } from "@/components/ui/toaster";
-import { Host } from "@/types/host";
 import { useHistoryData } from "@/hooks/useHistoryData";
-import { useHostStatusRefresh } from "@/hooks/useHostStatusRefresh";
 import { useHostSelection } from "@/hooks/useHostSelection";
+import { useHostStatusRefresh } from "@/hooks/useHostStatusRefresh";
+import { Host } from "@/types/host";
 
 import { PaginationControls } from "../components/PaginationControls";
 import { HostList } from "./home/components/HostList";

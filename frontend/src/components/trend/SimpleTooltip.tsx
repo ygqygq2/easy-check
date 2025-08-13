@@ -3,10 +3,10 @@ import { SeriesPoint } from "@/types/series";
 
 interface SimpleTooltipProps {
   active?: boolean;
-  payload?: any[];
+  payload?: Array<{ payload?: SeriesPoint }>;
   label?: string | number;
   // 完整数据与选中的主机，用于在当前行无值时，回退到最近的有效行（Grafana 风格）
-  data?: any[];
+  data?: SeriesPoint[];
   selectedHosts?: string[];
 }
 
@@ -31,11 +31,11 @@ export const SimpleTooltip = ({
   if (!active || label == null) return null;
 
   // 改进的数据点查找逻辑
-  const findBestMatchingPoint = (targetTs: number): any => {
+  const findBestMatchingPoint = (targetTs: number): SeriesPoint | null => {
     if (!Array.isArray(data) || data.length === 0) return null;
 
     // 首先尝试精确匹配
-    const exactMatch = data.find((point: any) => point.ts === targetTs);
+    const exactMatch = data.find((point: SeriesPoint) => point.ts === targetTs);
     if (exactMatch) return exactMatch;
 
     // 如果没有精确匹配，找到最近的点
@@ -48,7 +48,7 @@ export const SimpleTooltip = ({
 
     while (left <= right) {
       const mid = Math.floor((left + right) / 2);
-      const midPoint = data[mid] as any;
+      const midPoint = data[mid];
       const diff = Math.abs(midPoint.ts - targetTs);
 
       if (diff < bestDiff) {
@@ -76,7 +76,7 @@ export const SimpleTooltip = ({
       .filter((idx, index, arr) => arr.indexOf(idx) === index); // 去重
 
     for (const idx of candidateIndices) {
-      const point = data[idx] as any;
+      const point = data[idx];
       const diff = Math.abs(point.ts - targetTs);
       if (diff < bestDiff) {
         bestDiff = diff;
@@ -88,9 +88,14 @@ export const SimpleTooltip = ({
   };
 
   // 优先使用当前 payload；若当前行没有任何 avg 值，则回退到最近的有效行
-  let row: any = payload && payload.length ? payload[0]?.payload : undefined;
-  const hasValidData = (r: any) =>
-    !!selectedHosts?.some((h) => typeof r?.[`${h}:avg`] === "number");
+  let row: SeriesPoint | undefined =
+    payload && payload.length ? payload[0]?.payload : undefined;
+  const hasValidData = (r: SeriesPoint | undefined) =>
+    !!selectedHosts?.some(
+      (h) =>
+        typeof (r as unknown as Record<string, unknown>)?.[`${h}:avg`] ===
+        "number"
+    );
 
   let snapped = false;
   const targetTs = Number(label);
@@ -111,11 +116,15 @@ export const SimpleTooltip = ({
   // 以 row 为准组装展示项
   const avgItems = (selectedHosts || [])
     .map((host) => {
-      const avg = row[`${host}:avg`];
+      if (!row) return null;
+      const rowData = row as unknown as Record<string, unknown>;
+      const avg = rowData[`${host}:avg`];
       if (typeof avg !== "number") return null;
       const loss =
-        typeof row[`${host}:loss`] === "number" ? row[`${host}:loss`] : 0;
-      const range = row[`${host}:range`];
+        typeof rowData[`${host}:loss`] === "number"
+          ? rowData[`${host}:loss`]
+          : 0;
+      const range = rowData[`${host}:range`];
       return { host, avg, loss, range };
     })
     .filter(Boolean) as {

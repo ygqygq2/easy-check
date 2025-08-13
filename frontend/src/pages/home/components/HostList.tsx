@@ -92,7 +92,7 @@ export function HostList({
                     <HStack gap="2" w="100%" justifyContent="space-between">
                       <Tooltip content={host.host}>
                         <Text
-                          w={labelWidth as any}
+                          w={labelWidth}
                           mr="2"
                           color={getFontColor(hostStatus)}
                           style={ellipsisStyle}
@@ -113,7 +113,7 @@ export function HostList({
                       <HStack gap="2">
                         <Tooltip content={host.host}>
                           <Progress.Label
-                            w={labelWidth as any}
+                            w={labelWidth}
                             mr="2"
                             color={getFontColor(hostStatus)}
                             style={ellipsisStyle}

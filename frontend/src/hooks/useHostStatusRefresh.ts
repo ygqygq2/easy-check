@@ -1,5 +1,6 @@
-import { useState, useEffect, useCallback } from "react";
 import { GetStatusWithHosts } from "@bindings/easy-check/internal/services/appservice";
+import { useCallback, useEffect, useState } from "react";
+
 import { Host, HostStatusMap } from "@/types/host";
 import { SeriesPoint } from "@/types/series";
 

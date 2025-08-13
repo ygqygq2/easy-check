@@ -1,4 +1,4 @@
-import { NativeSelect, Stack, Text, HStack, Button } from "@chakra-ui/react";
+import { Button, HStack, NativeSelect, Stack, Text } from "@chakra-ui/react";
 
 export interface TimeRange {
   label: string;

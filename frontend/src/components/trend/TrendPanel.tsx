@@ -1,8 +1,14 @@
-import { useMemo, useState, useEffect } from "react";
-import { Box, HStack, Text } from "@chakra-ui/react";
-import PingLatencyChart from "./PingLatencyChart";
-import TimeRangeSelector, { TimeRange, TIME_RANGES } from "./TimeRangeSelector";
+import { Box, Button, HStack, Text } from "@chakra-ui/react";
+import { useEffect, useMemo, useState } from "react";
+
 import { HostSeriesMap } from "@/types/series";
+
+import TimeRangePicker, {
+  QuickRange,
+  TimeRange as PickerTimeRange,
+} from "../time/TimeRangePicker";
+import PingLatencyChart from "./PingLatencyChart";
+import { TIME_RANGES, TimeRange as LegacyTimeRange } from "./TimeRangeSelector";
 
 const COLORS = ["#3182ce", "#38a169", "#d69e2e", "#e53e3e", "#805ad5"];
 
@@ -18,12 +24,21 @@ interface Props {
 function useMerged(seriesMap: HostSeriesMap, hosts: string[]) {
   return useMemo(() => {
     // 预构建：每个主机一张 ts->point 的索引表，避免 O(n^2) 的 Array.find
-    const hostIndex: Record<string, Map<number, any>> = {};
+    const hostIndex: Record<
+      string,
+      Map<
+        number,
+        { ts: number; min?: number; avg?: number; max?: number; loss?: number }
+      >
+    > = {};
     const tsSet = new Set<number>();
 
     for (const h of hosts) {
       const points = seriesMap[h] || [];
-      const map = new Map<number, any>();
+      const map = new Map<
+        number,
+        { ts: number; min?: number; avg?: number; max?: number; loss?: number }
+      >();
       for (const p of points) {
         map.set(p.ts, p);
         tsSet.add(p.ts);
@@ -36,7 +51,7 @@ function useMerged(seriesMap: HostSeriesMap, hosts: string[]) {
     const rows = new Array(allTs.length);
     for (let i = 0; i < allTs.length; i++) {
       const ts = allTs[i];
-      const row: any = { ts };
+      const row: Record<string, unknown> = { ts };
       for (const h of hosts) {
         const p = hostIndex[h]?.get(ts);
         if (!p) continue;
@@ -58,7 +73,7 @@ export default function TrendPanel({
   onLoadHistory,
   stepSeconds,
 }: Props) {
-  const [selectedTimeRange, setSelectedTimeRange] = useState<TimeRange>(
+  const [selectedTimeRange, setSelectedTimeRange] = useState<LegacyTimeRange>(
     TIME_RANGES[0]
   ); // 默认最近10分钟
   const [customRange, setCustomRange] = useState<{
@@ -116,6 +131,44 @@ export default function TrendPanel({
     return `${stepSeconds}s`;
   }, [stepSeconds]);
 
+  // 将旧的 TIME_RANGES 映射为 TimeRangePicker 的快捷选项
+  const quickRanges: QuickRange[] = useMemo(() => {
+    const toQuick = (minutes: number): QuickRange => {
+      if (minutes % 1440 === 0) {
+        return {
+          label: `最近${minutes / 1440}天`,
+          amount: minutes / 1440,
+          unit: "d",
+        };
+      }
+      if (minutes % 60 === 0) {
+        return {
+          label: `最近${minutes / 60}小时`,
+          amount: minutes / 60,
+          unit: "h",
+        };
+      }
+      return { label: `最近${minutes}分钟`, amount: minutes, unit: "m" };
+    };
+    return TIME_RANGES.map((r) => toQuick(r.minutes));
+  }, []);
+
+  // 计算 TimeRangePicker 的按钮文本与当前值
+  const pickerButtonLabel = useMemo(() => {
+    if (customRange) {
+      return `${new Date(customRange.start).toLocaleString()} → ${new Date(
+        customRange.end
+      ).toLocaleString()}`;
+    }
+    return selectedTimeRange.label;
+  }, [customRange, selectedTimeRange]);
+
+  const pickerValue: PickerTimeRange = useMemo(() => {
+    const now = Date.now();
+    if (customRange) return { from: customRange.start, to: customRange.end };
+    return { from: now - selectedTimeRange.minutes * 60_000, to: now };
+  }, [customRange, selectedTimeRange]);
+
   return (
     <Box w="100%" h="100%" display="flex" flexDirection="column">
       <HStack gap="4" px="2" py="1" justify="space-between">
@@ -128,12 +181,48 @@ export default function TrendPanel({
             已选 {selectedHosts.length} 台（最多 5 台）
           </Text>
         </HStack>
-        <TimeRangeSelector
-          selectedRange={selectedTimeRange}
-          onRangeChange={setSelectedTimeRange}
-          customRange={customRange}
-          onClearCustomRange={() => setCustomRange(null)}
-        />
+        <HStack gap="2">
+          {customRange ? (
+            <Button
+              size="xs"
+              variant="outline"
+              onClick={() => setCustomRange(null)}
+            >
+              重置
+            </Button>
+          ) : null}
+          <TimeRangePicker
+            value={pickerValue}
+            quickRanges={quickRanges}
+            buttonLabel={pickerButtonLabel}
+            onApply={async (range) => {
+              const now = Date.now();
+              const nearNow = Math.abs(range.to - now) <= 60_000; // 允许 1 分钟误差
+              const minutes = Math.max(
+                1,
+                Math.round((range.to - range.from) / 60_000)
+              );
+
+              if (nearNow) {
+                // 视为相对时间：匹配预设时间段
+                const match = TIME_RANGES.find((r) => r.minutes === minutes);
+                if (match) {
+                  setSelectedTimeRange(match);
+                  return; // useEffect 会据此触发加载并清除自定义范围
+                }
+              }
+
+              // 否则视为绝对时间
+              setCustomRange({ start: range.from, end: range.to });
+              const mins = Math.max(
+                1,
+                Math.round((range.to - range.from) / 60000)
+              );
+              const tasks = selectedHosts.map((h) => onLoadHistory(h, mins));
+              await Promise.all(tasks);
+            }}
+          />
+        </HStack>
       </HStack>
       {selectedHosts.length === 0 ? (
         <Box

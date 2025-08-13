@@ -1,24 +1,25 @@
-import { memo, useMemo, useState, useCallback, useRef } from "react";
 import { Box } from "@chakra-ui/react";
+import { memo, useCallback, useMemo, useRef, useState } from "react";
 import {
-  ComposedChart,
   Area,
+  CartesianGrid,
+  ComposedChart,
   Line,
+  ReferenceArea,
+  ResponsiveContainer,
   Scatter,
+  Tooltip,
   XAxis,
   YAxis,
-  CartesianGrid,
-  Tooltip,
-  ResponsiveContainer,
-  Cell,
-  ReferenceArea,
 } from "recharts";
-import { SeriesPoint } from "@/types/series";
+
 import { useColorModeValue } from "@/components/ui/color-mode";
-import { getPacketLossColor } from "./smokeping-colors";
-import SimpleTooltip from "./SimpleTooltip";
-import ChartLegend from "./ChartLegend";
 import { useTooltipOptimization } from "@/hooks/useTooltipOptimization";
+import { SeriesPoint } from "@/types/series";
+
+import ChartLegend from "./ChartLegend";
+import SimpleTooltip from "./SimpleTooltip";
+import { getPacketLossColor } from "./smokeping-colors";
 
 interface Props {
   data: SeriesPoint[];
@@ -48,10 +49,11 @@ const PingLatencyChart = memo(function PingLatencyChart({
   const [dragEnd, setDragEnd] = useState<number | null>(null);
 
   const chartRef = useRef<HTMLDivElement>(null);
-  const showDots = (data?.length || 0) < 3;
+  const _showDots = (data?.length || 0) < 3;
 
   // 主题相关的颜色
   const axisColor = useColorModeValue("gray.600", "gray.400");
+  const selectionColor = useColorModeValue("#2B6CB0", "#63B3ED");
 
   // X 轴 domain 规则：
   // - 主要目标：保持一个稳定且可预期的窗口，避免 start==end 造成 Recharts 计算异常
@@ -69,7 +71,7 @@ const PingLatencyChart = memo(function PingLatencyChart({
       return [end - windowMs, end];
     }
     const tsList = data
-      .map((d: any) => d.ts)
+      .map((d: SeriesPoint) => d.ts)
       .filter((v) => typeof v === "number" && v > 0);
     if (tsList.length === 0) {
       const end = Date.now();
@@ -118,7 +120,7 @@ const PingLatencyChart = memo(function PingLatencyChart({
   }, [xAxisDomain, stepSeconds]);
 
   // 优化的鼠标移动处理
-  const handleChartMouseMove = useCallback(
+  const _handleChartMouseMove = useCallback(
     (e: MouseEvent) => {
       if (!chartRef.current) return;
 
@@ -146,20 +148,63 @@ const PingLatencyChart = memo(function PingLatencyChart({
     [optimizedMouseMove, optimizedMouseLeave]
   );
 
-  const onChartMouseDown = useCallback((e: any) => {
-    if (e && typeof e.activeLabel === "number") {
-      setDragStart(e.activeLabel);
-      setDragEnd(null);
-    }
-  }, []);
-
-  const onChartMouseMove = useCallback(
-    (e: any) => {
-      if (dragStart && e && typeof e.activeLabel === "number") {
-        setDragEnd(e.activeLabel);
+  // 使用 Recharts 最新事件结构：优先从 activePayload 获取 ts
+  const onChartMouseDown = useCallback(
+    (e: {
+      activePayload?: Array<{ payload?: SeriesPoint }>;
+      activeLabel?: string | number;
+    }) => {
+      const ts = e?.activePayload?.[0]?.payload?.ts;
+      if (typeof ts === "number") {
+        setDragStart(ts);
+        setDragEnd(null);
+        return;
+      }
+      if (typeof e?.activeLabel === "number") {
+        setDragStart(e.activeLabel);
+        setDragEnd(null);
+      } else if (typeof e?.activeLabel === "string") {
+        const parsed = parseFloat(e.activeLabel);
+        if (!isNaN(parsed)) {
+          setDragStart(parsed);
+          setDragEnd(null);
+        }
       }
     },
-    [dragStart]
+    []
+  );
+
+  // 鼠标移动：更新拖拽终点 + 驱动 tooltip
+  const onChartMouseMove = useCallback(
+    (e: {
+      activePayload?: Array<{ payload?: SeriesPoint }>;
+      activeLabel?: string | number;
+      activeCoordinate?: { x: number; y: number };
+    }) => {
+      if (dragStart !== null) {
+        const ts = e?.activePayload?.[0]?.payload?.ts;
+        if (typeof ts === "number") {
+          setDragEnd(ts);
+        } else if (typeof e?.activeLabel === "number") {
+          setDragEnd(e.activeLabel);
+        } else if (typeof e?.activeLabel === "string") {
+          const parsed = parseFloat(e.activeLabel);
+          if (!isNaN(parsed)) {
+            setDragEnd(parsed);
+          }
+        }
+      }
+
+      // 驱动优化后的 tooltip
+      const ax = e?.activeCoordinate?.x;
+      const ay = e?.activeCoordinate?.y;
+      if (typeof ax === "number" && typeof ay === "number") {
+        const rect = chartRef.current?.getBoundingClientRect();
+        const chartWidth = rect ? rect.width - 30 - 30 : 0; // 与 margin 匹配
+        optimizedMouseMove(ax, ay, chartWidth);
+      }
+    },
+    [dragStart, optimizedMouseMove]
   );
 
   const onChartMouseUp = useCallback(() => {
@@ -179,10 +224,10 @@ const PingLatencyChart = memo(function PingLatencyChart({
     if (!data || data.length === 0 || selectedHosts.length === 0) return [0, 1];
     let minV = Infinity;
     let maxV = -Infinity;
-    for (const row of data as any[]) {
+    for (const row of data) {
       for (const h of selectedHosts) {
-        const avg = row[`${h}:avg`];
-        const range = row[`${h}:range`];
+        const avg = (row as unknown as Record<string, unknown>)[`${h}:avg`];
+        const range = (row as unknown as Record<string, unknown>)[`${h}:range`];
         if (Array.isArray(range) && range.length === 2) {
           if (typeof range[0] === "number") minV = Math.min(minV, range[0]);
           if (typeof range[1] === "number") maxV = Math.max(maxV, range[1]);
@@ -224,8 +269,6 @@ const PingLatencyChart = memo(function PingLatencyChart({
         <div
           ref={chartRef}
           style={{ width: "100%", height: "100%", position: "relative" }}
-          onMouseMove={handleChartMouseMove as any}
-          onMouseLeave={optimizedMouseLeave}
         >
           <ResponsiveContainer width="100%" height="100%">
             <ComposedChart
@@ -234,6 +277,7 @@ const PingLatencyChart = memo(function PingLatencyChart({
               onMouseDown={onChartMouseDown}
               onMouseMove={onChartMouseMove}
               onMouseUp={onChartMouseUp}
+              onMouseLeave={optimizedMouseLeave}
             >
               <CartesianGrid strokeDasharray="3 3" />
               <XAxis
@@ -270,19 +314,24 @@ const PingLatencyChart = memo(function PingLatencyChart({
                 axisLine={{ strokeWidth: 1 }}
                 allowDataOverflow={false}
               />
-              {/* 拖拽选择区域可视化 */}
+              {/* 拖拽选择区域可视化 - 主题色阴影 */}
               {dragStart !== null && dragEnd !== null && (
                 <ReferenceArea
-                  x1={dragStart}
-                  x2={dragEnd}
-                  strokeOpacity={0.3}
+                  x1={Math.min(dragStart!, dragEnd!)}
+                  x2={Math.max(dragStart!, dragEnd!)}
+                  stroke={selectionColor}
+                  strokeOpacity={0.85}
+                  strokeWidth={1.2}
+                  fill={selectionColor}
+                  fillOpacity={0.12}
+                  strokeDasharray="4 2"
                 />
               )}
               {/* 左侧Y轴：延迟 */}
               <YAxis
                 yAxisId="left"
                 unit=" ms"
-                domain={latencyDomain as any}
+                domain={latencyDomain as [number, number]}
                 allowDecimals={false}
                 width={50}
                 tickSize={8}
@@ -332,49 +381,55 @@ const PingLatencyChart = memo(function PingLatencyChart({
                   />
                 </>
               ))}
-              {/* 丢包率散点图 - 只在有丢包时显示 */}
+              {/* 丢包率标记：细小水平线段（更接近 smokeping 的视觉） */}
               {selectedHosts.map((host) => (
                 <Scatter
-                  key={`${host}-scatter`}
+                  key={`${host}-loss-markers`}
                   dataKey="avg"
                   data={data
-                    .map((point: any) => ({
-                      ts: point.ts,
-                      avg: point[`${host}:avg`],
-                      loss: point[`${host}:loss`],
+                    .map((p: SeriesPoint) => ({
+                      ts: p.ts,
+                      avg: (p as unknown as Record<string, unknown>)[
+                        `${host}:avg`
+                      ],
+                      loss: (p as unknown as Record<string, unknown>)[
+                        `${host}:loss`
+                      ],
                     }))
                     .filter(
-                      (point) =>
-                        point.avg !== undefined &&
-                        point.loss !== undefined &&
-                        point.loss > 0 // 只显示有丢包的点
+                      (p) =>
+                        typeof p.avg === "number" &&
+                        typeof p.loss === "number" &&
+                        p.loss > 0
                     )}
-                  fill="#8884d8"
-                  shape="square"
                   yAxisId="left"
-                >
-                  {data
-                    .filter((point: any) => {
-                      const loss = point[`${host}:loss`];
-                      const avg = point[`${host}:avg`];
-                      return (
-                        avg !== undefined && loss !== undefined && loss > 0
-                      );
-                    })
-                    .map((point: any, index: number) => {
-                      const loss = point[`${host}:loss`];
-                      const color = getPacketLossColor(loss, colorMap[host]);
-                      return (
-                        <Cell
-                          key={`scatter-${host}-${index}`}
-                          fill={color}
+                  // 自定义形状：在 (cx, cy) 位置画一小段水平线
+                  shape={(props: {
+                    cx?: number;
+                    cy?: number;
+                    payload?: { loss?: number };
+                  }) => {
+                    const { cx, cy, payload } = props;
+                    if (typeof cx !== "number" || typeof cy !== "number")
+                      return <g />;
+                    const loss = payload?.loss ?? 0;
+                    const color = getPacketLossColor(loss, colorMap[host]);
+                    const half = 2; // 线段半长，整体约 4px
+                    return (
+                      <g>
+                        <line
+                          x1={cx - half}
+                          y1={cy}
+                          x2={cx + half}
+                          y2={cy}
                           stroke={color}
-                          strokeWidth={0.3}
-                          r={2}
+                          strokeWidth={3}
+                          strokeLinecap="round"
                         />
-                      );
-                    })}
-                </Scatter>
+                      </g>
+                    );
+                  }}
+                />
               ))}
               {/* 添加隐藏的丢包率线条用于工具提示 */}
               {selectedHosts.map((host) => (

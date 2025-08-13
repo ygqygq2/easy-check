@@ -1,4 +1,6 @@
-import { useState, useCallback, useRef, useMemo } from "react";
+import { useCallback, useMemo, useRef, useState } from "react";
+
+import { SeriesPoint } from "@/types/series";
 
 interface TooltipState {
   x: number;
@@ -8,7 +10,7 @@ interface TooltipState {
 }
 
 interface UseTooltipOptimizationOptions {
-  data: any[];
+  data: SeriesPoint[];
   selectedHosts: string[];
   xAxisDomain: [number, number];
   debounceMs?: number;
@@ -31,7 +33,7 @@ export function useTooltipOptimization({
   // 使用 useMemo 缓存排序后的数据以提高查找性能
   const sortedData = useMemo(() => {
     if (!data || data.length === 0) return [];
-    return [...data].sort((a: any, b: any) => a.ts - b.ts);
+    return [...data].sort((a: SeriesPoint, b: SeriesPoint) => a.ts - b.ts);
   }, [data]);
 
   // 优化的二分查找数据点
@@ -82,7 +84,10 @@ export function useTooltipOptimization({
 
       // 验证是否有选中主机的数据
       const hasData = selectedHosts.some(
-        (host) => typeof bestMatch[`${host}:avg`] === "number"
+        (host) =>
+          typeof (bestMatch as unknown as Record<string, unknown>)[
+            `${host}:avg`
+          ] === "number"
       );
 
       return hasData ? bestMatch : null;

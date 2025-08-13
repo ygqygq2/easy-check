@@ -1,16 +1,8 @@
-import {
-  Box,
-  HStack,
-  Text,
-  Image,
-  Button,
-  Flex,
-  Stack,
-} from "@chakra-ui/react";
+import { Box, Button, Flex, HStack, Image, Text } from "@chakra-ui/react";
 import { useEffect, useState } from "react";
-import { useConfig } from "@/hooks/useConfig";
-import { CheckForUpdates } from "@bindings/easy-check/internal/services/appservice";
+
 import smallLogo from "@/assets/images/logo36x36.png";
+import { useConfig } from "@/hooks/useConfig";
 
 interface AboutProps {
   onClose: () => void;

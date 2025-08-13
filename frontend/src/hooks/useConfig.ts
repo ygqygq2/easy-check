@@ -1,9 +1,9 @@
-import { useState, useCallback, useEffect } from "react";
 import {
-  GetFrontendConfig,
-  GetConfigValue,
   GetAppInfo,
+  GetConfigValue,
+  GetFrontendConfig,
 } from "@bindings/easy-check/internal/services/appservice";
+import { useCallback, useEffect, useState } from "react";
 
 // 前端配置接口，对应后端的FrontendConfig
 interface FrontendConfig {

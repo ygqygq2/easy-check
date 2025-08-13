@@ -1,5 +1,6 @@
-import { useState, useCallback } from "react";
 import { GetHistoryWithHosts } from "@bindings/easy-check/internal/services/appservice";
+import { useCallback, useState } from "react";
+
 import { HostSeriesMap, SeriesPoint } from "@/types/series";
 // 已采用服务端步长与范围控制，移除旧的客户端点数/步长计算逻辑。
 
@@ -192,7 +193,7 @@ export const useHistoryData = () => {
   // 清除主机的历史数据
   const clearHistoryForHost = useCallback((hostName: string) => {
     setHistoryMap((prev) => {
-      const { [hostName]: removed, ...rest } = prev;
+      const { [hostName]: _removed, ...rest } = prev;
       return rest;
     });
   }, []);
