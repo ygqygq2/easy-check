@@ -1,4 +1,5 @@
 import { GetLogFiles } from "@bindings/easy-check/internal/services/appservice";
+import { types } from "@bindings/easy-check/internal/types";
 import {
   Box,
   Flex,
@@ -23,51 +24,26 @@ interface LogListComponentProps {
 type SortType = "name-asc" | "name-desc" | "time-asc" | "time-desc";
 
 function LogListComponent({ onClose }: LogListComponentProps) {
-  const [logFiles, setLogFiles] = useState<string[]>([]);
-  const [sortedFiles, setSortedFiles] = useState<string[]>([]);
+  const [logFiles, setLogFiles] = useState<types.LogFileInfo[]>([]);
+  const [sortedFiles, setSortedFiles] = useState<types.LogFileInfo[]>([]);
   const [selectedFile, setSelectedFile] = useState<string | null>(null);
   const [sortType, setSortType] = useState<SortType>("time-desc");
 
-  // 从文件名提取时间戳
-  const extractTimeFromFileName = (fileName: string): Date | null => {
-    // 匹配 check-log-2025-08-11T15-51-47.344.txt 格式
-    if (fileName.startsWith("check-log-") && fileName.endsWith(".txt")) {
-      const timeStr = fileName
-        .replace("check-log-", "")
-        .replace(".txt", "")
-        .replace("T", " ")
-        .replace(/-/g, ":");
-
-      const parsedTime = new Date(timeStr);
-      return isNaN(parsedTime.getTime()) ? null : parsedTime;
-    }
-    return null;
-  };
-
   // 对文件进行排序
-  const sortFiles = (files: string[], sort: SortType): string[] => {
+  const sortFiles = (
+    files: types.LogFileInfo[],
+    sort: SortType
+  ): types.LogFileInfo[] => {
     return [...files].sort((a, b) => {
       switch (sort) {
         case "name-asc":
-          return a.localeCompare(b);
+          return a.name.localeCompare(b.name);
         case "name-desc":
-          return b.localeCompare(a);
-        case "time-asc": {
-          const timeA = extractTimeFromFileName(a);
-          const timeB = extractTimeFromFileName(b);
-          if (timeA && timeB) {
-            return timeA.getTime() - timeB.getTime();
-          }
-          return a.localeCompare(b);
-        }
-        case "time-desc": {
-          const timeA = extractTimeFromFileName(a);
-          const timeB = extractTimeFromFileName(b);
-          if (timeA && timeB) {
-            return timeB.getTime() - timeA.getTime();
-          }
-          return b.localeCompare(a);
-        }
+          return b.name.localeCompare(a.name);
+        case "time-asc":
+          return a.modTime - b.modTime;
+        case "time-desc":
+          return b.modTime - a.modTime;
         default:
           return 0;
       }
@@ -168,9 +144,11 @@ function LogListComponent({ onClose }: LogListComponentProps) {
             pb="1.5rem"
           >
             {sortedFiles.map((file) => {
-              const fileTime = extractTimeFromFileName(file);
+              const fileTime = new Date(file.modTime * 1000); // 后端传来的是秒，转为毫秒
+              const isZeroTime = file.modTime === 0;
+
               return (
-                <GridItem key={file}>
+                <GridItem key={file.name}>
                   <Flex
                     direction="column"
                     p="0.75rem"
@@ -188,7 +166,7 @@ function LogListComponent({ onClose }: LogListComponentProps) {
                       borderColor: "blue.200",
                     }}
                     _active={{ transform: "translateY(0)" }}
-                    onClick={() => setSelectedFile(file)}
+                    onClick={() => setSelectedFile(file.name)}
                   >
                     <HStack gap="0.5rem" mb="0.25rem">
                       <ChakraIcon color="blue.500" flexShrink={0}>
@@ -205,12 +183,12 @@ function LogListComponent({ onClose }: LogListComponentProps) {
                         textOverflow="ellipsis"
                         whiteSpace="nowrap"
                         flex="1"
-                        title={file}
+                        title={file.name}
                       >
-                        {file}
+                        {file.name}
                       </Text>
                     </HStack>
-                    {fileTime && (
+                    {!isZeroTime && (
                       <Text fontSize="0.625rem" color="gray.500" mt="auto">
                         {fileTime.toLocaleString("zh-CN", {
                           month: "2-digit",

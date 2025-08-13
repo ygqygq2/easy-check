@@ -215,6 +215,42 @@ export class HostsStatusResponse {
 }
 
 /**
+ * LogFileInfo 包含日志文件的详细信息
+ */
+export class LogFileInfo {
+    "name": string;
+
+    /**
+     * Unix a a second
+     */
+    "modTime": number;
+    "size": number;
+
+    /** Creates a new LogFileInfo instance. */
+    constructor($$source: Partial<LogFileInfo> = {}) {
+        if (!("name" in $$source)) {
+            this["name"] = "";
+        }
+        if (!("modTime" in $$source)) {
+            this["modTime"] = 0;
+        }
+        if (!("size" in $$source)) {
+            this["size"] = 0;
+        }
+
+        Object.assign(this, $$source);
+    }
+
+    /**
+     * Creates a new LogFileInfo instance from a string or object.
+     */
+    static createFrom($$source: any = {}): LogFileInfo {
+        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        return new LogFileInfo($$parsedSource as Partial<LogFileInfo>);
+    }
+}
+
+/**
  * TimeSeriesPoint 时间序列数据点
  */
 export class TimeSeriesPoint {

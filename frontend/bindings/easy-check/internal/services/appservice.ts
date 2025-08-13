@@ -116,12 +116,12 @@ export function GetLogFileContent(fileName: string, ...isLatest: boolean[]): Pro
 }
 
 /**
- * GetLogFiles retrieves the list of log files
+ * GetLogFiles retrieves the list of log files with their details
  */
-export function GetLogFiles(): Promise<string[]> & { cancel(): void } {
+export function GetLogFiles(): Promise<types$0.LogFileInfo[]> & { cancel(): void } {
     let $resultPromise = $Call.ByID(2219189890) as any;
     let $typingPromise = $resultPromise.then(($result: any) => {
-        return $$createType9($result);
+        return $$createType10($result);
     }) as any;
     $typingPromise.cancel = $resultPromise.cancel.bind($resultPromise);
     return $typingPromise;
@@ -133,7 +133,7 @@ export function GetLogFiles(): Promise<string[]> & { cancel(): void } {
 export function GetSharedConstant(): Promise<constants$0.SharedConstants | null> & { cancel(): void } {
     let $resultPromise = $Call.ByID(2539832674) as any;
     let $typingPromise = $resultPromise.then(($result: any) => {
-        return $$createType11($result);
+        return $$createType12($result);
     }) as any;
     $typingPromise.cancel = $resultPromise.cancel.bind($resultPromise);
     return $typingPromise;
@@ -145,7 +145,7 @@ export function GetSharedConstant(): Promise<constants$0.SharedConstants | null>
 export function GetStatusWithHosts(hosts: string[]): Promise<types$0.HostsStatusResponse | null> & { cancel(): void } {
     let $resultPromise = $Call.ByID(2962638184, hosts) as any;
     let $typingPromise = $resultPromise.then(($result: any) => {
-        return $$createType13($result);
+        return $$createType14($result);
     }) as any;
     $typingPromise.cancel = $resultPromise.cancel.bind($resultPromise);
     return $typingPromise;
@@ -193,8 +193,9 @@ const $$createType5 = types$0.HostsRangeResponse.createFrom;
 const $$createType6 = $Create.Nullable($$createType5);
 const $$createType7 = types$0.HostsResponse.createFrom;
 const $$createType8 = $Create.Nullable($$createType7);
-const $$createType9 = $Create.Array($Create.Any);
-const $$createType10 = constants$0.SharedConstants.createFrom;
-const $$createType11 = $Create.Nullable($$createType10);
-const $$createType12 = types$0.HostsStatusResponse.createFrom;
-const $$createType13 = $Create.Nullable($$createType12);
+const $$createType9 = types$0.LogFileInfo.createFrom;
+const $$createType10 = $Create.Array($$createType9);
+const $$createType11 = constants$0.SharedConstants.createFrom;
+const $$createType12 = $Create.Nullable($$createType11);
+const $$createType13 = types$0.HostsStatusResponse.createFrom;
+const $$createType14 = $Create.Nullable($$createType13);
