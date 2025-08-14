@@ -414,7 +414,7 @@ const PingLatencyChart = memo(function PingLatencyChart({
                       return <g />;
                     const loss = payload?.loss ?? 0;
                     const color = getPacketLossColor(loss, colorMap[host]);
-                    const half = 2; // 线段半长，整体约 4px
+                    const half = 1.5; // 线段半长，整体约 3px，稍微短一些
                     return (
                       <g>
                         <line
