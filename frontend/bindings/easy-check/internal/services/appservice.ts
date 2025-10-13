@@ -33,12 +33,40 @@ export function CheckForUpdates(): Promise<string> & { cancel(): void } {
 }
 
 /**
+ * DisableAutoStart 禁用开机自启
+ */
+export function DisableAutoStart(): Promise<void> & { cancel(): void } {
+    let $resultPromise = $Call.ByID(3967391688) as any;
+    return $resultPromise;
+}
+
+/**
+ * EnableAutoStart 启用开机自启
+ */
+export function EnableAutoStart(): Promise<void> & { cancel(): void } {
+    let $resultPromise = $Call.ByID(1596571863) as any;
+    return $resultPromise;
+}
+
+/**
  * GetAppInfo 获取应用程序信息（类似VSCode的关于页面）
  */
 export function GetAppInfo(): Promise<$models.AppInfo | null> & { cancel(): void } {
     let $resultPromise = $Call.ByID(714048766) as any;
     let $typingPromise = $resultPromise.then(($result: any) => {
         return $$createType1($result);
+    }) as any;
+    $typingPromise.cancel = $resultPromise.cancel.bind($resultPromise);
+    return $typingPromise;
+}
+
+/**
+ * GetAutoStartInfo 获取开机自启的详细信息
+ */
+export function GetAutoStartInfo(): Promise<{ [_: string]: any }> & { cancel(): void } {
+    let $resultPromise = $Call.ByID(2034989824) as any;
+    let $typingPromise = $resultPromise.then(($result: any) => {
+        return $$createType2($result);
     }) as any;
     $typingPromise.cancel = $resultPromise.cancel.bind($resultPromise);
     return $typingPromise;
@@ -149,6 +177,14 @@ export function GetStatusWithHosts(hosts: string[]): Promise<types$0.HostsStatus
     }) as any;
     $typingPromise.cancel = $resultPromise.cancel.bind($resultPromise);
     return $typingPromise;
+}
+
+/**
+ * IsAutoStartEnabled 检查开机自启是否已启用
+ */
+export function IsAutoStartEnabled(): Promise<boolean> & { cancel(): void } {
+    let $resultPromise = $Call.ByID(581220391) as any;
+    return $resultPromise;
 }
 
 /**

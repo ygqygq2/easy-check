@@ -2,27 +2,27 @@
 <plist version="1.0">
     <dict>
         <key>CFBundlePackageType</key>
-        <string>APPL</string>
+            <string>APPL</string>
         <key>CFBundleName</key>
-        <string>easy-check</string>
+            <string>easy-check</string>
         <key>CFBundleExecutable</key>
-        <string>easy-check-ui</string>
+            <string>easy-check-ui</string>
         <key>CFBundleIdentifier</key>
-        <string>com.ygqygq2.easy-check</string>
+            <string>com.ygqygq2.easy-check</string>
         <key>CFBundleVersion</key>
-        <string>v3.0.1</string>
+            <string>v3.0.1</string>
         <key>CFBundleGetInfoString</key>
-        <string></string>
+            <string>This is a comment</string>
         <key>CFBundleShortVersionString</key>
-        <string>v3.0.1</string>
+            <string>v3.0.1</string>
         <key>CFBundleIconFile</key>
-        <string>icons</string>
+            <string>icons</string>
         <key>LSMinimumSystemVersion</key>
-        <string>10.13.0</string>
+            <string>10.15.0</string>
         <key>NSHighResolutionCapable</key>
-        <string>true</string>
+            <string>true</string>
         <key>NSHumanReadableCopyright</key>
-        <string>(c) 2025, ygqygq2</string>
+            <string>(c) 2025, ygqygq2</string>
         <key>NSAppTransportSecurity</key>
         <dict>
             <key>NSAllowsLocalNetworking</key>

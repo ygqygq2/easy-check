@@ -1,19 +1,47 @@
 #!/bin/bash
 
-# This script removes the startup configuration for easy-check
+echo "========================================"
+echo "Easy-Check 开机自启卸载"
+echo "========================================"
+echo
 
-# Remove systemd service (for Linux)
-if [ -f /etc/systemd/system/easy-check.service ]; then
-  sudo systemctl stop easy-check.service
-  sudo systemctl disable easy-check.service
-  sudo rm /etc/systemd/system/easy-check.service
-  echo "Removed easy-check systemd service."
+UI_SERVICE="easy-check-ui"
+CMD_SERVICE="easy-check"
+
+# 检查是否有 root 权限
+if [ "$EUID" -ne 0 ]; then
+    echo "[错误] 请使用 sudo 运行此脚本"
+    exit 1
 fi
 
-# Remove autostart entry (for Linux desktop environments)
-if [ -f ~/.config/autostart/easy-check.desktop ]; then
-  rm ~/.config/autostart/easy-check.desktop
-  echo "Removed easy-check autostart entry."
+FOUND=0
+
+# 检查并停止 UI 服务
+if systemctl is-enabled $UI_SERVICE &>/dev/null || systemctl is-active $UI_SERVICE &>/dev/null; then
+    echo "正在停止并禁用 UI 版本服务..."
+    systemctl stop $UI_SERVICE 2>/dev/null
+    systemctl disable $UI_SERVICE 2>/dev/null
+    rm -f /etc/systemd/system/$UI_SERVICE.service
+    echo "[成功] UI 版本服务已删除"
+    FOUND=1
 fi
 
-echo "Uninstallation complete."
+# 检查并停止 CMD 服务
+if systemctl is-enabled $CMD_SERVICE &>/dev/null || systemctl is-active $CMD_SERVICE &>/dev/null; then
+    echo "正在停止并禁用 CMD 版本服务..."
+    systemctl stop $CMD_SERVICE 2>/dev/null
+    systemctl disable $CMD_SERVICE 2>/dev/null
+    rm -f /etc/systemd/system/$CMD_SERVICE.service
+    echo "[成功] CMD 版本服务已删除"
+    FOUND=1
+fi
+
+if [ $FOUND -eq 1 ]; then
+    systemctl daemon-reload
+    echo
+    echo "[完成] 开机自启已取消"
+else
+    echo "[提示] 未找到任何开机自启服务"
+fi
+
+echo

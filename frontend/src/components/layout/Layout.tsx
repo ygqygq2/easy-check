@@ -1,9 +1,12 @@
 import {
   CheckForUpdates,
+  DisableAutoStart,
+  EnableAutoStart,
+  IsAutoStartEnabled,
   RestartApp,
 } from "@bindings/easy-check/internal/services/appservice";
 import { Box, Flex } from "@chakra-ui/react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 import smallLogo from "@/assets/images/logo36x36.png";
 import MenuBar from "@/components/MenuBar";
@@ -25,6 +28,47 @@ export function Layout({ children }: LayoutProps) {
 
   const [activeComponent, setActiveComponent] =
     useState<React.ReactNode>(children);
+  const [autoStartEnabled, setAutoStartEnabled] = useState(false);
+
+  // 检查开机自启状态
+  useEffect(() => {
+    IsAutoStartEnabled()
+      .then((enabled) => {
+        setAutoStartEnabled(enabled);
+      })
+      .catch((error) => {
+        console.error("检查开机自启状态失败:", error);
+      });
+  }, []);
+
+  // 切换开机自启状态
+  const toggleAutoStart = async () => {
+    try {
+      if (autoStartEnabled) {
+        await DisableAutoStart();
+        setAutoStartEnabled(false);
+        toaster.create({
+          title: "开机自启",
+          description: "已禁用开机自启",
+          type: "success",
+        });
+      } else {
+        await EnableAutoStart();
+        setAutoStartEnabled(true);
+        toaster.create({
+          title: "开机自启",
+          description: "已启用开机自启",
+          type: "success",
+        });
+      }
+    } catch (error) {
+      toaster.create({
+        title: "设置失败",
+        description: `${error}`,
+        type: "error",
+      });
+    }
+  };
 
   const menus = [
     {
@@ -70,6 +114,11 @@ export function Layout({ children }: LayoutProps) {
     {
       label: "帮助",
       items: [
+        {
+          value: "autostart",
+          label: autoStartEnabled ? "✓ 开机自启" : "开机自启",
+          onClick: toggleAutoStart,
+        },
         {
           value: "update",
           label: "检查更新",
