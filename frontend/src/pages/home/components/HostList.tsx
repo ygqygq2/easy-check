@@ -79,8 +79,13 @@ export function HostList({
               variant={isSelected ? "solid" : getVariant(latency)}
               colorPalette={isSelected ? "teal" : "teal"}
               checked={isSelected}
-              onCheckedChange={() => {
+              onCheckedChange={(details) => {
                 if (isDisabled) return;
+                console.log(
+                  "CheckboxCard onCheckedChange:",
+                  details,
+                  host.host
+                );
                 onToggleHost?.(host.host);
               }}
             >

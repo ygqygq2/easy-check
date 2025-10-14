@@ -104,13 +104,14 @@ export function Page() {
     fetchAndSetHosts(page, searchTerm);
   }, [page, searchTerm]);
 
-  // 搜索时重置页码
+  // 搜索时重置页码和清除选择（只在搜索词真正改变时触发一次）
   useEffect(() => {
+    setPage(1);
     if (searchTerm) {
-      setPage(1); // 搜索时重置到第一页
       clearSelection();
     }
-  }, [searchTerm, clearSelection]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchTerm]);
 
   // 直接显示后端返回的数据
   useEffect(() => {

@@ -57,9 +57,11 @@ export const useHostSelection = (
   );
 
   const clearSelection = useCallback(() => {
-    selectedHosts.forEach((host) => onHostDeselected(host));
-    setSelectedHosts([]);
-  }, [selectedHosts, onHostDeselected]);
+    setSelectedHosts((prev) => {
+      prev.forEach((host) => onHostDeselected(host));
+      return [];
+    });
+  }, [onHostDeselected]);
 
   return {
     selectedHosts,
