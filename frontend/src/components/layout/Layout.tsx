@@ -14,7 +14,7 @@ import { ColorModeButton, useColorModeValue } from "@/components/ui/color-mode";
 
 import About from "../About";
 import LogFileViewer from "../log/LogFileViewer";
-import LogListComponent from "../log/LogListComponent";
+import LogList from "../log/LogList";
 import { Toaster, toaster } from "../ui/toaster";
 import YamlEditor from "../YamlEditor";
 
@@ -93,7 +93,7 @@ export function Layout({ children }: LayoutProps) {
           label: "日志列表",
           onClick: () =>
             setActiveComponent(
-              <LogListComponent onClose={() => setActiveComponent(children)} />
+              <LogList onClose={() => setActiveComponent(children)} />
             ),
         },
         {

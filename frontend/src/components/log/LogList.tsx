@@ -17,13 +17,13 @@ import { HeaderWithActions } from "../ui/HeaderWithActions";
 import { toaster } from "../ui/toaster";
 import RawLogFileViewer from "./RawLogFileViewer";
 
-interface LogListComponentProps {
+interface LogListProps {
   onClose: () => void;
 }
 
 type SortType = "name-asc" | "name-desc" | "time-asc" | "time-desc";
 
-function LogListComponent({ onClose }: LogListComponentProps) {
+function LogList({ onClose }: LogListProps) {
   const [logFiles, setLogFiles] = useState<types.LogFileInfo[]>([]);
   const [sortedFiles, setSortedFiles] = useState<types.LogFileInfo[]>([]);
   const [selectedFile, setSelectedFile] = useState<string | null>(null);
@@ -99,36 +99,41 @@ function LogListComponent({ onClose }: LogListComponentProps) {
 
       {/* 排序控件 */}
       <HStack mb="0.75rem" justify="space-between" flexShrink={0}>
-        <Text fontSize="sm" color="gray.600">
+        <Text fontSize="sm" color="app.text.muted">
           共 {logFiles.length} 个日志文件
         </Text>
         <HStack>
-          <Text fontSize="sm">排序:</Text>
-          <Box>
-            <select
-              style={{
-                padding: "0.25rem 0.5rem",
-                borderRadius: "0.25rem",
-                border: "1px solid #d1d5db",
-                fontSize: "0.875rem",
-                minWidth: "11.25rem",
-              }}
-              value={sortType}
-              onChange={handleSortChange}
-            >
-              <option value="time-desc">按时间 ↓ (新到旧)</option>
-              <option value="time-asc">按时间 ↑ (旧到新)</option>
-              <option value="name-desc">按文件名 ↓ (Z到A)</option>
-              <option value="name-asc">按文件名 ↑ (A到Z)</option>
-            </select>
-          </Box>
+          <Text fontSize="sm" color="app.text">
+            排序:
+          </Text>
+          <select
+            value={sortType}
+            onChange={(e) => setSortType(e.target.value as SortType)}
+            style={{
+              padding: "0.25rem 0.5rem",
+              fontSize: "0.875rem",
+              minWidth: "11.25rem",
+              borderRadius: "0.375rem",
+              borderWidth: "1px",
+            }}
+          >
+            <option value="time-desc">按时间 ↓ (新到旧)</option>
+            <option value="time-asc">按时间 ↑ (旧到新)</option>
+            <option value="time-desc">按文件名 ↓ (Z到A)</option>
+            <option value="name-asc">按文件名 ↑ (A到Z)</option>
+          </select>
         </HStack>
       </HStack>
 
       {/* 文件列表 - 多列网格布局 */}
       <Box flex="1" overflowY="auto" mt="0.75rem">
         {sortedFiles.length === 0 ? (
-          <Text textAlign="center" fontSize="lg" color="gray.500" py="2rem">
+          <Text
+            textAlign="center"
+            fontSize="lg"
+            color="app.text.muted"
+            py="2rem"
+          >
             没有日志文件
           </Text>
         ) : (
@@ -154,22 +159,23 @@ function LogListComponent({ onClose }: LogListComponentProps) {
                     p="0.75rem"
                     borderWidth="1px"
                     borderRadius="md"
+                    borderColor="app.border"
                     boxShadow="sm"
-                    bg="white"
+                    bg="app.card"
                     height="4rem"
                     cursor="pointer"
                     transition="all 0.15s ease"
                     _hover={{
                       transform: "translateY(-1px)",
                       boxShadow: "md",
-                      bg: "gray.50",
-                      borderColor: "blue.200",
+                      bg: "app.surface",
+                      borderColor: "blue.400",
                     }}
                     _active={{ transform: "translateY(0)" }}
                     onClick={() => setSelectedFile(file.name)}
                   >
                     <HStack gap="0.5rem" mb="0.25rem">
-                      <ChakraIcon color="blue.500" flexShrink={0}>
+                      <ChakraIcon color="blue.400" flexShrink={0}>
                         <Icon
                           icon="line-md:document-list"
                           width="14"
@@ -179,6 +185,7 @@ function LogListComponent({ onClose }: LogListComponentProps) {
                       <Text
                         fontWeight="medium"
                         fontSize="0.75rem"
+                        color="app.text"
                         overflow="hidden"
                         textOverflow="ellipsis"
                         whiteSpace="nowrap"
@@ -189,7 +196,11 @@ function LogListComponent({ onClose }: LogListComponentProps) {
                       </Text>
                     </HStack>
                     {!isZeroTime && (
-                      <Text fontSize="0.625rem" color="gray.500" mt="auto">
+                      <Text
+                        fontSize="0.625rem"
+                        color="app.text.muted"
+                        mt="auto"
+                      >
                         {fileTime.toLocaleString("zh-CN", {
                           month: "2-digit",
                           day: "2-digit",
@@ -209,4 +220,4 @@ function LogListComponent({ onClose }: LogListComponentProps) {
   );
 }
 
-export default LogListComponent;
+export default LogList;
