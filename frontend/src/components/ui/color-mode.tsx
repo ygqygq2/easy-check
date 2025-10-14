@@ -1,15 +1,24 @@
 "use client";
 
-import type { IconButtonProps } from "@chakra-ui/react";
-import { ClientOnly, IconButton, Skeleton } from "@chakra-ui/react";
+import type { IconButtonProps, SpanProps } from "@chakra-ui/react";
+import { ClientOnly, IconButton, Skeleton, Span } from "@chakra-ui/react";
 import { Icon } from "@iconify/react";
-import { useTheme } from "next-themes";
+import type { ThemeProviderProps } from "next-themes";
+import { ThemeProvider, useTheme } from "next-themes";
 import * as React from "react";
 
 /**
  * Color Mode 管理
  * 使用 next-themes 与 Chakra UI v3 集成
  */
+
+export type ColorModeProviderProps = ThemeProviderProps;
+
+export function ColorModeProvider(props: ColorModeProviderProps) {
+  return (
+    <ThemeProvider attribute="class" disableTransitionOnChange {...props} />
+  );
+}
 
 export type ColorMode = "light" | "dark";
 
@@ -25,13 +34,13 @@ export interface UseColorModeReturn {
 export function useColorMode(): UseColorModeReturn {
   const { resolvedTheme, setTheme } = useTheme();
 
-  const toggleColorMode = React.useCallback(() => {
+  const toggleColorMode = () => {
     setTheme(resolvedTheme === "dark" ? "light" : "dark");
-  }, [resolvedTheme, setTheme]);
+  };
 
   return {
-    colorMode: (resolvedTheme || "light") as ColorMode,
-    setColorMode: setTheme as (mode: ColorMode) => void,
+    colorMode: resolvedTheme as ColorMode,
+    setColorMode: setTheme,
     toggleColorMode,
   };
 }
@@ -81,3 +90,35 @@ export const ColorModeButton = React.forwardRef<
     </ClientOnly>
   );
 });
+
+export const LightMode = React.forwardRef<HTMLSpanElement, SpanProps>(
+  function LightMode(props, ref) {
+    return (
+      <Span
+        color="fg"
+        display="contents"
+        className="chakra-theme light"
+        colorPalette="gray"
+        colorScheme="light"
+        ref={ref}
+        {...props}
+      />
+    ) as React.ReactElement;
+  }
+);
+
+export const DarkMode = React.forwardRef<HTMLSpanElement, SpanProps>(
+  function DarkMode(props, ref) {
+    return (
+      <Span
+        color="fg"
+        display="contents"
+        className="chakra-theme dark"
+        colorPalette="gray"
+        colorScheme="dark"
+        ref={ref}
+        {...props}
+      />
+    ) as React.ReactElement;
+  }
+);

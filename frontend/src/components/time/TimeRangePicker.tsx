@@ -145,7 +145,7 @@ export default function TimeRangePicker({
       onOpenChange={(e) => setOpen(e.open)}
       positioning={{ placement }}
     >
-      <Popover.Trigger>
+      <Popover.Trigger asChild>
         <Button
           size={size}
           onClick={() => setOpen((s) => !s)}

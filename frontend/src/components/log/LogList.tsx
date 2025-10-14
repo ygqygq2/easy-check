@@ -1,5 +1,5 @@
 import { GetLogFiles } from "@bindings/easy-check/internal/services/appservice";
-import { types } from "@bindings/easy-check/internal/types";
+import { LogFileInfo } from "@bindings/easy-check/internal/types";
 import {
   Box,
   Flex,
@@ -13,6 +13,7 @@ import { Icon } from "@iconify/react";
 import { useEffect, useState, ChangeEvent } from "react";
 
 import ActionButton from "../ui/ActionButton";
+import { useColorModeValue } from "../ui/color-mode";
 import { HeaderWithActions } from "../ui/HeaderWithActions";
 import { toaster } from "../ui/toaster";
 import RawLogFileViewer from "./RawLogFileViewer";
@@ -24,16 +25,20 @@ interface LogListProps {
 type SortType = "name-asc" | "name-desc" | "time-asc" | "time-desc";
 
 function LogList({ onClose }: LogListProps) {
-  const [logFiles, setLogFiles] = useState<types.LogFileInfo[]>([]);
-  const [sortedFiles, setSortedFiles] = useState<types.LogFileInfo[]>([]);
+  const [logFiles, setLogFiles] = useState<LogFileInfo[]>([]);
+  const [sortedFiles, setSortedFiles] = useState<LogFileInfo[]>([]);
   const [selectedFile, setSelectedFile] = useState<string | null>(null);
   const [sortType, setSortType] = useState<SortType>("time-desc");
 
+  // 颜色变量
+  const textColor = useColorModeValue("gray.800", "gray.100");
+  const mutedTextColor = useColorModeValue("gray.600", "gray.400");
+  const cardBg = useColorModeValue("white", "gray.700");
+  const surfaceBg = useColorModeValue("gray.50", "gray.800");
+  const borderColor = useColorModeValue("gray.200", "gray.600");
+
   // 对文件进行排序
-  const sortFiles = (
-    files: types.LogFileInfo[],
-    sort: SortType
-  ): types.LogFileInfo[] => {
+  const sortFiles = (files: LogFileInfo[], sort: SortType): LogFileInfo[] => {
     return [...files].sort((a, b) => {
       switch (sort) {
         case "name-asc":
@@ -99,11 +104,11 @@ function LogList({ onClose }: LogListProps) {
 
       {/* 排序控件 */}
       <HStack mb="0.75rem" justify="space-between" flexShrink={0}>
-        <Text fontSize="sm" color="app.text.muted">
+        <Text fontSize="sm" color={mutedTextColor}>
           共 {logFiles.length} 个日志文件
         </Text>
         <HStack>
-          <Text fontSize="sm" color="app.text">
+          <Text fontSize="sm" color={textColor}>
             排序:
           </Text>
           <select
@@ -131,7 +136,7 @@ function LogList({ onClose }: LogListProps) {
           <Text
             textAlign="center"
             fontSize="lg"
-            color="app.text.muted"
+            color={mutedTextColor}
             py="2rem"
           >
             没有日志文件
@@ -159,16 +164,16 @@ function LogList({ onClose }: LogListProps) {
                     p="0.75rem"
                     borderWidth="1px"
                     borderRadius="md"
-                    borderColor="app.border"
+                    borderColor={borderColor}
                     boxShadow="sm"
-                    bg="app.card"
+                    bg={cardBg}
                     height="4rem"
                     cursor="pointer"
                     transition="all 0.15s ease"
                     _hover={{
                       transform: "translateY(-1px)",
                       boxShadow: "md",
-                      bg: "app.surface",
+                      bg: surfaceBg,
                       borderColor: "blue.400",
                     }}
                     _active={{ transform: "translateY(0)" }}
@@ -185,7 +190,7 @@ function LogList({ onClose }: LogListProps) {
                       <Text
                         fontWeight="medium"
                         fontSize="0.75rem"
-                        color="app.text"
+                        color={textColor}
                         overflow="hidden"
                         textOverflow="ellipsis"
                         whiteSpace="nowrap"
@@ -198,7 +203,7 @@ function LogList({ onClose }: LogListProps) {
                     {!isZeroTime && (
                       <Text
                         fontSize="0.625rem"
-                        color="app.text.muted"
+                        color={mutedTextColor}
                         mt="auto"
                       >
                         {fileTime.toLocaleString("zh-CN", {
