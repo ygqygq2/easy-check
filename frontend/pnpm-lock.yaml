@@ -100,8 +100,8 @@ importers:
         specifier: ^5.0.0
         version: 5.0.0(vite@7.1.1(@types/node@24.2.1)(yaml@2.8.1))
       '@wailsio/runtime':
-        specifier: latest
-        version: 3.0.0-alpha.66
+        specifier: 3.0.0-alpha.77
+        version: 3.0.0-alpha.77
       '@ygqygq2/eslint-config':
         specifier: ^1.0.3
         version: 1.0.3(eslint@9.33.0)
@@ -963,8 +963,8 @@ packages:
       react-dom: '*'
       vite: '*'
 
-  '@wailsio/runtime@3.0.0-alpha.66':
-    resolution: {integrity: sha512-ENLu8rn1griL1gFHJqkq1i+BVxrrA0JPJHYneUJYuf/s54kjuQViW0RKDEe/WTDo56ABpfykrd/T8OYpPUyXUw==}
+  '@wailsio/runtime@3.0.0-alpha.77':
+    resolution: {integrity: sha512-DMWjT8VFCk8O818mnw2dbrgZilOf1TzmGGp5lemZyGej7g+SSqAhMFOHp9eCiGQ32EbxmGOdTO4aNZVA00j9Nw==}
 
   '@ygqygq2/eslint-config@1.0.3':
     resolution: {integrity: sha512-Pg+8tuwNSbfp2ijY4VQMOd4Vcj4y19fdD/L/8Dk8qwz7M61lCnGG7XV8THdOS5YGX8GMk9oZm3+HW72/uYOb2w==}
@@ -4021,7 +4021,7 @@ snapshots:
       vite: 7.1.1(@types/node@24.2.1)(yaml@2.8.1)
       vitefu: 1.1.1(vite@7.1.1(@types/node@24.2.1)(yaml@2.8.1))
 
-  '@wailsio/runtime@3.0.0-alpha.66': {}
+  '@wailsio/runtime@3.0.0-alpha.77': {}
 
   '@ygqygq2/eslint-config@1.0.3(eslint@9.33.0)':
     dependencies:

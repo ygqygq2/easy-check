@@ -44,7 +44,7 @@
     "@types/react-dom": "^19.1.7",
     "@types/react-window": "^1.8.8",
     "@vitejs/plugin-react": "^5.0.0",
-    "@wailsio/runtime": "latest",
+    "@wailsio/runtime": "3.0.0-alpha.77",
     "@ygqygq2/eslint-config": "^1.0.3",
     "eslint": "9.33.0",
     "eslint-config-prettier": "^10.1.8",
