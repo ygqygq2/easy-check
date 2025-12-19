@@ -2,7 +2,7 @@ module easy-check
 
 go 1.25.5
 
-require github.com/wailsapp/wails/v3 v3.0.0-alpha.48
+require github.com/wailsapp/wails/v3 v3.0.0-alpha.49
 
 require (
 	github.com/Masterminds/semver v1.5.0

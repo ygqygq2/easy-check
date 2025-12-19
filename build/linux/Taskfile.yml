@@ -114,4 +114,7 @@ tasks:
 
   run:
     cmds:
-      - '{{.BIN_DIR}}/{{.APP_NAME}}-{{.GOOS}}-{{.GOARCH}}'
+      - '{{.BIN_DIR}}/{{.APP_NAME}}-{{.OS}}-{{.ARCH}}'
+    vars:
+      OS: '{{.OS | default "linux"}}'
+      ARCH: '{{.ARCH | default ARCH}}'

@@ -150,16 +150,16 @@ func main() {
 		},
 	})
 
-window = application.NewWindow(application.WebviewWindowOptions{
-	Title:  constInfo.AppName,
-	Width:  1024,
-	Height: 768,
-	Mac: application.MacWindow{
-		InvisibleTitleBarHeight: 50,
+	window = app.Window.NewWithOptions(application.WebviewWindowOptions{
+		Title:            constInfo.AppName,
+		Width:            1024,
+		Height:           768,
+		BackgroundColour: application.NewRGB(27, 38, 54),
+		URL:              "/",
+		Mac: application.MacWindow{
+			InvisibleTitleBarHeight: 50,
 			TitleBar:                application.MacTitleBarHiddenInset,
 		},
-		BackgroundColour:    application.NewRGB(27, 38, 54),
-		URL:                 "/",
 		MinimiseButtonState: application.ButtonEnabled,
 		MaximiseButtonState: application.ButtonDisabled,
 		CloseButtonState:    application.ButtonDisabled,
