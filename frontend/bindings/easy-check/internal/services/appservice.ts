@@ -8,7 +8,7 @@
 
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-ignore: Unused imports
-import {Call as $Call, Create as $Create} from "@wailsio/runtime";
+import { Call as $Call, CancellablePromise as $CancellablePromise, Create as $Create } from "@wailsio/runtime";
 
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-ignore: Unused imports
@@ -16,9 +16,6 @@ import * as constants$0 from "../constants/models.js";
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-ignore: Unused imports
 import * as types$0 from "../types/models.js";
-// eslint-disable-next-line @typescript-eslint/ban-ts-comment
-// @ts-ignore: Unused imports
-import * as application$0 from "../../../github.com/wailsapp/wails/v3/pkg/application/models.js";
 
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-ignore: Unused imports
@@ -27,196 +24,144 @@ import * as $models from "./models.js";
 /**
  * CheckForUpdates checks for updates
  */
-export function CheckForUpdates(): Promise<string> & { cancel(): void } {
-    let $resultPromise = $Call.ByID(2701935820) as any;
-    return $resultPromise;
+export function CheckForUpdates(): $CancellablePromise<string> {
+    return $Call.ByID(2701935820);
 }
 
 /**
  * DisableAutoStart 禁用开机自启
  */
-export function DisableAutoStart(): Promise<void> & { cancel(): void } {
-    let $resultPromise = $Call.ByID(3967391688) as any;
-    return $resultPromise;
+export function DisableAutoStart(): $CancellablePromise<void> {
+    return $Call.ByID(3967391688);
 }
 
 /**
  * EnableAutoStart 启用开机自启
  */
-export function EnableAutoStart(): Promise<void> & { cancel(): void } {
-    let $resultPromise = $Call.ByID(1596571863) as any;
-    return $resultPromise;
+export function EnableAutoStart(): $CancellablePromise<void> {
+    return $Call.ByID(1596571863);
 }
 
 /**
  * GetAppInfo 获取应用程序信息（类似VSCode的关于页面）
  */
-export function GetAppInfo(): Promise<$models.AppInfo | null> & { cancel(): void } {
-    let $resultPromise = $Call.ByID(714048766) as any;
-    let $typingPromise = $resultPromise.then(($result: any) => {
+export function GetAppInfo(): $CancellablePromise<$models.AppInfo | null> {
+    return $Call.ByID(714048766).then(($result: any) => {
         return $$createType1($result);
-    }) as any;
-    $typingPromise.cancel = $resultPromise.cancel.bind($resultPromise);
-    return $typingPromise;
+    });
 }
 
 /**
  * GetAutoStartInfo 获取开机自启的详细信息
  */
-export function GetAutoStartInfo(): Promise<{ [_: string]: any }> & { cancel(): void } {
-    let $resultPromise = $Call.ByID(2034989824) as any;
-    let $typingPromise = $resultPromise.then(($result: any) => {
+export function GetAutoStartInfo(): $CancellablePromise<{ [_: string]: any }> {
+    return $Call.ByID(2034989824).then(($result: any) => {
         return $$createType2($result);
-    }) as any;
-    $typingPromise.cancel = $resultPromise.cancel.bind($resultPromise);
-    return $typingPromise;
+    });
 }
 
 /**
  * GetConfig retrieves the configuration file content
  */
-export function GetConfig(): Promise<string> & { cancel(): void } {
-    let $resultPromise = $Call.ByID(1500926409) as any;
-    return $resultPromise;
+export function GetConfig(): $CancellablePromise<string> {
+    return $Call.ByID(1500926409);
 }
 
 /**
  * GetConfigValue 根据YAML路径获取配置值
  * 支持路径如: "ping.interval", "interval", "ping.count" 等
  */
-export function GetConfigValue(path: string): Promise<any> & { cancel(): void } {
-    let $resultPromise = $Call.ByID(797097686, path) as any;
-    return $resultPromise;
+export function GetConfigValue(path: string): $CancellablePromise<any> {
+    return $Call.ByID(797097686, path);
 }
 
-export function GetCurrentInstanceInfo(): Promise<{ [_: string]: any }> & { cancel(): void } {
-    let $resultPromise = $Call.ByID(3707045995) as any;
-    let $typingPromise = $resultPromise.then(($result: any) => {
+export function GetCurrentInstanceInfo(): $CancellablePromise<{ [_: string]: any }> {
+    return $Call.ByID(3707045995).then(($result: any) => {
         return $$createType2($result);
-    }) as any;
-    $typingPromise.cancel = $resultPromise.cancel.bind($resultPromise);
-    return $typingPromise;
+    });
 }
 
 /**
  * GetFrontendConfig 获取前端需要的配置信息
  * 只返回前端实际使用的配置项，而不是完整的配置文件
  */
-export function GetFrontendConfig(): Promise<$models.FrontendConfig | null> & { cancel(): void } {
-    let $resultPromise = $Call.ByID(1098278021) as any;
-    let $typingPromise = $resultPromise.then(($result: any) => {
+export function GetFrontendConfig(): $CancellablePromise<$models.FrontendConfig | null> {
+    return $Call.ByID(1098278021).then(($result: any) => {
         return $$createType4($result);
-    }) as any;
-    $typingPromise.cancel = $resultPromise.cancel.bind($resultPromise);
-    return $typingPromise;
+    });
 }
 
 /**
  * GetHistoryWithHosts 获取主机历史数据
  */
-export function GetHistoryWithHosts(hosts: string[], startTime: number, endTime: number, step: number): Promise<types$0.HostsRangeResponse | null> & { cancel(): void } {
-    let $resultPromise = $Call.ByID(2495755216, hosts, startTime, endTime, step) as any;
-    let $typingPromise = $resultPromise.then(($result: any) => {
+export function GetHistoryWithHosts(hosts: string[], startTime: number, endTime: number, step: number): $CancellablePromise<types$0.HostsRangeResponse | null> {
+    return $Call.ByID(2495755216, hosts, startTime, endTime, step).then(($result: any) => {
         return $$createType6($result);
-    }) as any;
-    $typingPromise.cancel = $resultPromise.cancel.bind($resultPromise);
-    return $typingPromise;
+    });
 }
 
 /**
  * GetHosts retrieves the list of hosts
  */
-export function GetHosts(page: number, pageSize: number, searchTerm: string): Promise<types$0.HostsResponse | null> & { cancel(): void } {
-    let $resultPromise = $Call.ByID(2747365634, page, pageSize, searchTerm) as any;
-    let $typingPromise = $resultPromise.then(($result: any) => {
+export function GetHosts(page: number, pageSize: number, searchTerm: string): $CancellablePromise<types$0.HostsResponse | null> {
+    return $Call.ByID(2747365634, page, pageSize, searchTerm).then(($result: any) => {
         return $$createType8($result);
-    }) as any;
-    $typingPromise.cancel = $resultPromise.cancel.bind($resultPromise);
-    return $typingPromise;
+    });
 }
 
 /**
  * GetLogFileContent retrieves the content of a specific log file
  */
-export function GetLogFileContent(fileName: string, ...isLatest: boolean[]): Promise<string> & { cancel(): void } {
-    let $resultPromise = $Call.ByID(2764732514, fileName, isLatest) as any;
-    return $resultPromise;
+export function GetLogFileContent(fileName: string, ...isLatest: boolean[]): $CancellablePromise<string> {
+    return $Call.ByID(2764732514, fileName, isLatest);
 }
 
 /**
  * GetLogFiles retrieves the list of log files with their details
  */
-export function GetLogFiles(): Promise<types$0.LogFileInfo[]> & { cancel(): void } {
-    let $resultPromise = $Call.ByID(2219189890) as any;
-    let $typingPromise = $resultPromise.then(($result: any) => {
+export function GetLogFiles(): $CancellablePromise<types$0.LogFileInfo[]> {
+    return $Call.ByID(2219189890).then(($result: any) => {
         return $$createType10($result);
-    }) as any;
-    $typingPromise.cancel = $resultPromise.cancel.bind($resultPromise);
-    return $typingPromise;
+    });
 }
 
 /**
  * GetSharedConstant retrieves shared constants
  */
-export function GetSharedConstant(): Promise<constants$0.SharedConstants | null> & { cancel(): void } {
-    let $resultPromise = $Call.ByID(2539832674) as any;
-    let $typingPromise = $resultPromise.then(($result: any) => {
+export function GetSharedConstant(): $CancellablePromise<constants$0.SharedConstants | null> {
+    return $Call.ByID(2539832674).then(($result: any) => {
         return $$createType12($result);
-    }) as any;
-    $typingPromise.cancel = $resultPromise.cancel.bind($resultPromise);
-    return $typingPromise;
+    });
 }
 
 /**
  * GetStatusWithHosts retrieves latency data and status for hosts
  */
-export function GetStatusWithHosts(hosts: string[]): Promise<types$0.HostsStatusResponse | null> & { cancel(): void } {
-    let $resultPromise = $Call.ByID(2962638184, hosts) as any;
-    let $typingPromise = $resultPromise.then(($result: any) => {
+export function GetStatusWithHosts(hosts: string[]): $CancellablePromise<types$0.HostsStatusResponse | null> {
+    return $Call.ByID(2962638184, hosts).then(($result: any) => {
         return $$createType14($result);
-    }) as any;
-    $typingPromise.cancel = $resultPromise.cancel.bind($resultPromise);
-    return $typingPromise;
+    });
 }
 
 /**
  * IsAutoStartEnabled 检查开机自启是否已启用
  */
-export function IsAutoStartEnabled(): Promise<boolean> & { cancel(): void } {
-    let $resultPromise = $Call.ByID(581220391) as any;
-    return $resultPromise;
+export function IsAutoStartEnabled(): $CancellablePromise<boolean> {
+    return $Call.ByID(581220391);
 }
 
 /**
  * RestartApp restarts the application
  */
-export function RestartApp(): Promise<void> & { cancel(): void } {
-    let $resultPromise = $Call.ByID(579549339) as any;
-    return $resultPromise;
+export function RestartApp(): $CancellablePromise<void> {
+    return $Call.ByID(579549339);
 }
 
 /**
  * SaveConfig saves the configuration file content
  */
-export function SaveConfig(content: string): Promise<void> & { cancel(): void } {
-    let $resultPromise = $Call.ByID(3220636282, content) as any;
-    return $resultPromise;
-}
-
-/**
- * Shutdown is called when the service shuts down
- */
-export function ServiceShutdown(options: application$0.ServiceOptions): Promise<void> & { cancel(): void } {
-    let $resultPromise = $Call.ByID(3322109826, options) as any;
-    return $resultPromise;
-}
-
-/**
- * Startup is called when the service starts
- */
-export function ServiceStartup(options: application$0.ServiceOptions): Promise<void> & { cancel(): void } {
-    let $resultPromise = $Call.ByID(1326445753, options) as any;
-    return $resultPromise;
+export function SaveConfig(content: string): $CancellablePromise<void> {
+    return $Call.ByID(3220636282, content);
 }
 
 // Private type creation functions

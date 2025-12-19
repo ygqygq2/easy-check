@@ -150,13 +150,12 @@ func main() {
 		},
 	})
 
-	window = app.NewWebviewWindowWithOptions(application.WebviewWindowOptions{
-		Title:  constInfo.AppName,
-		Width:  1024,
-		Height: 768,
-		Mac: application.MacWindow{
-			InvisibleTitleBarHeight: 50,
-			Backdrop:                application.MacBackdropTranslucent,
+window = application.NewWindow(application.WebviewWindowOptions{
+	Title:  constInfo.AppName,
+	Width:  1024,
+	Height: 768,
+	Mac: application.MacWindow{
+		InvisibleTitleBarHeight: 50,
 			TitleBar:                application.MacTitleBarHiddenInset,
 		},
 		BackgroundColour:    application.NewRGB(27, 38, 54),
@@ -168,7 +167,7 @@ func main() {
 
 	// 根据开关决定是否初始化系统托盘
 	if enableSystray {
-		sysTray := app.NewSystemTray()
+		sysTray := app.SystemTray.New()
 		sysTray.SetLabel(constInfo.AppName)
 
 		// 将窗口附加到系统托盘（图标点击可控制窗口显示/隐藏）

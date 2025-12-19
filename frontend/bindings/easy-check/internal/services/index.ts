@@ -6,4 +6,8 @@ export {
     AppService
 };
 
-export * from "./models.js";
+export {
+    AppInfo,
+    FrontendConfig,
+    PlatformInfo
+} from "./models.js";
