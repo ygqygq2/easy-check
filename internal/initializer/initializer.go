@@ -5,10 +5,11 @@ import (
 	"easy-check/internal/checker"
 	"easy-check/internal/config"
 	"easy-check/internal/db"
+	"easy-check/internal/heartbeat"
 	"easy-check/internal/logger"
-	"easy-check/internal/utils"
 	"easy-check/internal/notifier"
 	"easy-check/internal/types"
+	"easy-check/internal/utils"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -128,6 +129,24 @@ func Initialize(machineID, version string) (*AppContext, error) {
 	}
 
 	appLogger.Log("Application initialized successfully", "debug")
+
+	// 初始化心跳模块（避免循环导入，直接传入配置值）
+	// 根据版本自动切换服务器地址和心跳间隔
+	isDev := version == "dev"
+	heartbeatEnabled := true
+	serverBaseURL := "https://easy-check-server.ygqygq2.com"
+	heartbeatAPI := "/api/heartbeat"
+	heartbeatInterval := 1800 // 生产环境：30分钟
+	heartbeatTimeout := 10    // 10秒
+	
+	if isDev {
+		serverBaseURL = "http://localhost:3000"
+		heartbeatInterval = 60 // 开发环境：1分钟
+	}
+	if err := heartbeat.Initialize(appLogger, machineID, version, serverBaseURL, heartbeatAPI, heartbeatEnabled, heartbeatInterval, heartbeatTimeout); err != nil {
+		appLogger.Log(fmt.Sprintf("Failed to initialize heartbeat: %v", err), "error")
+	}
+
 	return appContext, nil
 }
 

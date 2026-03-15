@@ -168,7 +168,7 @@ func (a *AppService) GetAppInfo() (*AppInfo, error) {
 			OS:   a.appCtx.PlatformInfo.OS,
 			Arch: a.appCtx.PlatformInfo.Arch,
 		},
-		UpdateServer: "https://easy-check-server.ygqygq2.com",
+		UpdateServer: "https://easy-check-server.ygqygq2.com/api/update", // 新的更新接口
 		NeedsRestart: a.appCtx.NeedsRestart,
 	}, nil
 }
@@ -192,7 +192,7 @@ func (a *AppService) GetSharedConstant() *constants.SharedConstants {
 // CheckForUpdates checks for updates
 func (a *AppService) CheckForUpdates() string {
 	constInfo := constants.GetSharedConstants(a.appCtx)
-	result, err := update.CheckAndUpdate(a.appCtx, constInfo.UpdateServer)
+	result, err := update.CheckAndUpdate(a.appCtx, constInfo.Server.BaseURL, constInfo.Server.UpdateAPI)
 	if err != nil {
 		return fmt.Sprintf("检查更新失败: %v", err)
 	}

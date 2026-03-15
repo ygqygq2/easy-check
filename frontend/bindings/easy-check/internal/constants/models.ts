@@ -6,6 +6,46 @@
 import { Create as $Create } from "@wailsio/runtime";
 
 /**
+ * HeartbeatConfig 定义心跳配置
+ */
+export class HeartbeatConfig {
+    "enabled": boolean;
+
+    /**
+     * 秒
+     */
+    "interval": number;
+
+    /**
+     * 秒
+     */
+    "timeout": number;
+
+    /** Creates a new HeartbeatConfig instance. */
+    constructor($$source: Partial<HeartbeatConfig> = {}) {
+        if (!("enabled" in $$source)) {
+            this["enabled"] = false;
+        }
+        if (!("interval" in $$source)) {
+            this["interval"] = 0;
+        }
+        if (!("timeout" in $$source)) {
+            this["timeout"] = 0;
+        }
+
+        Object.assign(this, $$source);
+    }
+
+    /**
+     * Creates a new HeartbeatConfig instance from a string or object.
+     */
+    static createFrom($$source: any = {}): HeartbeatConfig {
+        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        return new HeartbeatConfig($$parsedSource as Partial<HeartbeatConfig>);
+    }
+}
+
+/**
  * PlatformInfo 定义平台信息
  */
 export class PlatformInfo {
@@ -34,13 +74,46 @@ export class PlatformInfo {
 }
 
 /**
+ * ServerConfig 定义服务器配置
+ */
+export class ServerConfig {
+    "baseUrl": string;
+    "updateApi": string;
+    "heartbeatApi": string;
+
+    /** Creates a new ServerConfig instance. */
+    constructor($$source: Partial<ServerConfig> = {}) {
+        if (!("baseUrl" in $$source)) {
+            this["baseUrl"] = "";
+        }
+        if (!("updateApi" in $$source)) {
+            this["updateApi"] = "";
+        }
+        if (!("heartbeatApi" in $$source)) {
+            this["heartbeatApi"] = "";
+        }
+
+        Object.assign(this, $$source);
+    }
+
+    /**
+     * Creates a new ServerConfig instance from a string or object.
+     */
+    static createFrom($$source: any = {}): ServerConfig {
+        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        return new ServerConfig($$parsedSource as Partial<ServerConfig>);
+    }
+}
+
+/**
  * SharedConstants 定义需要共享的常量
  */
 export class SharedConstants {
     "appName": string;
     "appVersion": string;
     "platformInfo": PlatformInfo;
-    "UpdateServer": string;
+    "server": ServerConfig;
+    "heartbeat": HeartbeatConfig;
     "needsRestart": boolean;
 
     /** Creates a new SharedConstants instance. */
@@ -54,8 +127,11 @@ export class SharedConstants {
         if (!("platformInfo" in $$source)) {
             this["platformInfo"] = (new PlatformInfo());
         }
-        if (!("UpdateServer" in $$source)) {
-            this["UpdateServer"] = "";
+        if (!("server" in $$source)) {
+            this["server"] = (new ServerConfig());
+        }
+        if (!("heartbeat" in $$source)) {
+            this["heartbeat"] = (new HeartbeatConfig());
         }
         if (!("needsRestart" in $$source)) {
             this["needsRestart"] = false;
@@ -69,9 +145,17 @@ export class SharedConstants {
      */
     static createFrom($$source: any = {}): SharedConstants {
         const $$createField2_0 = $$createType0;
+        const $$createField3_0 = $$createType1;
+        const $$createField4_0 = $$createType2;
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
         if ("platformInfo" in $$parsedSource) {
             $$parsedSource["platformInfo"] = $$createField2_0($$parsedSource["platformInfo"]);
+        }
+        if ("server" in $$parsedSource) {
+            $$parsedSource["server"] = $$createField3_0($$parsedSource["server"]);
+        }
+        if ("heartbeat" in $$parsedSource) {
+            $$parsedSource["heartbeat"] = $$createField4_0($$parsedSource["heartbeat"]);
         }
         return new SharedConstants($$parsedSource as Partial<SharedConstants>);
     }
@@ -79,3 +163,5 @@ export class SharedConstants {
 
 // Private type creation functions
 const $$createType0 = PlatformInfo.createFrom;
+const $$createType1 = ServerConfig.createFrom;
+const $$createType2 = HeartbeatConfig.createFrom;

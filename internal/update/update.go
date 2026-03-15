@@ -126,13 +126,13 @@ func findExecutable(tempDir, goos, arch string) (string, error) {
 }
 
 // CheckAndUpdate 检查更新并执行更新
-func CheckAndUpdate(appCtx *initializer.AppContext, UpdateServer string) (*UpdateResult, error) {
+func CheckAndUpdate(appCtx *initializer.AppContext, serverBaseURL, updateAPI string) (*UpdateResult, error) {
 	goos := appCtx.PlatformInfo.OS
 	arch := appCtx.PlatformInfo.Arch
 	currentVersion := appCtx.AppVersion
 
 	// 1. 从 latestUrl 获取最新版本信息
-	latestUrl := fmt.Sprintf("%s/api/versions/latest?os=%s&arch=%s", UpdateServer, goos, arch)
+	latestUrl := fmt.Sprintf("%s%s?os=%s&arch=%s", serverBaseURL, updateAPI, goos, arch)
 	fmt.Printf("检查最新版本地址: %s\n", latestUrl)
 
 	client := &http.Client{}
